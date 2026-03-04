@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Plus, Edit2, Trash2, Search, X } from 'lucide-react';
+import { Users, Plus, CreditCard as Edit2, Trash2, Search, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { Teacher } from '../types/database';
@@ -58,8 +58,16 @@ export default function TeachersManager({ onUpdate }: TeachersManagerProps) {
 
     try {
       const teacherData = {
-        ...formData,
+        name: formData.name,
+        phone: formData.phone,
+        email: formData.email,
+        specialization: formData.specialization,
         salary: parseFloat(formData.salary),
+        hire_date: formData.hire_date,
+        status: formData.status,
+        address: formData.address || null,
+        qualifications: formData.qualifications || null,
+        notes: formData.notes || null,
         user_id: user.id,
       };
 
@@ -67,7 +75,8 @@ export default function TeachersManager({ onUpdate }: TeachersManagerProps) {
         const { error } = await supabase
           .from('teachers')
           .update(teacherData)
-          .eq('id', editingTeacher.id);
+          .eq('id', editingTeacher.id)
+          .eq('user_id', user.id);
 
         if (error) throw error;
       } else {
@@ -81,9 +90,10 @@ export default function TeachersManager({ onUpdate }: TeachersManagerProps) {
       resetForm();
       loadTeachers();
       onUpdate();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving teacher:', error);
-      alert('حدث خطأ أثناء حفظ البيانات');
+      const errorMessage = error?.message || 'حدث خطأ أثناء حفظ البيانات';
+      alert(errorMessage);
     }
   };
 
@@ -99,9 +109,10 @@ export default function TeachersManager({ onUpdate }: TeachersManagerProps) {
       if (error) throw error;
       loadTeachers();
       onUpdate();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting teacher:', error);
-      alert('حدث خطأ أثناء حذف المعلم');
+      const errorMessage = error?.message || 'حدث خطأ أثناء حذف المعلم';
+      alert(errorMessage);
     }
   };
 
@@ -170,7 +181,7 @@ export default function TeachersManager({ onUpdate }: TeachersManagerProps) {
         </div>
         <div className="bg-white rounded-xl shadow-md p-6 border-r-4 border-orange-600">
           <p className="text-gray-600 text-sm mb-1">إجمالي الرواتب الشهرية</p>
-          <p className="text-3xl font-bold text-gray-900">{totalSalaries.toFixed(2)} ر.س</p>
+          <p className="text-3xl font-bold text-gray-900">{totalSalaries.toFixed(2)} ج.م</p>
         </div>
       </div>
 
@@ -206,7 +217,7 @@ export default function TeachersManager({ onUpdate }: TeachersManagerProps) {
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  placeholder="0501234567"
+                  placeholder="01139828833"
                   required
                 />
               </div>
@@ -236,7 +247,7 @@ export default function TeachersManager({ onUpdate }: TeachersManagerProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">الراتب الشهري (ر.س)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">الراتب الشهري (ج.م)</label>
                 <input
                   type="number"
                   step="0.01"
@@ -266,7 +277,7 @@ export default function TeachersManager({ onUpdate }: TeachersManagerProps) {
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  placeholder="مثال: الرياض - شارع الملك فهد"
+                  placeholder="مثال: القاهرة - شارع طومان باي"
                 />
               </div>
 

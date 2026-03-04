@@ -4,12 +4,31 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>School Accounting System</title>
+    <title>إدارتــي</title>
     <meta property="og:image" content="https://bolt.new/static/og_default.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="https://bolt.new/static/og_default.png" />
   </head>
-  <body>
+<!-- <script>
+  (function() {
+    // حفظ الموضع قبل إعادة التحميل
+    window.addEventListener('beforeunload', function() {
+      sessionStorage.setItem('vite_pos', window.scrollY);
+    });
+
+    // استعادة الموضع بعد التحميل
+    window.addEventListener('load', function() {
+      var pos = sessionStorage.getItem('vite_pos');
+      if (pos) {
+        setTimeout(function() {
+          window.scrollTo(0, parseInt(pos));
+          sessionStorage.removeItem('vite_pos');
+        }, 300);
+      }
+    });
+  })();
+</script>  -->
+ <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -1,7 +1,17 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, Calendar } from 'lucide-react';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  DollarSign, 
+  Calendar,
+  Download,
+  FileSpreadsheet,
+  FileText 
+} from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 interface MonthlyData {
   month: string;
@@ -88,25 +98,185 @@ export default function ProfitReport() {
     }
   };
 
+  // دالة لتصدير البيانات إلى Excel
+  const exportToExcel = (data: any[], fileName: string, sheetName: string = 'تقرير') => {
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    
+    // ضبط عرض الأعمدة
+    const maxWidth = 50;
+    if (data.length > 0) {
+      const firstRow = data[0];
+      const wscols = Object.keys(firstRow).map(key => ({ 
+        wch: Math.min(maxWidth, key.length + 10) 
+      }));
+      worksheet['!cols'] = wscols;
+    }
+    
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+    
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], { type: 'application/octet-stream' });
+    saveAs(blob, `${fileName}_${selectedYear}.xlsx`);
+  };
+
+  // دالة لتصدير تقارير متعددة في ملف واحد
+  const exportMultipleSheets = (sheets: { data: any[], sheetName: string }[], fileName: string) => {
+    const workbook = XLSX.utils.book_new();
+    
+    sheets.forEach(({ data, sheetName }) => {
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      
+      if (data.length > 0) {
+        const firstRow = data[0];
+        const wscols = Object.keys(firstRow).map(key => ({ 
+          wch: Math.min(50, key.length + 10) 
+        }));
+        worksheet['!cols'] = wscols;
+      }
+      
+      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+    });
+    
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], { type: 'application/octet-stream' });
+    saveAs(blob, `${fileName}_${selectedYear}.xlsx`);
+  };
+
+  // تجهيز بيانات التصدير
+  const prepareExportData = () => {
+    // بيانات التقرير الشهري
+    const monthlyReportData = monthlyData.map(item => ({
+      'الشهر': item.month,
+      'الإيرادات (ج.م)': item.revenue.toFixed(2),
+      'التكاليف (ج.م)': item.expenses.toFixed(2),
+      'صافي الربح (ج.م)': item.profit.toFixed(2),
+      'الحالة': item.profit > 0 ? 'ربح' : item.profit < 0 ? 'خسارة' : 'متعادل'
+    }));
+
+    // بيانات الملخص
+    const summaryData = [{
+      'البيان': 'إجمالي الإيرادات',
+      'القيمة (ج.م)': totalRevenue.toFixed(2)
+    }, {
+      'البيان': 'إجمالي التكاليف',
+      'القيمة (ج.م)': totalExpenses.toFixed(2)
+    }, {
+      'البيان': 'صافي الربح',
+      'القيمة (ج.م)': netProfit.toFixed(2)
+    }, {
+      'البيان': 'نسبة الربح',
+      'القيمة': totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) + '%' : '0%'
+    }, {
+      'البيان': 'متوسط الإيرادات الشهري',
+      'القيمة (ج.م)': (totalRevenue / 12).toFixed(2)
+    }, {
+      'البيان': 'متوسط التكاليف الشهري',
+      'القيمة (ج.م)': (totalExpenses / 12).toFixed(2)
+    }, {
+      'البيان': 'متوسط الربح الشهري',
+      'القيمة (ج.م)': (netProfit / 12).toFixed(2)
+    }];
+
+    // أفضل وأسوأ شهر
+    const bestMonth = monthlyData.reduce((best, current) => 
+      current.profit > best.profit ? current : best
+    , monthlyData[0]);
+    
+    const worstMonth = monthlyData.reduce((worst, current) => 
+      current.profit < worst.profit ? current : worst
+    , monthlyData[0]);
+
+    const analysisData = [{
+      'التحليل': 'أفضل شهر',
+      'الشهر': bestMonth?.month || '-',
+      'القيمة (ج.م)': bestMonth?.profit.toFixed(2) || '0'
+    }, {
+      'التحليل': 'أسوأ شهر',
+      'الشهر': worstMonth?.month || '-',
+      'القيمة (ج.م)': worstMonth?.profit.toFixed(2) || '0'
+    }, {
+      'التحليل': 'إجمالي الأشهر الرابحة',
+      'القيمة': monthlyData.filter(m => m.profit > 0).length.toString()
+    }, {
+      'التحليل': 'إجمالي الأشهر الخاسرة',
+      'القيمة': monthlyData.filter(m => m.profit < 0).length.toString()
+    }];
+
+    return {
+      monthly: monthlyReportData,
+      summary: summaryData,
+      analysis: analysisData
+    };
+  };
+
+  const handleExportAll = () => {
+    const data = prepareExportData();
+    
+    exportMultipleSheets([
+      { data: data.summary, sheetName: 'ملخص' },
+      { data: data.monthly, sheetName: 'تقرير شهري' },
+      { data: data.analysis, sheetName: 'تحليلات' }
+    ], `تقرير_الأرباح_${selectedYear}`);
+  };
+
+  const handleExportMonthly = () => {
+    const data = prepareExportData();
+    exportToExcel(data.monthly, `تقرير_شهري_${selectedYear}`, 'تقرير شهري');
+  };
+
+  const handleExportSummary = () => {
+    const data = prepareExportData();
+    exportToExcel(data.summary, `ملخص_${selectedYear}`, 'ملخص');
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <h2 className="text-2xl font-bold text-gray-900">تقرير الأرباح والخسائر</h2>
-        <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-gray-600" />
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+        
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 bg-white rounded-lg shadow-sm px-3 py-2">
+            <Calendar className="w-5 h-5 text-gray-600" />
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="border-none focus:ring-0 outline-none bg-transparent"
+            >
+              {availableYears.length > 0 ? (
+                availableYears.map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))
+              ) : (
+                <option value={new Date().getFullYear()}>{new Date().getFullYear()}</option>
+              )}
+            </select>
+          </div>
+
+          {/* أزرار التصدير */}
+          <button
+            onClick={handleExportAll}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm"
           >
-            {availableYears.length > 0 ? (
-              availableYears.map(year => (
-                <option key={year} value={year}>{year}</option>
-              ))
-            ) : (
-              <option value={new Date().getFullYear()}>{new Date().getFullYear()}</option>
-            )}
-          </select>
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>تصدير الكل</span>
+          </button>
+          
+          <button
+            onClick={handleExportMonthly}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+          >
+            <Download className="w-4 h-4" />
+            <span>تقرير شهري</span>
+          </button>
+          
+          <button
+            onClick={handleExportSummary}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-sm"
+          >
+            <FileText className="w-4 h-4" />
+            <span>ملخص</span>
+          </button>
         </div>
       </div>
 
@@ -122,7 +292,7 @@ export default function ProfitReport() {
                 <span className="text-gray-600 text-sm">إجمالي الإيرادات</span>
                 <DollarSign className="w-5 h-5 text-green-600" />
               </div>
-              <p className="text-2xl font-bold text-green-600">{totalRevenue.toFixed(2)} ر.س</p>
+              <p className="text-2xl font-bold text-green-600">{totalRevenue.toFixed(2)} ج.م</p>
             </div>
 
             <div className="bg-white rounded-xl shadow-md p-6 border-r-4 border-red-600">
@@ -130,7 +300,7 @@ export default function ProfitReport() {
                 <span className="text-gray-600 text-sm">إجمالي التكاليف</span>
                 <TrendingDown className="w-5 h-5 text-red-600" />
               </div>
-              <p className="text-2xl font-bold text-red-600">{totalExpenses.toFixed(2)} ر.س</p>
+              <p className="text-2xl font-bold text-red-600">{totalExpenses.toFixed(2)} ج.م</p>
             </div>
 
             <div className={`bg-white rounded-xl shadow-md p-6 border-r-4 ${
@@ -141,7 +311,7 @@ export default function ProfitReport() {
                 <TrendingUp className={`w-5 h-5 ${netProfit >= 0 ? 'text-blue-600' : 'text-orange-600'}`} />
               </div>
               <p className={`text-2xl font-bold ${netProfit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
-                {netProfit >= 0 ? '+' : ''}{netProfit.toFixed(2)} ر.س
+                {netProfit >= 0 ? '+' : ''}{netProfit.toFixed(2)} ج.م
               </p>
             </div>
           </div>
@@ -163,15 +333,15 @@ export default function ProfitReport() {
                   {monthlyData.map((data, index) => (
                     <tr key={index} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                       <td className="py-3 px-4 font-medium text-gray-900">{data.month}</td>
-                      <td className="py-3 px-4 text-green-600 font-medium">{data.revenue.toFixed(2)} ر.س</td>
-                      <td className="py-3 px-4 text-red-600 font-medium">{data.expenses.toFixed(2)} ر.س</td>
+                      <td className="py-3 px-4 text-green-600 font-medium">{data.revenue.toFixed(2)} ج.م</td>
+                      <td className="py-3 px-4 text-red-600 font-medium">{data.expenses.toFixed(2)} ج.م</td>
                       <td className={`py-3 px-4 font-bold ${
                         data.profit >= 0 ? 'text-blue-600' : 'text-orange-600'
                       }`}>
-                        {data.profit >= 0 ? '+' : ''}{data.profit.toFixed(2)} ر.س
+                        {data.profit >= 0 ? '+' : ''}{data.profit.toFixed(2)} ج.م
                       </td>
                       <td className="py-3 px-4 text-center">
-                        {data.profit >= 0 ? (
+                        {data.profit > 0 ? (
                           <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
                             <TrendingUp className="w-3 h-3" />
                             ربح
@@ -193,10 +363,10 @@ export default function ProfitReport() {
                 <tfoot className="bg-gray-50 border-t-2 border-gray-200">
                   <tr className="font-bold">
                     <td className="py-3 px-4 text-gray-900">الإجمالي</td>
-                    <td className="py-3 px-4 text-green-600">{totalRevenue.toFixed(2)} ر.س</td>
-                    <td className="py-3 px-4 text-red-600">{totalExpenses.toFixed(2)} ر.س</td>
+                    <td className="py-3 px-4 text-green-600">{totalRevenue.toFixed(2)} ج.م</td>
+                    <td className="py-3 px-4 text-red-600">{totalExpenses.toFixed(2)} ج.م</td>
                     <td className={`py-3 px-4 ${netProfit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
-                      {netProfit >= 0 ? '+' : ''}{netProfit.toFixed(2)} ر.س
+                      {netProfit >= 0 ? '+' : ''}{netProfit.toFixed(2)} ج.م
                     </td>
                     <td></td>
                   </tr>
@@ -231,20 +401,46 @@ export default function ProfitReport() {
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">الإيرادات:</span>
-                    <span className="font-medium text-green-600">{(totalRevenue / 12).toFixed(2)} ر.س</span>
+                    <span className="font-medium text-green-600">{(totalRevenue / 12).toFixed(2)} ج.م</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">التكاليف:</span>
-                    <span className="font-medium text-red-600">{(totalExpenses / 12).toFixed(2)} ر.س</span>
+                    <span className="font-medium text-red-600">{(totalExpenses / 12).toFixed(2)} ج.م</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">الربح:</span>
                     <span className={`font-bold ${netProfit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
-                      {(netProfit / 12).toFixed(2)} ر.س
+                      {(netProfit / 12).toFixed(2)} ج.م
                     </span>
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* إضافة ملخص سريع */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+              <span className="block text-green-800 font-bold mb-1">أفضل شهر</span>
+              <span className="text-gray-900">
+                {monthlyData.reduce((best, current) => 
+                  current.profit > best.profit ? current : best
+                , monthlyData[0])?.month || '-'}
+              </span>
+            </div>
+            
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              <span className="block text-blue-800 font-bold mb-1">الأشهر الرابحة</span>
+              <span className="text-gray-900">
+                {monthlyData.filter(m => m.profit > 0).length} شهر
+              </span>
+            </div>
+            
+            <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
+              <span className="block text-orange-800 font-bold mb-1">الأشهر الخاسرة</span>
+              <span className="text-gray-900">
+                {monthlyData.filter(m => m.profit < 0).length} شهر
+              </span>
             </div>
           </div>
         </>

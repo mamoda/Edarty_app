@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { School } from 'lucide-react';
+import { School, Lock } from 'lucide-react';
+import logo from '../assets/logo.png';
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
@@ -8,7 +9,11 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [adminCode, setAdminCode] = useState('');
   const { signIn, signUp } = useAuth();
+
+  const ADMIN_SECRET_CODE = 'Mahmoud17237ESD@'; // غير هذا الرقم السري
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,23 +35,38 @@ export default function Login() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4" dir="rtl">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <div className="flex flex-col items-center mb-8">
-            <div className="bg-blue-600 p-4 rounded-full mb-4">
-              <School className="w-12 h-12 text-white" />
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">نظام المحاسبة المدرسي</h1>
-            <p className="text-gray-600 text-center">إدارة شاملة لحسابات المدرسة</p>
-          </div>
+  const handleAdminAccess = () => {
+    if (adminCode === ADMIN_SECRET_CODE) {
+      setShowAdminPanel(true);
+      setIsLogin(false); // التبديل إلى وضع إنشاء الحساب
+      setAdminCode('');
+    } else {
+      alert('الكود السري غير صحيح');
+    }
+  };
 
-          <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-lg">
+return (
+  <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4" dir="rtl">
+    <div className="w-full max-w-md">
+      <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="flex flex-col items-center mb-8 scale-110">
+          <img
+            src={logo}
+            alt="شعار التطبيق"
+            className="h-28 w-auto mb-3" // تكبير الشعار من h-24 إلى h-28
+          />
+          <p className="text-gray-600 text-center text-lg"> {/* إضافة text-lg لتكبير النص */}
+            بيانات أكثر وتقارير أدق وسهولة استخدام
+          </p>
+        </div>
+
+        {/* إظهار أزرار التبديل فقط للمستخدمين العاديين أو إذا كان لوحة المسؤول ظاهرة */}
+        {!showAdminPanel && (
+          <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-lg scale-105"> {/* تكبير الأزرار قليلاً */}
             <button
               type="button"
               onClick={() => setIsLogin(true)}
-              className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
+              className={`flex-1 py-3 px-4 rounded-md font-medium transition-all text-base ${
                 isLogin
                   ? 'bg-white text-blue-600 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
@@ -54,18 +74,42 @@ export default function Login() {
             >
               تسجيل الدخول
             </button>
-            <button
-              type="button"
-              onClick={() => setIsLogin(false)}
-              className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
-                !isLogin
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              إنشاء حساب
-            </button>
+            {/* زر إنشاء حساب غير متاح للمستخدمين العاديين */}
           </div>
+        )}
+          {/* لوحة المسؤول - تظهر فقط بعد إدخال الكود السري */}
+          {showAdminPanel && (
+            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-center gap-2 mb-3">
+                <Lock className="w-5 h-5 text-yellow-600" />
+                <h3 className="font-medium text-yellow-800">لوحة تحكم المسؤول</h3>
+              </div>
+              <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => setIsLogin(true)}
+                  className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
+                    isLogin
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  تسجيل الدخول
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsLogin(false)}
+                  className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
+                    !isLogin
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  إنشاء حساب جديد
+                </button>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -112,15 +156,31 @@ export default function Login() {
             </button>
           </form>
 
-          {!isLogin && (
-            <p className="mt-4 text-xs text-gray-500 text-center">
-              بإنشاء حساب، فإنك توافق على شروط الخدمة وسياسة الخصوصية
-            </p>
+          {/* حقل إدخال الكود السري للمسؤول */}
+          {!showAdminPanel && (
+            <div className="mt-4">
+              <div className="relative">
+                <input
+                  type="password"
+                  value={adminCode}
+                  onChange={(e) => setAdminCode(e.target.value)}
+                  placeholder="كود المسؤول"
+                  className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={handleAdminAccess}
+                  className="absolute left-2 top-1/2 transform -translate-y-1/2 text-xs bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  دخول
+                </button>
+              </div>
+            </div>
           )}
         </div>
 
         <div className="mt-6 text-center text-sm text-gray-600">
-          <p>نظام محاسبة احترافي لإدارة المدارس</p>
+          <p>نظام إدارتــي لحسابات المدارس والمؤسسات التعليمية</p>
         </div>
       </div>
     </div>

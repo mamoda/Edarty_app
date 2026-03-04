@@ -34,7 +34,6 @@ export interface Expense {
   notes: string;
   created_at: string;
 }
-
 export interface Teacher {
   id: string;
   user_id: string;
