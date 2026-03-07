@@ -238,31 +238,19 @@ const handleUpgrade = () => {
                 <div className="absolute -inset-3 bg-gradient-to-r from-emerald-400 to-blue-400 rounded-full blur-xl opacity-0 group-hover:opacity-75 transition-opacity duration-500 animate-pulse"></div>
 
                 {/* اللوجو */}
-<div className="flex items-center gap-3">
-  {/* حاوية اللوجو بتصميم كارت */}
-  <div className="relative">
-    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-lg opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
-    
-    <img
-      src={logo}
-      alt="إدارتي"
-      className="h-14 w-auto rounded-lg p-1.5 transition-all duration-300 hover:shadow-lg hover:scale-105"
-    />
-  </div>
+                <div className="relative flex items-center gap-3">
+                  <img
+                    src={logo}
+                    alt="إدارتي"
+                    className="h-16 w-auto relative z-10 transform transition-all duration-500 group-hover:scale-110 group-hover:rotate-3"
+                  />
 
-  {/* خط عمودي أنيق */}
-  <div className="hidden sm:block h-10 w-px bg-gradient-to-b from-emerald-500 via-blue-500 to-transparent"></div>
-
-  {/* نص مع تأثير ظهور */}
-  <div className="hidden sm:block overflow-hidden">
-    <p className="text-xs text-gray-500 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-      مرحباً بك في
-    </p>
-    <h2 className="text-xl font-bold text-gray-800 -translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 delay-100">
-      إدارتي
-    </h2>
-  </div>
-</div>              </div>
+                  {/* النص مع تأثير أنيق */}
+                  <div className="hidden sm:block">
+                    <div className="h-0.5 w-0 group-hover:w-full bg-gradient-to-l from-emerald-500 to-blue-500 transition-all duration-500"></div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* القسم الأيمن */}
