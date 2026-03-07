@@ -30,6 +30,14 @@ export default function ProfitReport() {
   const [netProfit, setNetProfit] = useState(0);
   const [availableYears, setAvailableYears] = useState<string[]>([]);
 
+  // دالة لتنسيق الأرقام بالعربية
+  const formatNumber = (num: number, fractionDigits: number = 2) => {
+    return Number(num).toLocaleString('ar-EG', {
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits
+    });
+  };
+
   useEffect(() => {
     loadReportData();
   }, [selectedYear]);
@@ -148,34 +156,34 @@ export default function ProfitReport() {
     // بيانات التقرير الشهري
     const monthlyReportData = monthlyData.map(item => ({
       'الشهر': item.month,
-      'الإيرادات (ج.م)': item.revenue.toFixed(2),
-      'التكاليف (ج.م)': item.expenses.toFixed(2),
-      'صافي الربح (ج.م)': item.profit.toFixed(2),
+      'الإيرادات (ج.م)': formatNumber(item.revenue),
+      'التكاليف (ج.م)': formatNumber(item.expenses),
+      'صافي الربح (ج.م)': formatNumber(item.profit),
       'الحالة': item.profit > 0 ? 'ربح' : item.profit < 0 ? 'خسارة' : 'متعادل'
     }));
 
     // بيانات الملخص
     const summaryData = [{
       'البيان': 'إجمالي الإيرادات',
-      'القيمة (ج.م)': totalRevenue.toFixed(2)
+      'القيمة (ج.م)': formatNumber(totalRevenue)
     }, {
       'البيان': 'إجمالي التكاليف',
-      'القيمة (ج.م)': totalExpenses.toFixed(2)
+      'القيمة (ج.م)': formatNumber(totalExpenses)
     }, {
       'البيان': 'صافي الربح',
-      'القيمة (ج.م)': netProfit.toFixed(2)
+      'القيمة (ج.م)': formatNumber(netProfit)
     }, {
       'البيان': 'نسبة الربح',
-      'القيمة': totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) + '%' : '0%'
+      'القيمة': totalRevenue > 0 ? formatNumber((netProfit / totalRevenue) * 100, 1) + '%' : '٠%'
     }, {
       'البيان': 'متوسط الإيرادات الشهري',
-      'القيمة (ج.م)': (totalRevenue / 12).toFixed(2)
+      'القيمة (ج.م)': formatNumber(totalRevenue / 12)
     }, {
       'البيان': 'متوسط التكاليف الشهري',
-      'القيمة (ج.م)': (totalExpenses / 12).toFixed(2)
+      'القيمة (ج.م)': formatNumber(totalExpenses / 12)
     }, {
       'البيان': 'متوسط الربح الشهري',
-      'القيمة (ج.م)': (netProfit / 12).toFixed(2)
+      'القيمة (ج.م)': formatNumber(netProfit / 12)
     }];
 
     // أفضل وأسوأ شهر
@@ -190,17 +198,17 @@ export default function ProfitReport() {
     const analysisData = [{
       'التحليل': 'أفضل شهر',
       'الشهر': bestMonth?.month || '-',
-      'القيمة (ج.م)': bestMonth?.profit.toFixed(2) || '0'
+      'القيمة (ج.م)': bestMonth ? formatNumber(bestMonth.profit) : '٠'
     }, {
       'التحليل': 'أسوأ شهر',
       'الشهر': worstMonth?.month || '-',
-      'القيمة (ج.م)': worstMonth?.profit.toFixed(2) || '0'
+      'القيمة (ج.م)': worstMonth ? formatNumber(worstMonth.profit) : '٠'
     }, {
       'التحليل': 'إجمالي الأشهر الرابحة',
-      'القيمة': monthlyData.filter(m => m.profit > 0).length.toString()
+      'القيمة': formatNumber(monthlyData.filter(m => m.profit > 0).length, 0)
     }, {
       'التحليل': 'إجمالي الأشهر الخاسرة',
-      'القيمة': monthlyData.filter(m => m.profit < 0).length.toString()
+      'القيمة': formatNumber(monthlyData.filter(m => m.profit < 0).length, 0)
     }];
 
     return {
@@ -292,7 +300,7 @@ export default function ProfitReport() {
                 <span className="text-gray-600 text-sm">إجمالي الإيرادات</span>
                 <DollarSign className="w-5 h-5 text-green-600" />
               </div>
-              <p className="text-2xl font-bold text-green-600">{totalRevenue.toFixed(2)} ج.م</p>
+              <p className="text-2xl font-bold text-green-600">{formatNumber(totalRevenue)} ج.م</p>
             </div>
 
             <div className="bg-white rounded-xl shadow-md p-6 border-r-4 border-red-600">
@@ -300,7 +308,7 @@ export default function ProfitReport() {
                 <span className="text-gray-600 text-sm">إجمالي التكاليف</span>
                 <TrendingDown className="w-5 h-5 text-red-600" />
               </div>
-              <p className="text-2xl font-bold text-red-600">{totalExpenses.toFixed(2)} ج.م</p>
+              <p className="text-2xl font-bold text-red-600">{formatNumber(totalExpenses)} ج.م</p>
             </div>
 
             <div className={`bg-white rounded-xl shadow-md p-6 border-r-4 ${
@@ -311,7 +319,7 @@ export default function ProfitReport() {
                 <TrendingUp className={`w-5 h-5 ${netProfit >= 0 ? 'text-blue-600' : 'text-orange-600'}`} />
               </div>
               <p className={`text-2xl font-bold ${netProfit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
-                {netProfit >= 0 ? '+' : ''}{netProfit.toFixed(2)} ج.م
+                {netProfit >= 0 ? '+' : ''}{formatNumber(netProfit)} ج.م
               </p>
             </div>
           </div>
@@ -333,12 +341,12 @@ export default function ProfitReport() {
                   {monthlyData.map((data, index) => (
                     <tr key={index} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                       <td className="py-3 px-4 font-medium text-gray-900">{data.month}</td>
-                      <td className="py-3 px-4 text-green-600 font-medium">{data.revenue.toFixed(2)} ج.م</td>
-                      <td className="py-3 px-4 text-red-600 font-medium">{data.expenses.toFixed(2)} ج.م</td>
+                      <td className="py-3 px-4 text-green-600 font-medium">{formatNumber(data.revenue)} ج.م</td>
+                      <td className="py-3 px-4 text-red-600 font-medium">{formatNumber(data.expenses)} ج.م</td>
                       <td className={`py-3 px-4 font-bold ${
                         data.profit >= 0 ? 'text-blue-600' : 'text-orange-600'
                       }`}>
-                        {data.profit >= 0 ? '+' : ''}{data.profit.toFixed(2)} ج.م
+                        {data.profit >= 0 ? '+' : ''}{formatNumber(data.profit)} ج.م
                       </td>
                       <td className="py-3 px-4 text-center">
                         {data.profit > 0 ? (
@@ -363,10 +371,10 @@ export default function ProfitReport() {
                 <tfoot className="bg-gray-50 border-t-2 border-gray-200">
                   <tr className="font-bold">
                     <td className="py-3 px-4 text-gray-900">الإجمالي</td>
-                    <td className="py-3 px-4 text-green-600">{totalRevenue.toFixed(2)} ج.م</td>
-                    <td className="py-3 px-4 text-red-600">{totalExpenses.toFixed(2)} ج.م</td>
+                    <td className="py-3 px-4 text-green-600">{formatNumber(totalRevenue)} ج.م</td>
+                    <td className="py-3 px-4 text-red-600">{formatNumber(totalExpenses)} ج.م</td>
                     <td className={`py-3 px-4 ${netProfit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
-                      {netProfit >= 0 ? '+' : ''}{netProfit.toFixed(2)} ج.م
+                      {netProfit >= 0 ? '+' : ''}{formatNumber(netProfit)} ج.م
                     </td>
                     <td></td>
                   </tr>
@@ -384,7 +392,7 @@ export default function ProfitReport() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600">هامش الربح:</span>
                     <span className="font-bold text-gray-900">
-                      {totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : 0}%
+                      {totalRevenue > 0 ? formatNumber((netProfit / totalRevenue) * 100, 1) : '٠'}%
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
@@ -401,16 +409,16 @@ export default function ProfitReport() {
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">الإيرادات:</span>
-                    <span className="font-medium text-green-600">{(totalRevenue / 12).toFixed(2)} ج.م</span>
+                    <span className="font-medium text-green-600">{formatNumber(totalRevenue / 12)} ج.م</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">التكاليف:</span>
-                    <span className="font-medium text-red-600">{(totalExpenses / 12).toFixed(2)} ج.م</span>
+                    <span className="font-medium text-red-600">{formatNumber(totalExpenses / 12)} ج.م</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">الربح:</span>
                     <span className={`font-bold ${netProfit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
-                      {(netProfit / 12).toFixed(2)} ج.م
+                      {formatNumber(netProfit / 12)} ج.م
                     </span>
                   </div>
                 </div>
@@ -432,14 +440,14 @@ export default function ProfitReport() {
             <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
               <span className="block text-blue-800 font-bold mb-1">الأشهر الرابحة</span>
               <span className="text-gray-900">
-                {monthlyData.filter(m => m.profit > 0).length} شهر
+                {formatNumber(monthlyData.filter(m => m.profit > 0).length, 0)} شهر
               </span>
             </div>
             
             <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
               <span className="block text-orange-800 font-bold mb-1">الأشهر الخاسرة</span>
               <span className="text-gray-900">
-                {monthlyData.filter(m => m.profit < 0).length} شهر
+                {formatNumber(monthlyData.filter(m => m.profit < 0).length, 0)} شهر
               </span>
             </div>
           </div>
