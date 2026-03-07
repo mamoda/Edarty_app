@@ -238,26 +238,29 @@ const handleUpgrade = () => {
                 <div className="absolute -inset-3 bg-gradient-to-r from-emerald-400 to-blue-400 rounded-full blur-xl opacity-0 group-hover:opacity-75 transition-opacity duration-500 animate-pulse"></div>
 
                 {/* اللوجو */}
-<div className="flex items-center gap-4">
-  {/* حاوية اللوجو بتصميم متميز */}
-  <div className="relative p-2 rounded-2xl bg-white shadow-sm hover:shadow-md transition-shadow duration-300">
-    {/* إطار متحرك */}
-    <div className="absolute inset-0 rounded-2xl border-2 border-transparent hover:border-gradient-to-r hover:from-emerald-500 hover:to-blue-500"></div>
+<div className="flex items-center gap-3">
+  {/* حاوية اللوجو بتصميم كارت */}
+  <div className="relative">
+    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-lg opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
     
-    {/* اللوجو بحجم محسن */}
     <img
       src={logo}
       alt="إدارتي"
-      className="h-10 w-auto object-contain"
+      className="h-14 w-auto rounded-lg p-1.5 transition-all duration-300 hover:shadow-lg hover:scale-105"
     />
   </div>
 
-  {/* نص احترافي */}
-  <div className="hidden sm:flex flex-col">
-    <span className="text-sm font-light text-gray-500">نظام</span>
-    <span className="text-lg font-bold bg-gradient-to-l from-emerald-600 to-blue-600 bg-clip-text text-transparent">
+  {/* خط عمودي أنيق */}
+  <div className="hidden sm:block h-10 w-px bg-gradient-to-b from-emerald-500 via-blue-500 to-transparent"></div>
+
+  {/* نص مع تأثير ظهور */}
+  <div className="hidden sm:block overflow-hidden">
+    <p className="text-xs text-gray-500 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+      مرحباً بك في
+    </p>
+    <h2 className="text-xl font-bold text-gray-800 -translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 delay-100">
       إدارتي
-    </span>
+    </h2>
   </div>
 </div>              </div>
             </div>
