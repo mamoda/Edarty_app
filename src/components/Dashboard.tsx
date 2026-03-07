@@ -238,28 +238,26 @@ const handleUpgrade = () => {
                 <div className="absolute -inset-3 bg-gradient-to-r from-emerald-400 to-blue-400 rounded-full blur-xl opacity-0 group-hover:opacity-75 transition-opacity duration-500 animate-pulse"></div>
 
                 {/* اللوجو */}
-<div className="relative flex items-center gap-4">
-  {/* حاوية اللوجو مع تأثير خفيف */}
-  <div className="relative group">
-    {/* طبقة خلفية متوهجة */}
-    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-blue-500/20 rounded-xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+<div className="flex items-center gap-4">
+  {/* حاوية اللوجو بتصميم متميز */}
+  <div className="relative p-2 rounded-2xl bg-white shadow-sm hover:shadow-md transition-shadow duration-300">
+    {/* إطار متحرك */}
+    <div className="absolute inset-0 rounded-2xl border-2 border-transparent hover:border-gradient-to-r hover:from-emerald-500 hover:to-blue-500"></div>
     
-    {/* اللوجو بحجم مناسب وتأثير ناعم */}
+    {/* اللوجو بحجم محسن */}
     <img
       src={logo}
       alt="إدارتي"
-      className="h-12 w-auto relative z-10 object-contain transition-all duration-300 group-hover:scale-105"
+      className="h-10 w-auto object-contain"
     />
   </div>
 
-  {/* خط فاصل أنيق */}
-  <div className="hidden sm:block">
-    <div className="h-8 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
-  </div>
-
-  {/* نص العلامة التجارية */}
-  <div className="hidden sm:block">
-    <span className="text-lg font-medium text-gray-700">إدارتي</span>
+  {/* نص احترافي */}
+  <div className="hidden sm:flex flex-col">
+    <span className="text-sm font-light text-gray-500">نظام</span>
+    <span className="text-lg font-bold bg-gradient-to-l from-emerald-600 to-blue-600 bg-clip-text text-transparent">
+      إدارتي
+    </span>
   </div>
 </div>              </div>
             </div>
