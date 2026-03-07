@@ -417,31 +417,8 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
       <body>
         <div class="statement">
           <div class="header">
-<div class="bank-name">
-  <svg class="inline-block w-10 h-10 ml-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M3 10L12 3L21 10L20 11L19 10.5V19H17V12H7V19H5V10.5L4 11L3 10Z" fill="url(#gradient)" />
-    <rect x="8" y="14" width="8" height="5" fill="url(#gradient2)" />
-    <path d="M12 6L6 10V12H18V10L12 6Z" fill="url(#gradient3)" />
-    <circle cx="12" cy="16.5" r="1.5" fill="white" />
-    <defs>
-      <linearGradient id="gradient" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#059669"/>
-        <stop offset="1" stop-color="#2563EB"/>
-      </linearGradient>
-      <linearGradient id="gradient2" x1="8" y1="14" x2="16" y2="19" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#047857"/>
-        <stop offset="1" stop-color="#1D4ED8"/>
-      </linearGradient>
-      <linearGradient id="gradient3" x1="6" y1="6" x2="18" y2="12" gradientUnits="userSpaceOnUse">
-        <stop stop-color="#10B981"/>
-        <stop offset="1" stop-color="#3B82F6"/>
-      </linearGradient>
-    </defs>
-  </svg>
-  <span class="bg-gradient-to-l from-emerald-600 to-blue-600 bg-clip-text text-transparent">
-    بنك إدارتي التعليمي
-  </span>
-</div>            <div class="branch-name">فرع المصاريف الدراسية</div>
+            <div class="bank-name">🏦 بنك إدارتي التعليمي</div>
+            <div class="branch-name">فرع المصاريف الدراسية</div>
           </div>
           
           <div class="account-info">
