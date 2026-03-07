@@ -44,7 +44,6 @@ export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
   const [isAnnual, setIsAnnual] = useState(false);
 
-
   // Video refs and state
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(true);
@@ -322,7 +321,6 @@ export default function LandingPage() {
               <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-3/4 max-w-4xl h-20 bg-emerald-500/20 blur-3xl -z-10"></div>
             </div>
 
-            
             {/* Trust Badges */}
             <div className="mt-16 pt-16 border-t border-slate-700/60">
               <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-8">
@@ -405,318 +403,436 @@ export default function LandingPage() {
         </div>
       </section>
 
-
       {/* Pricing Section - بعد قسم المميزات وقبل testimonials */}
-<section id="pricing" className="py-24 bg-gradient-to-b from-slate-50 to-white relative overflow-hidden">
-  {/* خلفية زخرفية */}
-  <div className="absolute inset-0 bg-grid-slate-100 [mask-image:radial-gradient(ellipse_at_center,white,transparent)]"></div>
-  <div className="absolute top-0 left-0 right-0 h-96 bg-gradient-to-b from-emerald-500/5 to-transparent"></div>
-  
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-    {/* عنوان القسم */}
-    <div className="text-center mb-16">
-      <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 px-4 py-1.5 rounded-full mb-6 border border-emerald-100">
-        <DollarSign className="w-4 h-4" />
-        <span className="text-xs font-bold uppercase tracking-wider">خطط مرنة تناسب الجميع</span>
-      </div>
-      <h2 className="text-4xl lg:text-5xl font-black text-slate-900 mb-4">
-        اختر الخطة المناسبة لعملك
-      </h2>
-      <p className="text-xl text-slate-600 max-w-2xl mx-auto">
-        ابدأ مجاناً وطور عملك مع خططنا المميزة. جميع الباقات تشمل تحديثات مجانية ودعم فني.
-      </p>
-      
-      {/* تبديل سنوي/شهري */}
-      <div className="flex items-center justify-center gap-4 mt-10">
-        <span className={`text-sm font-medium transition-colors ${!isAnnual ? 'text-emerald-600' : 'text-slate-400'}`}>شهري</span>
-        <button
-          onClick={() => setIsAnnual(!isAnnual)}
-          className="relative w-16 h-8 bg-slate-200 rounded-full p-1 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
-        >
-          <div className={`absolute w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-300 ${isAnnual ? 'translate-x-8' : 'translate-x-0'}`}></div>
-        </button>
-        <span className={`text-sm font-medium transition-colors ${isAnnual ? 'text-emerald-600' : 'text-slate-400'}`}>
-          سنوي
-          <span className="mr-2 text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">وفر 20%</span>
-        </span>
-      </div>
-    </div>
-
-    {/* بطاقات الأسعار */}
-    <div className="grid lg:grid-cols-4 gap-6 mb-12">
-      {/* الباقة المجانية */}
-      <div className="group relative bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-100 hover:border-emerald-200 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/0 to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-        
-        {/* شريط علوي */}
-        <div className="h-2 bg-gradient-to-l from-slate-400 to-slate-300"></div>
-        
-        <div className="p-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-2xl font-bold text-slate-900">مجانية</h3>
-            <span className="text-sm bg-slate-100 text-slate-600 px-3 py-1 rounded-full">للبدء</span>
-          </div>
-          
-          <div className="mb-6">
-            <span className="text-4xl font-black text-slate-900">0</span>
-            <span className="text-slate-400 mr-2">ج.م/شهرياً</span>
-          </div>
-          
-          <p className="text-slate-500 mb-8 line-clamp-2">مثالية للأعمال الصغيرة جداً والبداية</p>
-          
-          <ul className="space-y-4 mb-8">
-            {[
-              'حتى 30 عميل',
-              'تقارير أساسية',
-              'دعم عبر البريد الإلكتروني',
-              'مساحة تخزين 1 جيجابايت',
-              'فواتير غير محدودة'
-            ].map((feature, i) => (
-              <li key={i} className="flex items-center gap-3 text-sm">
-                <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-                <span className="text-slate-600">{feature}</span>
-              </li>
-            ))}
-          </ul>
-          
-          <button
-            onClick={handleFreeTrial}
-            className="w-full py-4 border-2 border-slate-200 text-slate-700 rounded-2xl font-bold hover:bg-slate-50 hover:border-emerald-600 hover:text-emerald-600 transition-all group-hover:shadow-lg"
-          >
-            ابدأ مجاناً
-          </button>
-        </div>
-      </div>
-
-      {/* الباقة الاحترافية */}
-      <div className="group relative bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-emerald-500 overflow-hidden transform lg:-translate-y-4">
-        {/* شريط علوي متدرج */}
-        <div className="h-2 bg-gradient-to-l from-emerald-500 via-emerald-400 to-emerald-500"></div>
-        
-        {/* شارة الأكثر شهرة */}
-        <div className="absolute top-6 left-6">
-          <div className="bg-gradient-to-l from-emerald-500 to-emerald-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1">
-            <Star className="w-3 h-3 fill-white" />
-            الأكثر شهرة
-          </div>
-        </div>
-        
-        <div className="p-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-2xl font-bold text-slate-900">احترافية</h3>
-            <span className="text-sm bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full">الأفضل مبيعاً</span>
-          </div>
-          
-          <div className="mb-2">
-            <span className="text-5xl font-black text-slate-900">
-              {isAnnual ? '799' : '899'}
-            </span>
-            <span className="text-slate-400 mr-2">ج.م/شهرياً</span>
-          </div>
-          
-          {isAnnual && (
-            <div className="text-sm text-emerald-600 font-medium mb-4">
-              توفير 1200 ج.م سنوياً
-            </div>
-          )}
-          
-          <p className="text-slate-500 mb-8">كل ما تحتاجه لإدارة شركتك بكفاءة عالية</p>
-          
-          <ul className="space-y-4 mb-8">
-            {[
-              'عملاء غير محدودين',
-              'تقارير متقدمة وتحليلات ذكية',
-              'دعم فني على مدار الساعة',
-              'مساحة تخزين 50 جيجابايت',
-              'فواتير إلكترونية ضريبية',
-              'صلاحيات متعددة للمستخدمين',
-              'نسخ احتياطي يومي',
-              'نقطة بيع متكاملة'
-            ].map((feature, i) => (
-              <li key={i} className="flex items-center gap-3 text-sm">
-                <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-                <span className="text-slate-600">{feature}</span>
-              </li>
-            ))}
-          </ul>
-          
-          <button
-            onClick={handleFreeTrial}
-            className="w-full py-4 bg-gradient-to-l from-emerald-600 to-emerald-500 text-white rounded-2xl font-bold hover:from-emerald-700 hover:to-emerald-600 transition-all shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30 transform hover:-translate-y-0.5"
-          >
-            ابدأ تجربتك المجانية
-          </button>
-        </div>
-      </div>
-
-      {/* الباقة المتقدمة */}
-      <div className="group relative bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-100 hover:border-emerald-200 overflow-hidden">
-        <div className="h-2 bg-gradient-to-l from-slate-600 to-slate-500"></div>
-        
-        <div className="p-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-2xl font-bold text-slate-900">متقدمة</h3>
-            <span className="text-sm bg-slate-100 text-slate-600 px-3 py-1 rounded-full">للشركات</span>
-          </div>
-          
-          <div className="mb-2">
-            <span className="text-5xl font-black text-slate-900">
-              {isAnnual ? '1,599' : '1,799'}
-            </span>
-            <span className="text-slate-400 mr-2">ج.م/شهرياً</span>
-          </div>
-          
-          {isAnnual && (
-            <div className="text-sm text-emerald-600 font-medium mb-4">
-              توفير 2400 ج.م سنوياً
-            </div>
-          )}
-          
-          <p className="text-slate-500 mb-8">للشركات الكبيرة التي تحتاج حلول متكاملة</p>
-          
-          <ul className="space-y-4 mb-8">
-            {[
-              'كل مميزات الباقة الاحترافية',
-              'API متكامل للتطوير',
-              'تقارير مخصصة',
-              'مساحة تخزين 200 جيجابايت',
-              'مدير حساب مخصص',
-              'تدريب فريق العمل',
-              'تكامل مع الأنظمة الخارجية',
-              'ضمان استمرارية الأعمال'
-            ].map((feature, i) => (
-              <li key={i} className="flex items-center gap-3 text-sm">
-                <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-                <span className="text-slate-600">{feature}</span>
-              </li>
-            ))}
-          </ul>
-          
-          <button
-            onClick={handleContactSales}
-            className="w-full py-4 border-2 border-slate-200 text-slate-700 rounded-2xl font-bold hover:bg-slate-50 hover:border-emerald-600 hover:text-emerald-600 transition-all"
-          >
-            تواصل مع المبيعات
-          </button>
-        </div>
-      </div>
-
-      {/* باقة المؤسسات */}
-      <div className="group relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl shadow-2xl overflow-hidden">
-        <div className="absolute inset-0 bg-grid-white/10 [mask-image:radial-gradient(ellipse_at_center,white,transparent)]"></div>
-        
-        <div className="h-2 bg-gradient-to-l from-amber-500 to-amber-400"></div>
-        
-        <div className="p-8 relative z-10">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-2xl font-bold text-white">مؤسسات</h3>
-            <span className="text-sm bg-amber-500/20 text-amber-300 px-3 py-1 rounded-full border border-amber-500/30">حلول مخصصة</span>
-          </div>
-          
-          <div className="mb-6">
-            <span className="text-4xl font-black text-white">مخصصة</span>
-          </div>
-          
-          <p className="text-slate-300 mb-8">حلول مصممة خصيصاً لاحتياجات مؤسستك</p>
-          
-          <ul className="space-y-4 mb-8">
-            {[
-              'كل المميزات السابقة',
-              'خادم خاص مخصص',
-              'دعم فني 24/7/365',
-              'تطويرات مخصصة',
-              'استشارات متقدمة',
-              'تكامل مع أنظمتك الحالية',
-              'ضمان تشغيلي 99.9%',
-              'تدريب متقدم للفريق'
-            ].map((feature, i) => (
-              <li key={i} className="flex items-center gap-3 text-sm">
-                <CheckCircle className="w-5 h-5 text-amber-400 flex-shrink-0" />
-                <span className="text-slate-300">{feature}</span>
-              </li>
-            ))}
-          </ul>
-          
-          <button
-            onClick={handleContactSales}
-            className="w-full py-4 bg-amber-500 text-slate-900 rounded-2xl font-bold hover:bg-amber-400 transition-all shadow-lg shadow-amber-600/20"
-          >
-            تواصل معنا
-          </button>
-        </div>
-      </div>
-    </div>
-
-    {/* مقارنة المميزات */}
-    <div className="bg-white rounded-3xl shadow-xl p-8 lg:p-12 border border-slate-100">
-      <h3 className="text-2xl font-bold text-slate-900 mb-8 text-center">مقارنة شاملة للمميزات</h3>
-      
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-slate-200">
-              <th className="text-right py-4 px-6 text-slate-600 font-medium">الميزة</th>
-              <th className="text-center py-4 px-6 text-slate-600 font-medium">المجانية</th>
-              <th className="text-center py-4 px-6 text-emerald-600 font-medium bg-emerald-50">الاحترافية</th>
-              <th className="text-center py-4 px-6 text-slate-600 font-medium">المتقدمة</th>
-              <th className="text-center py-4 px-6 text-slate-600 font-medium">المؤسسات</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              { name: 'عدد العملاء', free: '30', pro: 'غير محدود', advanced: 'غير محدود', enterprise: 'غير محدود' },
-              { name: 'الفواتير', free: '✓', pro: '✓', advanced: '✓', enterprise: '✓' },
-              { name: 'التقارير الأساسية', free: '✓', pro: '✓', advanced: '✓', enterprise: '✓' },
-              { name: 'التقارير المتقدمة', free: '-', pro: '✓', advanced: '✓', enterprise: '✓' },
-              { name: 'صلاحيات المستخدمين', free: '1 مستخدم', pro: 'حتى 10', advanced: 'حتى 25', enterprise: 'غير محدود' },
-              { name: 'الدعم الفني', free: 'بريد إلكتروني', pro: '24/7', advanced: '24/7', enterprise: 'مدير حساب' },
-              { name: 'مساحة التخزين', free: '1 جيجابايت', pro: '50 جيجابايت', advanced: '200 جيجابايت', enterprise: 'غير محدود' },
-              { name: 'API', free: '-', pro: 'محدود', advanced: '✓', enterprise: '✓' },
-              { name: 'نسخ احتياطي', free: 'أسبوعي', pro: 'يومي', advanced: 'يومي', enterprise: 'فوري' }
-            ].map((row, i) => (
-              <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                <td className="py-4 px-6 text-slate-800 font-medium">{row.name}</td>
-                <td className="text-center py-4 px-6 text-slate-600">{row.free}</td>
-                <td className="text-center py-4 px-6 text-emerald-600 font-medium bg-emerald-50/50">{row.pro}</td>
-                <td className="text-center py-4 px-6 text-slate-600">{row.advanced}</td>
-                <td className="text-center py-4 px-6 text-slate-600">{row.enterprise}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    {/* شهادات الثقة */}
-    <div className="mt-16 flex flex-wrap items-center justify-center gap-8">
-      <div className="flex items-center gap-2 text-slate-500">
-        <Shield className="w-5 h-5 text-emerald-500" />
-        <span className="text-sm">ضمان استعادة الأموال لمدة 30 يوماً</span>
-      </div>
-      <div className="flex items-center gap-2 text-slate-500">
-        <CheckCircle className="w-5 h-5 text-emerald-500" />
-        <span className="text-sm">لا تحتاج بطاقة ائتمان للبدء</span>
-      </div>
-      <div className="flex items-center gap-2 text-slate-500">
-        <Clock className="w-5 h-5 text-emerald-500" />
-        <span className="text-sm">إلغاء في أي وقت</span>
-      </div>
-    </div>
-
-    {/* FAQ سريع */}
-    <div className="mt-20 text-center">
-      <h3 className="text-2xl font-bold text-slate-900 mb-4">لديك أسئلة؟</h3>
-      <p className="text-slate-600 mb-6">فريقنا جاهز للإجابة على جميع استفساراتك</p>
-      <button
-        onClick={handleContactSales}
-        className="inline-flex items-center gap-2 text-emerald-600 font-bold hover:text-emerald-700 transition-colors"
+      <section
+        id="pricing"
+        className="py-24 bg-gradient-to-b from-slate-50 to-white relative overflow-hidden"
       >
-        تواصل مع فريق المبيعات
-        <ArrowRight className="w-4 h-4 rotate-180" />
-      </button>
-    </div>
-  </div>
-</section>
+        {/* خلفية زخرفية */}
+        <div className="absolute inset-0 bg-grid-slate-100 [mask-image:radial-gradient(ellipse_at_center,white,transparent)]"></div>
+        <div className="absolute top-0 left-0 right-0 h-96 bg-gradient-to-b from-emerald-500/5 to-transparent"></div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          {/* عنوان القسم */}
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 px-4 py-1.5 rounded-full mb-6 border border-emerald-100">
+              <DollarSign className="w-4 h-4" />
+              <span className="text-xs font-bold uppercase tracking-wider">
+                خطط مرنة تناسب الجميع
+              </span>
+            </div>
+            <h2 className="text-4xl lg:text-5xl font-black text-slate-900 mb-4">
+              اختر الخطة المناسبة لعملك
+            </h2>
+            <p className="text-xl text-slate-600 max-w-2xl mx-auto">
+              ابدأ مجاناً وطور عملك مع خططنا المميزة. جميع الباقات تشمل تحديثات
+              مجانية ودعم فني.
+            </p>
+
+            {/* تبديل سنوي/شهري */}
+            <div className="flex items-center justify-center gap-4 mt-10">
+              <span
+                className={`text-sm font-medium transition-colors ${!isAnnual ? "text-emerald-600" : "text-slate-400"}`}
+              >
+                شهري
+              </span>
+              <button
+                onClick={() => setIsAnnual(!isAnnual)}
+                className="relative w-16 h-8 bg-slate-200 rounded-full p-1 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+              >
+                <div
+                  className={`absolute w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-300 ${isAnnual ? "translate-x-8" : "translate-x-0"}`}
+                ></div>
+              </button>
+              <span
+                className={`text-sm font-medium transition-colors ${isAnnual ? "text-emerald-600" : "text-slate-400"}`}
+              >
+                سنوي
+                <span className="mr-2 text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+                  وفر 20%
+                </span>
+              </span>
+            </div>
+          </div>
+
+          {/* بطاقات الأسعار */}
+          <div className="grid lg:grid-cols-4 gap-6 mb-12">
+            {/* الباقة المجانية */}
+            <div className="group relative bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-100 hover:border-emerald-200 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/0 to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+
+              {/* شريط علوي */}
+              <div className="h-2 bg-gradient-to-l from-slate-400 to-slate-300"></div>
+
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-2xl font-bold text-slate-900">مجانية</h3>
+                  <span className="text-sm bg-slate-100 text-slate-600 px-3 py-1 rounded-full">
+                    للبدء
+                  </span>
+                </div>
+
+                <div className="mb-6">
+                  <span className="text-4xl font-black text-slate-900">0</span>
+                  <span className="text-slate-400 mr-2">ج.م/شهرياً</span>
+                </div>
+
+                <p className="text-slate-500 mb-8 line-clamp-2">
+                  مثالية للأعمال الصغيرة جداً والبداية
+                </p>
+
+                <ul className="space-y-4 mb-8">
+                  {[
+                    "حتى 30 عميل",
+                    "تقارير أساسية",
+                    "دعم عبر البريد الإلكتروني",
+                    "مساحة تخزين 1 جيجابايت",
+                    "فواتير غير محدودة",
+                  ].map((feature, i) => (
+                    <li key={i} className="flex items-center gap-3 text-sm">
+                      <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                      <span className="text-slate-600">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  onClick={handleFreeTrial}
+                  className="w-full py-4 border-2 border-slate-200 text-slate-700 rounded-2xl font-bold hover:bg-slate-50 hover:border-emerald-600 hover:text-emerald-600 transition-all group-hover:shadow-lg"
+                >
+                  ابدأ مجاناً
+                </button>
+              </div>
+            </div>
+
+            {/* الباقة الاحترافية */}
+            <div className="group relative bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-emerald-500 overflow-hidden transform lg:-translate-y-4">
+              {/* شريط علوي متدرج */}
+              <div className="h-2 bg-gradient-to-l from-emerald-500 via-emerald-400 to-emerald-500"></div>
+
+              {/* شارة الأكثر شهرة */}
+              <div className="absolute top-6 left-6">
+                <div className="bg-gradient-to-l from-emerald-500 to-emerald-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1">
+                  <Star className="w-3 h-3 fill-white" />
+                  الأكثر شهرة
+                </div>
+              </div>
+
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-2xl font-bold text-slate-900">
+                    احترافية
+                  </h3>
+                  <span className="text-sm bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full">
+                    الأفضل مبيعاً
+                  </span>
+                </div>
+
+                <div className="mb-2">
+                  <span className="text-5xl font-black text-slate-900">
+                    {isAnnual ? "799" : "899"}
+                  </span>
+                  <span className="text-slate-400 mr-2">ج.م/شهرياً</span>
+                </div>
+
+                {isAnnual && (
+                  <div className="text-sm text-emerald-600 font-medium mb-4">
+                    توفير 1200 ج.م سنوياً
+                  </div>
+                )}
+
+                <p className="text-slate-500 mb-8">
+                  كل ما تحتاجه لإدارة شركتك بكفاءة عالية
+                </p>
+
+                <ul className="space-y-4 mb-8">
+                  {[
+                    "عملاء غير محدودين",
+                    "تقارير متقدمة وتحليلات ذكية",
+                    "دعم فني على مدار الساعة",
+                    "مساحة تخزين 50 جيجابايت",
+                    "فواتير إلكترونية ضريبية",
+                    "صلاحيات متعددة للمستخدمين",
+                    "نسخ احتياطي يومي",
+                    "نقطة بيع متكاملة",
+                  ].map((feature, i) => (
+                    <li key={i} className="flex items-center gap-3 text-sm">
+                      <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                      <span className="text-slate-600">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  onClick={handleFreeTrial}
+                  className="w-full py-4 bg-gradient-to-l from-emerald-600 to-emerald-500 text-white rounded-2xl font-bold hover:from-emerald-700 hover:to-emerald-600 transition-all shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30 transform hover:-translate-y-0.5"
+                >
+                  ابدأ تجربتك المجانية
+                </button>
+              </div>
+            </div>
+
+            {/* الباقة المتقدمة */}
+            <div className="group relative bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-100 hover:border-emerald-200 overflow-hidden">
+              <div className="h-2 bg-gradient-to-l from-slate-600 to-slate-500"></div>
+
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-2xl font-bold text-slate-900">متقدمة</h3>
+                  <span className="text-sm bg-slate-100 text-slate-600 px-3 py-1 rounded-full">
+                    للشركات
+                  </span>
+                </div>
+
+                <div className="mb-2">
+                  <span className="text-5xl font-black text-slate-900">
+                    {isAnnual ? "1,599" : "1,799"}
+                  </span>
+                  <span className="text-slate-400 mr-2">ج.م/شهرياً</span>
+                </div>
+
+                {isAnnual && (
+                  <div className="text-sm text-emerald-600 font-medium mb-4">
+                    توفير 2400 ج.م سنوياً
+                  </div>
+                )}
+
+                <p className="text-slate-500 mb-8">
+                  للشركات الكبيرة التي تحتاج حلول متكاملة
+                </p>
+
+                <ul className="space-y-4 mb-8">
+                  {[
+                    "كل مميزات الباقة الاحترافية",
+                    "API متكامل للتطوير",
+                    "تقارير مخصصة",
+                    "مساحة تخزين 200 جيجابايت",
+                    "مدير حساب مخصص",
+                    "تدريب فريق العمل",
+                    "تكامل مع الأنظمة الخارجية",
+                    "ضمان استمرارية الأعمال",
+                  ].map((feature, i) => (
+                    <li key={i} className="flex items-center gap-3 text-sm">
+                      <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                      <span className="text-slate-600">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  onClick={handleContactSales}
+                  className="w-full py-4 border-2 border-slate-200 text-slate-700 rounded-2xl font-bold hover:bg-slate-50 hover:border-emerald-600 hover:text-emerald-600 transition-all"
+                >
+                  تواصل مع المبيعات
+                </button>
+              </div>
+            </div>
+
+            {/* باقة المؤسسات */}
+            <div className="group relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl shadow-2xl overflow-hidden">
+              <div className="absolute inset-0 bg-grid-white/10 [mask-image:radial-gradient(ellipse_at_center,white,transparent)]"></div>
+
+              <div className="h-2 bg-gradient-to-l from-amber-500 to-amber-400"></div>
+
+              <div className="p-8 relative z-10">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-2xl font-bold text-white">مؤسسات</h3>
+                  <span className="text-sm bg-amber-500/20 text-amber-300 px-3 py-1 rounded-full border border-amber-500/30">
+                    حلول مخصصة
+                  </span>
+                </div>
+
+                <div className="mb-6">
+                  <span className="text-4xl font-black text-white">مخصصة</span>
+                </div>
+
+                <p className="text-slate-300 mb-8">
+                  حلول مصممة خصيصاً لاحتياجات مؤسستك
+                </p>
+
+                <ul className="space-y-4 mb-8">
+                  {[
+                    "كل المميزات السابقة",
+                    "خادم خاص مخصص",
+                    "دعم فني 24/7/365",
+                    "تطويرات مخصصة",
+                    "استشارات متقدمة",
+                    "تكامل مع أنظمتك الحالية",
+                    "ضمان تشغيلي 99.9%",
+                    "تدريب متقدم للفريق",
+                  ].map((feature, i) => (
+                    <li key={i} className="flex items-center gap-3 text-sm">
+                      <CheckCircle className="w-5 h-5 text-amber-400 flex-shrink-0" />
+                      <span className="text-slate-300">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  onClick={handleContactSales}
+                  className="w-full py-4 bg-amber-500 text-slate-900 rounded-2xl font-bold hover:bg-amber-400 transition-all shadow-lg shadow-amber-600/20"
+                >
+                  تواصل معنا
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* مقارنة المميزات */}
+          <div className="bg-white rounded-3xl shadow-xl p-8 lg:p-12 border border-slate-100">
+            <h3 className="text-2xl font-bold text-slate-900 mb-8 text-center">
+              مقارنة شاملة للمميزات
+            </h3>
+
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="text-right py-4 px-6 text-slate-600 font-medium">
+                      الميزة
+                    </th>
+                    <th className="text-center py-4 px-6 text-slate-600 font-medium">
+                      المجانية
+                    </th>
+                    <th className="text-center py-4 px-6 text-emerald-600 font-medium bg-emerald-50">
+                      الاحترافية
+                    </th>
+                    <th className="text-center py-4 px-6 text-slate-600 font-medium">
+                      المتقدمة
+                    </th>
+                    <th className="text-center py-4 px-6 text-slate-600 font-medium">
+                      المؤسسات
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    {
+                      name: "عدد العملاء",
+                      free: "30",
+                      pro: "غير محدود",
+                      advanced: "غير محدود",
+                      enterprise: "غير محدود",
+                    },
+                    {
+                      name: "الفواتير",
+                      free: "✓",
+                      pro: "✓",
+                      advanced: "✓",
+                      enterprise: "✓",
+                    },
+                    {
+                      name: "التقارير الأساسية",
+                      free: "✓",
+                      pro: "✓",
+                      advanced: "✓",
+                      enterprise: "✓",
+                    },
+                    {
+                      name: "التقارير المتقدمة",
+                      free: "-",
+                      pro: "✓",
+                      advanced: "✓",
+                      enterprise: "✓",
+                    },
+                    {
+                      name: "صلاحيات المستخدمين",
+                      free: "1 مستخدم",
+                      pro: "حتى 10",
+                      advanced: "حتى 25",
+                      enterprise: "غير محدود",
+                    },
+                    {
+                      name: "الدعم الفني",
+                      free: "بريد إلكتروني",
+                      pro: "24/7",
+                      advanced: "24/7",
+                      enterprise: "مدير حساب",
+                    },
+                    {
+                      name: "مساحة التخزين",
+                      free: "1 جيجابايت",
+                      pro: "50 جيجابايت",
+                      advanced: "200 جيجابايت",
+                      enterprise: "غير محدود",
+                    },
+                    {
+                      name: "API",
+                      free: "-",
+                      pro: "محدود",
+                      advanced: "✓",
+                      enterprise: "✓",
+                    },
+                    {
+                      name: "نسخ احتياطي",
+                      free: "أسبوعي",
+                      pro: "يومي",
+                      advanced: "يومي",
+                      enterprise: "فوري",
+                    },
+                  ].map((row, i) => (
+                    <tr
+                      key={i}
+                      className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                    >
+                      <td className="py-4 px-6 text-slate-800 font-medium">
+                        {row.name}
+                      </td>
+                      <td className="text-center py-4 px-6 text-slate-600">
+                        {row.free}
+                      </td>
+                      <td className="text-center py-4 px-6 text-emerald-600 font-medium bg-emerald-50/50">
+                        {row.pro}
+                      </td>
+                      <td className="text-center py-4 px-6 text-slate-600">
+                        {row.advanced}
+                      </td>
+                      <td className="text-center py-4 px-6 text-slate-600">
+                        {row.enterprise}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* شهادات الثقة */}
+          <div className="mt-16 flex flex-wrap items-center justify-center gap-8">
+            <div className="flex items-center gap-2 text-slate-500">
+              <Shield className="w-5 h-5 text-emerald-500" />
+              <span className="text-sm">
+                ضمان استعادة الأموال لمدة 30 يوماً
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-500">
+              <CheckCircle className="w-5 h-5 text-emerald-500" />
+              <span className="text-sm">لا تحتاج بطاقة ائتمان للبدء</span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-500">
+              <Clock className="w-5 h-5 text-emerald-500" />
+              <span className="text-sm">إلغاء في أي وقت</span>
+            </div>
+          </div>
+
+          {/* FAQ سريع */}
+          <div className="mt-20 text-center">
+            <h3 className="text-2xl font-bold text-slate-900 mb-4">
+              لديك أسئلة؟
+            </h3>
+            <p className="text-slate-600 mb-6">
+              فريقنا جاهز للإجابة على جميع استفساراتك
+            </p>
+            <button
+              onClick={handleContactSales}
+              className="inline-flex items-center gap-2 text-emerald-600 font-bold hover:text-emerald-700 transition-colors"
+            >
+              تواصل مع فريق المبيعات
+              <ArrowRight className="w-4 h-4 rotate-180" />
+            </button>
+          </div>
+        </div>
+      </section>
 
       {/* Footer */}
       <footer className="bg-slate-900 text-white pt-24 pb-12">
@@ -821,7 +937,25 @@ export default function LandingPage() {
           50% { transform: translateY(-10px); }
         }
         .animate-bounce-slow { animation: bounce-slow 4s ease-in-out infinite; }
-      `}</style>
+      @keyframes bounce-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+.animate-bounce-slow { animation: bounce-slow 4s ease-in-out infinite; }
+
+/* أضف هذه الأنماط الجديدة */
+.bg-grid-slate-100 {
+  background-image: linear-gradient(to right, #f1f5f9 1px, transparent 1px),
+    linear-gradient(to bottom, #f1f5f9 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.bg-grid-white\/10 {
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 24px 24px;
+}`}
+      </style>
     </div>
   );
 }
