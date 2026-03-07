@@ -217,7 +217,9 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">الطلاب النشطون</p>
-              <p className="text-2xl font-bold text-green-600">{totalActive}</p>
+              <p className="text-2xl font-bold text-green-600">
+                {Number(totalActive).toLocaleString("ar-EG")}
+              </p>{" "}
             </div>
             <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
               <span className="text-green-600 font-bold">✓</span>
@@ -229,8 +231,8 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
             <div>
               <p className="text-sm text-gray-600">الطلاب غير النشطين</p>
               <p className="text-2xl font-bold text-gray-600">
-                {totalInactive}
-              </p>
+                {Number(totalInactive).toLocaleString("ar-EG")}
+              </p>{" "}
             </div>
             <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
               <span className="text-gray-600 font-bold">○</span>
