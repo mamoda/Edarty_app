@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+
 import {
   Users,
   DollarSign,
@@ -10,6 +11,11 @@ import {
   FileText,
   BarChart3,
   Briefcase,
+  Crown,
+  MessageCircle,
+  Headphones,
+  Send,
+  X,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -20,6 +26,23 @@ import ExpensesManager from "./ExpensesManager";
 import TeachersManager from "./TeachersManager";
 import ProfitReport from "./ProfitReport";
 import logo from "../assets/logo.png";
+
+
+// إضافة الأنماط المخصصة في ملف CSS منفصل أو استخدام Tailwind مباشرة
+// يمكنك إضافة هذه الأنماط في ملف index.css الرئيسي
+// @keyframes slide-up {
+//   from {
+//     opacity: 0;
+//     transform: translateY(20px) translateX(0);
+//   }
+//   to {
+//     opacity: 1;
+//     transform: translateY(0) translateX(0);
+//   }
+// }
+// .animate-slide-up {
+//   animation: slide-up 0.3s ease-out;
+// }
 
 type View =
   | "dashboard"
@@ -43,6 +66,19 @@ export default function Dashboard() {
     totalSalaries: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState([
+    {
+      id: 1,
+      type: "bot",
+      text: "مرحباً! كيف يمكنني مساعدتك اليوم؟",
+      time: new Date().toLocaleTimeString("ar-EG", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    },
+  ]);
 
   useEffect(() => {
     loadStatistics();
@@ -102,6 +138,43 @@ export default function Dashboard() {
     if (view === "dashboard") {
       loadStatistics();
     }
+  };
+
+const handleUpgrade = () => {
+  window.location.href = "/upgrade"; // ✅ هذا سيفتح الصفحة في نفس التبويب
+};
+
+
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!message.trim()) return;
+
+    // إضافة رسالة المستخدم
+    const userMessage = {
+      id: messages.length + 1,
+      type: "user",
+      text: message,
+      time: new Date().toLocaleTimeString("ar-EG", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+    setMessages([...messages, userMessage]);
+    setMessage("");
+
+    // محاكاة رد البوت بعد ثانية
+    setTimeout(() => {
+      const botMessage = {
+        id: messages.length + 2,
+        type: "bot",
+        text: "شكراً لتواصلك معنا. أحد ممثلي الدعم سيرد عليك قريباً.",
+        time: new Date().toLocaleTimeString("ar-EG", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      };
+      setMessages((prev) => [...prev, botMessage]);
+    }, 1000);
   };
 
   const StatCard = ({ title, value, icon: Icon, color, prefix = "" }: any) => (
@@ -174,9 +247,6 @@ export default function Dashboard() {
 
                   {/* النص مع تأثير أنيق */}
                   <div className="hidden sm:block">
-                    {/* <span className="text-2xl font-black bg-gradient-to-l from-emerald-600 to-blue-600 bg-clip-text text-transparent">
-                إدارتــي
-              </span> */}
                     <div className="h-0.5 w-0 group-hover:w-full bg-gradient-to-l from-emerald-500 to-blue-500 transition-all duration-500"></div>
                   </div>
                 </div>
@@ -185,6 +255,21 @@ export default function Dashboard() {
 
             {/* القسم الأيمن */}
             <div className="flex items-center gap-4">
+              
+              {/* زر الأبجريد (Upgrade) - تصميم احترافي وجذاب */}
+              <button
+                onClick={handleUpgrade}
+                className="relative group flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden"
+              >
+                {/* تأثيرات الزر الموجودة */}
+                <Crown className="relative w-5 h-5 transition-all duration-500 group-hover:scale-110 group-hover:rotate-12" />
+                <span className="relative font-bold text-sm">الأبجريد</span>
+
+                {/* إضافة تأثير عند النقر */}
+                <span className="absolute inset-0 bg-white/30 opacity-0 group-active:opacity-100 transition-opacity duration-150"></span>
+              </button>
+
+
               {/* بطاقة المستخدم */}
               <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-gray-50 to-white rounded-2xl border border-gray-100 shadow-sm">
                 <div className="text-right">
@@ -214,6 +299,100 @@ export default function Dashboard() {
           </div>
         </div>
       </header>
+
+      {/* أيقونة الدردشة العائمة - تصميم احترافي */}
+      <div className="fixed bottom-6 left-6 z-50">
+        {/* نافذة الدردشة */}
+        {isChatOpen && (
+          <div className="absolute bottom-20 left-0 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden mb-4 animate-[slide-up_0.3s_ease-out]">
+            {/* رأس الدردشة */}
+            <div className="bg-gradient-to-l from-emerald-600 to-blue-600 p-4 text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Headphones className="w-5 h-5" />
+                  <h3 className="font-bold">الدعم الفني</h3>
+                </div>
+                <button
+                  onClick={() => setIsChatOpen(false)}
+                  className="hover:bg-white/20 rounded-lg p-1 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-xs text-white/80 mt-1">
+                نحن هنا لمساعدتك 24/7
+              </p>
+            </div>
+
+            {/* منطقة الرسائل */}
+            <div className="h-80 overflow-y-auto p-4 space-y-3 bg-gray-50">
+              {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex ${msg.type === "user" ? "justify-start" : "justify-end"}`}
+                >
+                  <div
+                    className={`max-w-[80%] rounded-2xl p-3 ${
+                      msg.type === "user"
+                        ? "bg-gray-200 text-gray-800 rounded-br-none"
+                        : "bg-gradient-to-l from-emerald-600 to-blue-600 text-white rounded-bl-none"
+                    }`}
+                  >
+                    <p className="text-sm">{msg.text}</p>
+                    <p
+                      className={`text-xs mt-1 ${msg.type === "user" ? "text-gray-500" : "text-white/70"}`}
+                    >
+                      {msg.time}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* نموذج إرسال الرسالة */}
+            <form
+              onSubmit={handleSendMessage}
+              className="p-4 border-t bg-white"
+            >
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="اكتب رسالتك هنا..."
+                  className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                />
+                <button
+                  type="submit"
+                  className="bg-gradient-to-l from-emerald-600 to-blue-600 text-white p-2 rounded-xl hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!message.trim()}
+                >
+                  <Send className="w-5 h-5" />
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* زر الدردشة الرئيسي */}
+        <button
+          onClick={() => setIsChatOpen(!isChatOpen)}
+          className="relative group flex items-center justify-center w-14 h-14 bg-gradient-to-l from-emerald-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110"
+        >
+          {/* خلفية متوهجة متحركة */}
+          <div className="absolute -inset-2 bg-gradient-to-l from-emerald-400 to-blue-400 rounded-full blur-xl opacity-0 group-hover:opacity-75 transition-opacity duration-500 animate-pulse"></div>
+
+          {/* أيقونة الدردشة */}
+          <MessageCircle className="relative w-6 h-6 transition-transform duration-300 group-hover:rotate-12" />
+
+          {/* شريط الإشعارات */}
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>
+
+          {/* أيقونة السماعة الصغيرة */}
+          <Headphones className="absolute -bottom-1 -left-1 w-4 h-4 text-white/80" />
+        </button>
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <aside className="lg:col-span-1">
