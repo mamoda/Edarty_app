@@ -13,53 +13,23 @@ export default function Login() {
   const [adminCode, setAdminCode] = useState('');
   const { signIn, signUp } = useAuth();
 
-  const ADMIN_SECRET_CODE = 'Mahmoud17237ESD@';
+  const ADMIN_SECRET_CODE = 'Mahmoud17237ESD@'; // غير هذا الرقم السري
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    // التحقق من المدخلات
-    if (!email || !password) {
-      setError('البريد الإلكتروني وكلمة المرور مطلوبان');
-      setLoading(false);
-      return;
-    }
-
-    if (password.length < 6) {
-      setError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
-      setLoading(false);
-      return;
-    }
-
     try {
-      console.log('محاولة تسجيل الدخول:', { email, isLogin }); // للتصحيح
+      const { error } = isLogin
+        ? await signIn(email, password)
+        : await signUp(email, password);
 
-      let result;
-      if (isLogin) {
-        result = await signIn(email, password);
-      } else {
-        result = await signUp(email, password);
+      if (error) {
+        setError(isLogin ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة' : 'فشل في إنشاء الحساب');
       }
-
-      console.log('نتيجة العملية:', result); // للتصحيح
-
-      if (result.error) {
-        // رسائل خطأ مخصصة
-        if (result.error.message.includes('Invalid login credentials')) {
-          setError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
-        } else if (result.error.message.includes('Email not confirmed')) {
-          setError('البريد الإلكتروني غير مفعل. يرجى تفعيله من الرسالة المرسلة إلى بريدك');
-        } else if (result.error.message.includes('User already registered')) {
-          setError('هذا البريد الإلكتروني مسجل بالفعل');
-        } else {
-          setError(result.error.message || 'حدث خطأ. يرجى المحاولة مرة أخرى');
-        }
-      }
-    } catch (err: any) {
-      console.error('خطأ غير متوقع:', err);
-      setError('حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى');
+    } catch (err) {
+      setError('حدث خطأ. يرجى المحاولة مرة أخرى');
     } finally {
       setLoading(false);
     }
@@ -70,48 +40,44 @@ export default function Login() {
       setShowAdminPanel(true);
       setIsLogin(false); // التبديل إلى وضع إنشاء الحساب
       setAdminCode('');
-      setError('');
     } else {
       alert('الكود السري غير صحيح');
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4" dir="rtl">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <div className="flex flex-col items-center mb-8">
-            <img
-              src={logo}
-              alt="شعار التطبيق"
-              className="h-28 w-auto mb-3"
-            />
-            <p className="text-gray-600 text-center text-lg">
-              بيانات أكثر وتقارير أدق وسهولة استخدام
-            </p>
+return (
+  <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4" dir="rtl">
+    <div className="w-full max-w-md">
+      <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="flex flex-col items-center mb-8 scale-110">
+          <img
+            src={logo}
+            alt="شعار التطبيق"
+            className="h-28 w-auto mb-3" // تكبير الشعار من h-24 إلى h-28
+          />
+          <p className="text-gray-600 text-center text-lg"> {/* إضافة text-lg لتكبير النص */}
+            بيانات أكثر وتقارير أدق وسهولة استخدام
+          </p>
+        </div>
+
+        {/* إظهار أزرار التبديل فقط للمستخدمين العاديين أو إذا كان لوحة المسؤول ظاهرة */}
+        {!showAdminPanel && (
+          <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-lg scale-105"> {/* تكبير الأزرار قليلاً */}
+            <button
+              type="button"
+              onClick={() => setIsLogin(true)}
+              className={`flex-1 py-3 px-4 rounded-md font-medium transition-all text-base ${
+                isLogin
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              تسجيل الدخول
+            </button>
+            {/* زر إنشاء حساب غير متاح للمستخدمين العاديين */}
           </div>
-
-          {/* أزرار التبديل للمستخدمين العاديين */}
-          {!showAdminPanel && (
-            <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-lg">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLogin(true);
-                  setError('');
-                }}
-                className={`flex-1 py-3 px-4 rounded-md font-medium transition-all text-base ${
-                  isLogin
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                تسجيل الدخول
-              </button>
-            </div>
-          )}
-
-          {/* لوحة المسؤول */}
+        )}
+          {/* لوحة المسؤول - تظهر فقط بعد إدخال الكود السري */}
           {showAdminPanel && (
             <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <div className="flex items-center gap-2 mb-3">
@@ -121,10 +87,7 @@ export default function Login() {
               <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsLogin(true);
-                    setError('');
-                  }}
+                  onClick={() => setIsLogin(true)}
                   className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
                     isLogin
                       ? 'bg-white text-blue-600 shadow-sm'
@@ -135,10 +98,7 @@ export default function Login() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsLogin(false);
-                    setError('');
-                  }}
+                  onClick={() => setIsLogin(false)}
                   className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
                     !isLogin
                       ? 'bg-white text-blue-600 shadow-sm'
@@ -159,14 +119,10 @@ export default function Login() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  setError('');
-                }}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 placeholder="example@school.com"
                 required
-                dir="ltr"
               />
             </div>
 
@@ -177,19 +133,12 @@ export default function Login() {
               <input
                 type="password"
                 value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  setError('');
-                }}
+                onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 placeholder="••••••••"
                 required
                 minLength={6}
-                dir="ltr"
               />
-              {!isLogin && (
-                <p className="text-xs text-gray-500 mt-1">كلمة المرور يجب أن تكون 6 أحرف على الأقل</p>
-              )}
             </div>
 
             {error && (
@@ -217,7 +166,6 @@ export default function Login() {
                   onChange={(e) => setAdminCode(e.target.value)}
                   placeholder="كود المسؤول"
                   className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                  dir="ltr"
                 />
                 <button
                   type="button"
