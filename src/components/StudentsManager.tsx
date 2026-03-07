@@ -1,8 +1,17 @@
-import { useState, useEffect } from 'react';
-import { UserPlus, Edit2, Trash2, Search, X, ChevronDown, ChevronUp, BookOpen } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
-import { Student } from '../types/database';
+import { useState, useEffect } from "react";
+import {
+  UserPlus,
+  Edit2,
+  Trash2,
+  Search,
+  X,
+  ChevronDown,
+  ChevronUp,
+  BookOpen,
+} from "lucide-react";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "../context/AuthContext";
+import { Student } from "../types/database";
 
 interface StudentsManagerProps {
   onUpdate: () => void;
@@ -14,15 +23,15 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [expandedGrades, setExpandedGrades] = useState<Set<string>>(new Set());
-  const [selectedGrade, setSelectedGrade] = useState<string>('');
+  const [selectedGrade, setSelectedGrade] = useState<string>("");
   const [formData, setFormData] = useState({
-    full_name: '',
-    grade: '',
-    parent_name: '',
-    parent_phone: '',
-    status: 'active' as 'active' | 'inactive',
+    full_name: "",
+    grade: "",
+    parent_name: "",
+    parent_phone: "",
+    status: "active" as "active" | "inactive",
   });
 
   useEffect(() => {
@@ -35,16 +44,16 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('students')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('grade', { ascending: true })
-        .order('full_name', { ascending: true });
+        .from("students")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("grade", { ascending: true })
+        .order("full_name", { ascending: true });
 
       if (error) throw error;
       setStudents(data || []);
     } catch (error) {
-      console.error('Error loading students:', error);
+      console.error("Error loading students:", error);
     } finally {
       setLoading(false);
     }
@@ -57,14 +66,14 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
     try {
       if (editingStudent) {
         const { error } = await supabase
-          .from('students')
+          .from("students")
           .update({ ...formData, updated_at: new Date().toISOString() })
-          .eq('id', editingStudent.id);
+          .eq("id", editingStudent.id);
 
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from('students')
+          .from("students")
           .insert([{ ...formData, user_id: user.id }]);
 
         if (error) throw error;
@@ -74,26 +83,23 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
       loadStudents();
       onUpdate();
     } catch (error) {
-      console.error('Error saving student:', error);
-      alert('حدث خطأ أثناء حفظ البيانات');
+      console.error("Error saving student:", error);
+      alert("حدث خطأ أثناء حفظ البيانات");
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذا الطالب؟')) return;
+    if (!confirm("هل أنت متأكد من حذف هذا الطالب؟")) return;
 
     try {
-      const { error } = await supabase
-        .from('students')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.from("students").delete().eq("id", id);
 
       if (error) throw error;
       loadStudents();
       onUpdate();
     } catch (error) {
-      console.error('Error deleting student:', error);
-      alert('حدث خطأ أثناء حذف الطالب');
+      console.error("Error deleting student:", error);
+      alert("حدث خطأ أثناء حذف الطالب");
     }
   };
 
@@ -111,11 +117,11 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
 
   const resetForm = () => {
     setFormData({
-      full_name: '',
-      grade: '',
-      parent_name: '',
-      parent_phone: '',
-      status: 'active',
+      full_name: "",
+      grade: "",
+      parent_name: "",
+      parent_phone: "",
+      status: "active",
     });
     setEditingStudent(null);
     setShowForm(false);
@@ -132,7 +138,7 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
   };
 
   const expandAll = () => {
-    const allGrades = new Set(gradeStats.map(stat => stat.grade));
+    const allGrades = new Set(gradeStats.map((stat) => stat.grade));
     setExpandedGrades(allGrades);
   };
 
@@ -141,28 +147,34 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
   };
 
   // Group students by grade
-  const studentsByGrade = students.reduce((acc, student) => {
-    const grade = student.grade || 'غير محدد';
-    if (!acc[grade]) {
-      acc[grade] = [];
-    }
-    acc[grade].push(student);
-    return acc;
-  }, {} as Record<string, Student[]>);
+  const studentsByGrade = students.reduce(
+    (acc, student) => {
+      const grade = student.grade || "غير محدد";
+      if (!acc[grade]) {
+        acc[grade] = [];
+      }
+      acc[grade].push(student);
+      return acc;
+    },
+    {} as Record<string, Student[]>,
+  );
 
   // Calculate statistics for each grade
-  const gradeStats = Object.entries(studentsByGrade).map(([grade, students]) => ({
-    grade,
-    count: students.length,
-    activeCount: students.filter(s => s.status === 'active').length,
-    inactiveCount: students.filter(s => s.status === 'inactive').length,
-  })).sort((a, b) => a.grade.localeCompare(b.grade, 'ar'));
+  const gradeStats = Object.entries(studentsByGrade)
+    .map(([grade, students]) => ({
+      grade,
+      count: students.length,
+      activeCount: students.filter((s) => s.status === "active").length,
+      inactiveCount: students.filter((s) => s.status === "inactive").length,
+    }))
+    .sort((a, b) => a.grade.localeCompare(b.grade, "ar"));
 
   // Filter students by search term and selected grade
   const filteredStudents = selectedGrade
-    ? studentsByGrade[selectedGrade]?.filter(student =>
-        student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.parent_name.toLowerCase().includes(searchTerm.toLowerCase())
+    ? studentsByGrade[selectedGrade]?.filter(
+        (student) =>
+          student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          student.parent_name.toLowerCase().includes(searchTerm.toLowerCase()),
       ) || []
     : students;
 
@@ -171,8 +183,8 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
     : studentsByGrade;
 
   const totalStudents = students.length;
-  const totalActive = students.filter(s => s.status === 'active').length;
-  const totalInactive = students.filter(s => s.status === 'inactive').length;
+  const totalActive = students.filter((s) => s.status === "active").length;
+  const totalInactive = students.filter((s) => s.status === "inactive").length;
 
   return (
     <div className="space-y-6">
@@ -194,7 +206,9 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">إجمالي الطلاب</p>
-              <p className="text-2xl font-bold text-gray-900">{totalStudents}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {Number(totalStudents).toLocaleString("ar-EG")}
+              </p>{" "}
             </div>
             <BookOpen className="w-8 h-8 text-blue-600 opacity-75" />
           </div>
@@ -214,7 +228,9 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">الطلاب غير النشطين</p>
-              <p className="text-2xl font-bold text-gray-600">{totalInactive}</p>
+              <p className="text-2xl font-bold text-gray-600">
+                {totalInactive}
+              </p>
             </div>
             <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
               <span className="text-gray-600 font-bold">○</span>
@@ -238,13 +254,15 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
 
         {/* Grade Filter */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium text-gray-700">تصفية حسب الصف:</span>
+          <span className="text-sm font-medium text-gray-700">
+            تصفية حسب الصف:
+          </span>
           <button
-            onClick={() => setSelectedGrade('')}
+            onClick={() => setSelectedGrade("")}
             className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${
-              selectedGrade === ''
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              selectedGrade === ""
+                ? "bg-blue-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
             الكل
@@ -255,8 +273,8 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
               onClick={() => setSelectedGrade(grade)}
               className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${
                 selectedGrade === grade
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
               {grade}
@@ -292,7 +310,9 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
       ) : students.length === 0 ? (
         <div className="bg-white rounded-xl shadow-md p-12 text-center">
           <UserPlus className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد بيانات</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            لا توجد بيانات
+          </h3>
           <p className="text-gray-600 mb-6">لم يتم إضافة أي طلاب بعد</p>
           <button
             onClick={() => setShowForm(true)}
@@ -308,7 +328,9 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <BookOpen className="w-6 h-6 text-blue-600" />
-                <h3 className="text-lg font-bold text-gray-900">{selectedGrade}</h3>
+                <h3 className="text-lg font-bold text-gray-900">
+                  {selectedGrade}
+                </h3>
                 <span className="bg-blue-600 text-white px-2 py-1 rounded-full text-xs">
                   {filteredStudents.length} طالب
                 </span>
@@ -329,7 +351,10 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
             const gradeStudents = studentsByGrade[grade] || [];
 
             return (
-              <div key={grade} className="bg-white rounded-xl shadow-md overflow-hidden">
+              <div
+                key={grade}
+                className="bg-white rounded-xl shadow-md overflow-hidden"
+              >
                 {/* Grade Header */}
                 <div
                   onClick={() => toggleGrade(grade)}
@@ -346,11 +371,17 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
                         <BookOpen className="w-5 h-5 text-blue-600" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-bold text-gray-900">{grade}</h3>
+                        <h3 className="text-lg font-bold text-gray-900">
+                          {grade}
+                        </h3>
                         <div className="flex items-center gap-3 mt-1 text-sm">
                           <span className="text-gray-600">إجمالي: {count}</span>
-                          <span className="text-green-600">نشط: {activeCount}</span>
-                          <span className="text-gray-400">غير نشط: {count - activeCount}</span>
+                          <span className="text-green-600">
+                            نشط: {activeCount}
+                          </span>
+                          <span className="text-gray-400">
+                            غير نشط: {count - activeCount}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -388,31 +419,42 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
               <h3 className="text-xl font-bold text-gray-900">
-                {editingStudent ? 'تعديل بيانات الطالب' : 'إضافة طالب جديد'}
+                {editingStudent ? "تعديل بيانات الطالب" : "إضافة طالب جديد"}
               </h3>
-              <button onClick={resetForm} className="text-gray-400 hover:text-gray-600">
+              <button
+                onClick={resetForm}
+                className="text-gray-400 hover:text-gray-600"
+              >
                 <X className="w-6 h-6" />
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">اسم الطالب</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  اسم الطالب
+                </label>
                 <input
                   type="text"
                   value={formData.full_name}
-                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, full_name: e.target.value })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">الصف الدراسي</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  الصف الدراسي
+                </label>
                 <input
                   type="text"
                   value={formData.grade}
-                  onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, grade: e.target.value })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   placeholder="مثال: الصف الأول الابتدائي"
                   required
@@ -426,22 +468,30 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">اسم ولي الأمر</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  اسم ولي الأمر
+                </label>
                 <input
                   type="text"
                   value={formData.parent_name}
-                  onChange={(e) => setFormData({ ...formData, parent_name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, parent_name: e.target.value })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">رقم الهاتف</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  رقم الهاتف
+                </label>
                 <input
                   type="tel"
                   value={formData.parent_phone}
-                  onChange={(e) => setFormData({ ...formData, parent_phone: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, parent_phone: e.target.value })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   placeholder="01xxxxxxxxx"
                   required
@@ -449,10 +499,17 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">الحالة</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  الحالة
+                </label>
                 <select
                   value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      status: e.target.value as "active" | "inactive",
+                    })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 >
                   <option value="active">نشط</option>
@@ -465,7 +522,7 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
                   type="submit"
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-all"
                 >
-                  {editingStudent ? 'حفظ التعديلات' : 'إضافة الطالب'}
+                  {editingStudent ? "حفظ التعديلات" : "إضافة الطالب"}
                 </button>
                 <button
                   type="button"
@@ -484,35 +541,48 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
 }
 
 // Separate component for student list to avoid duplication
-function StudentList({ students, onEdit, onDelete }: { 
-  students: Student[], 
-  onEdit: (student: Student) => void,
-  onDelete: (id: string) => void 
+function StudentList({
+  students,
+  onEdit,
+  onDelete,
+}: {
+  students: Student[];
+  onEdit: (student: Student) => void;
+  onDelete: (id: string) => void;
 }) {
   return (
     <div className="grid gap-3">
       {students.map((student) => (
-        <div key={student.id} className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-all">
+        <div
+          key={student.id}
+          className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-all"
+        >
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
                 <h4 className="font-bold text-gray-900">{student.full_name}</h4>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                  student.status === 'active'
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-gray-200 text-gray-700'
-                }`}>
-                  {student.status === 'active' ? 'نشط' : 'غير نشط'}
+                <span
+                  className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                    student.status === "active"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-gray-200 text-gray-700"
+                  }`}
+                >
+                  {student.status === "active" ? "نشط" : "غير نشط"}
                 </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                 <div>
                   <span className="text-gray-600">ولي الأمر:</span>
-                  <span className="font-medium text-gray-900 mr-2">{student.parent_name}</span>
+                  <span className="font-medium text-gray-900 mr-2">
+                    {student.parent_name}
+                  </span>
                 </div>
                 <div>
                   <span className="text-gray-600">الهاتف:</span>
-                  <span className="font-medium text-gray-900 mr-2" dir="ltr">{student.parent_phone}</span>
+                  <span className="font-medium text-gray-900 mr-2" dir="ltr">
+                    {student.parent_phone}
+                  </span>
                 </div>
               </div>
             </div>
