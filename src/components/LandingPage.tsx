@@ -145,7 +145,7 @@ export default function LandingPage() {
                 <img
                   src={logo}
                   alt="Edarty Logo"
-                  className="h-16 md:h-14 w-auto relative z-10 transition-all duration-300 group-hover:scale-105 group-hover:brightness-110"
+                  className="h-20 md:h-14 w-auto relative z-10 transition-all duration-300 group-hover:scale-105 group-hover:brightness-110"
                 />
 
                 {/* دائرة خفيفة خلف اللوجو */}
