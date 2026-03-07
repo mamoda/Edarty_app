@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { TrendingDown, Plus, Edit2, Trash2, Search, X } from "lucide-react";
+import { TrendingDown, Plus, Edit2, Trash2, Search, X, Calendar } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { Expense } from "../types/database";
@@ -15,6 +15,8 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [formData, setFormData] = useState({
     category: "",
     amount: "",
@@ -25,17 +27,38 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
 
   useEffect(() => {
     loadExpenses();
-  }, []);
+  }, [selectedMonth, selectedYear]);
+
+  const formatNumber = (num: number, fractionDigits: number = 2) => {
+    return Number(num).toLocaleString("ar-EG", {
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
+    });
+  };
+
+  const getMonthName = (month: number) => {
+    const months = [
+      'يناير', 'فبراير', 'مارس', 'إبريل', 'مايو', 'يونيو',
+      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+    ];
+    return months[month - 1];
+  };
 
   const loadExpenses = async () => {
     if (!user) return;
 
     setLoading(true);
     try {
+      // فلترة المصروفات حسب الشهر والسنة
+      const startDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`;
+      const endDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-31`;
+
       const { data, error } = await supabase
         .from("expenses")
         .select("*")
         .eq("user_id", user.id)
+        .gte("expense_date", startDate)
+        .lte("expense_date", endDate)
         .order("expense_date", { ascending: false });
 
       if (error) throw error;
@@ -53,8 +76,11 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
 
     try {
       const expenseData = {
-        ...formData,
+        category: formData.category,
+        description: formData.description,
         amount: parseFloat(formData.amount),
+        expense_date: formData.expense_date,
+        notes: formData.notes,
         user_id: user.id,
       };
 
@@ -102,7 +128,7 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
       amount: expense.amount.toString(),
       description: expense.description,
       expense_date: expense.expense_date,
-      notes: expense.notes,
+      notes: expense.notes || "",
     });
     setShowForm(true);
   };
@@ -121,8 +147,8 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
 
   const filteredExpenses = expenses.filter(
     (expense) =>
-      expense.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      expense.description.toLowerCase().includes(searchTerm.toLowerCase()),
+      expense.category.includes(searchTerm) ||
+      expense.description.includes(searchTerm),
   );
 
   const categories = [
@@ -138,6 +164,10 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
     "أخرى",
   ];
 
+  // حساب إجمالي المصروفات للشهر الحالي
+  const totalExpensesThisMonth = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+
+  // حساب المصروفات حسب الفئة للشهر الحالي
   const categoryTotals = categories
     .map((cat) => ({
       category: cat,
@@ -145,7 +175,8 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
         .filter((e) => e.category === cat)
         .reduce((sum, e) => sum + Number(e.amount), 0),
     }))
-    .filter((c) => c.total > 0);
+    .filter((c) => c.total > 0)
+    .sort((a, b) => b.total - a.total); // ترتيب تنازلي
 
   return (
     <div className="space-y-6">
@@ -160,27 +191,99 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
         </button>
       </div>
 
+      {/* فلتر الشهر والسنة */}
+      <div className="bg-white rounded-xl shadow-md p-4">
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-gray-600" />
+            <span className="text-sm font-medium text-gray-700">تصفية حسب:</span>
+          </div>
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+          >
+            {[1,2,3,4,5,6,7,8,9,10,11,12].map(month => (
+              <option key={month} value={month}>{getMonthName(month)}</option>
+            ))}
+          </select>
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+          >
+            {[2024, 2025, 2026].map(year => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
+          <div className="mr-auto">
+            <span className="text-sm text-gray-600 ml-2">إجمالي المصروفات:</span>
+            <span className="text-lg font-bold text-red-600">
+              {formatNumber(totalExpensesThisMonth)} ج.م
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* إحصائيات سريعة */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl shadow-md p-4 border-r-4 border-red-600">
+          <p className="text-sm text-gray-600 mb-1">عدد المصروفات</p>
+          <p className="text-2xl font-bold text-gray-900">
+            {formatNumber(expenses.length, 0)}
+          </p>
+        </div>
+        <div className="bg-white rounded-xl shadow-md p-4 border-r-4 border-orange-600">
+          <p className="text-sm text-gray-600 mb-1">متوسط المصروف</p>
+          <p className="text-2xl font-bold text-gray-900">
+            {expenses.length > 0 ? formatNumber(totalExpensesThisMonth / expenses.length) : "٠"} ج.م
+          </p>
+        </div>
+        <div className="bg-white rounded-xl shadow-md p-4 border-r-4 border-purple-600">
+          <p className="text-sm text-gray-600 mb-1">أعلى فئة</p>
+          <p className="text-2xl font-bold text-gray-900">
+            {categoryTotals[0]?.category || "---"}
+          </p>
+        </div>
+        <div className="bg-white rounded-xl shadow-md p-4 border-r-4 border-green-600">
+          <p className="text-sm text-gray-600 mb-1">أقل فئة</p>
+          <p className="text-2xl font-bold text-gray-900">
+            {categoryTotals[categoryTotals.length - 1]?.category || "---"}
+          </p>
+        </div>
+      </div>
+
       {categoryTotals.length > 0 && (
         <div className="bg-white rounded-xl shadow-md p-6">
           <h3 className="text-lg font-bold text-gray-900 mb-4">
-            ملخص التكاليف حسب الفئة
+            ملخص التكاليف حسب الفئة - {getMonthName(selectedMonth)} {selectedYear}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {categoryTotals.map(({ category, total }) => (
-              <div
-                key={category}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-              >
-                <span className="text-sm text-gray-700">{category}</span>
-                <span className="text-sm font-bold text-red-600">
-                  {Number(total).toLocaleString("ar-EG", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}{" "}
-                  ج.م
-                </span>{" "}
-              </div>
-            ))}
+            {categoryTotals.map(({ category, total }) => {
+              const percentage = (total / totalExpensesThisMonth) * 100;
+              return (
+                <div
+                  key={category}
+                  className="p-3 bg-gray-50 rounded-lg"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-700">{category}</span>
+                    <span className="text-sm font-bold text-red-600">
+                      {formatNumber(total)} ج.م
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-1.5">
+                    <div
+                      className="bg-red-600 h-1.5 rounded-full"
+                      style={{ width: `${percentage}%` }}
+                    ></div>
+                  </div>
+                  <div className="text-left mt-1">
+                    <span className="text-xs text-gray-500">{percentage.toFixed(1)}%</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -281,6 +384,7 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none resize-none"
                   rows={3}
+                  placeholder="أي ملاحظات إضافية..."
                 />
               </div>
 
@@ -327,7 +431,9 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
           <h3 className="text-lg font-medium text-gray-900 mb-2">
             لا توجد مصروفات
           </h3>
-          <p className="text-gray-600 mb-6">لم يتم تسجيل أي مصروفات بعد</p>
+          <p className="text-gray-600 mb-6">
+            {searchTerm ? "لا توجد نتائج للبحث" : `لم يتم تسجيل أي مصروفات لشهر ${getMonthName(selectedMonth)} ${selectedYear}`}
+          </p>
           <button
             onClick={() => setShowForm(true)}
             className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-all"
@@ -353,21 +459,23 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
                       {expense.category}
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                     <div>
                       <span className="text-gray-600">المبلغ:</span>
                       <span className="font-bold text-red-600 mr-2">
-                        {Number(expense.amount).toLocaleString("ar-EG", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}{" "}
-                        ج.م
+                        {formatNumber(expense.amount)} ج.م
                       </span>
                     </div>
                     <div>
                       <span className="text-gray-600">التاريخ:</span>
                       <span className="font-medium text-gray-900 mr-2">
-                        {expense.expense_date}
+                        {new Date(expense.expense_date).toLocaleDateString('ar-EG')}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">نسبة من الإجمالي:</span>
+                      <span className="font-medium text-gray-900 mr-2">
+                        {((expense.amount / totalExpensesThisMonth) * 100).toFixed(1)}%
                       </span>
                     </div>
                   </div>

@@ -61,3 +61,30 @@ export interface Statistics {
   activeTeachers?: number;
   totalSalaries?: number;
 }
+export interface TeacherSalary {
+  id: string;
+  teacher_id: string;
+  user_id: string;
+  month: number; // 1-12
+  year: number;
+  amount: number;
+  status: 'pending' | 'paid' | 'cancelled';
+  payment_date: string | null;
+  notes: string | null;
+  created_at: string;
+  teacher?: Teacher; // للربط مع بيانات المعلم
+}
+
+export interface Statistics {
+  totalStudents: number;
+  activeStudents: number;
+  totalRevenue: number;
+  totalExpenses: number;
+  netProfit: number;
+  totalTeachers?: number;
+  activeTeachers?: number;
+  totalSalaries?: number;
+  pendingSalaries?: number; // الرواتب المعلقة
+  paidSalaries?: number; // الرواتب المدفوعة
+  monthlySalaryCost?: number; // تكلفة الرواتب الشهرية
+}
