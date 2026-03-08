@@ -654,7 +654,7 @@ export default function LandingPage() {
                   {[
                     "كل المميزات السابقة",
                     "خادم خاص مخصص",
-                    "دعم فني 24/7/365",
+                    "دعم فني",
                     "تطويرات مخصصة",
                     "استشارات متقدمة",
                     "تكامل مع أنظمتك الحالية",
@@ -931,7 +931,8 @@ export default function LandingPage() {
         </div>
       </footer>
 
-      <style>{`
+      <style>
+        {`
         @keyframes bounce-slow {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-10px); }
