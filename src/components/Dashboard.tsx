@@ -238,51 +238,30 @@ const handleUpgrade = () => {
                 <div className="absolute -inset-3 bg-gradient-to-r from-emerald-400 to-blue-400 rounded-full blur-xl opacity-0 group-hover:opacity-75 transition-opacity duration-500 animate-pulse"></div>
 
                 {/* اللوجو */}
-<div className="relative flex items-center gap-4 group">
-  {/* حاوية اللوجو مع تأثير الظل والتدرج */}
+<div className="flex items-center gap-3 group">
+  {/* اللوجو مع تأثير الظل الناعم */}
   <div className="relative">
-    {/* طبقة التوهج الخلفية */}
-    <div className="absolute inset-0 bg-gradient-to-tr from-emerald-400/20 to-blue-400/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-700"></div>
-    
-    {/* إطار زخرفي */}
-    <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-emerald-500/10 to-blue-500/10 group-hover:opacity-100 opacity-0 transition-opacity duration-500"></div>
-    
-    {/* اللوجو مع تأثيرات احترافية */}
-    <div className="relative transform transition-all duration-700 group-hover:scale-105 group-hover:-translate-y-1">
-      <img
-        src={logo}
-        alt="إدارتي"
-        className="h-20 w-auto drop-shadow-2xl relative z-10 
-                 [filter:drop-shadow(0_10px_8px_rgb(0_0_0/0.12))_drop-shadow(0_4px_3px_rgb(0_0_0/0.1))]
-                 group-hover:[filter:drop-shadow(0_20px_13px_rgb(5_150_105/0.3))_drop-shadow(0_8px_5px_rgb(5_150_105/0.2))]
-                 transition-all duration-700"
-      />
-    </div>
+    <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-blue-500/20 rounded-xl blur-lg 
+                    group-hover:blur-xl transition-all duration-500"></div>
+    <img
+      src={logo}
+      alt="إدارتي"
+      className="h-16 w-auto relative z-10 drop-shadow-lg
+               group-hover:drop-shadow-2xl group-hover:scale-110 transition-all duration-500"
+    />
   </div>
 
-  {/* النص مع تصميم أنيق */}
-  <div className="hidden sm:block relative overflow-hidden">
-    {/* خط سفلي متحرك */}
-    <div className="absolute bottom-0 right-0 h-0.5 bg-gradient-to-l from-emerald-500 via-blue-500 to-purple-500 
-                    w-0 group-hover:w-full transition-all duration-700 delay-300"></div>
-    
-    {/* النص الرئيسي */}
-    <div className="relative">
-      <span className="block text-2xl font-bold bg-gradient-to-l from-emerald-600 to-blue-600 bg-clip-text text-transparent
-                     transform transition-all duration-500 group-hover:translate-x-1">
-        إدارتي
-      </span>
-      <span className="block text-xs text-gray-500 mt-0.5 tracking-wider opacity-0 group-hover:opacity-100 
-                     transition-all duration-500 delay-200">
-        نظام إدارة التعليم المتكامل
-      </span>
-    </div>
-
-    {/* عناصر زخرفية */}
-    <div className="absolute -top-1 -right-2 w-8 h-8 border-t-2 border-r-2 border-emerald-200/30 
-                    rounded-tr-xl opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
-    <div className="absolute -bottom-1 -left-2 w-8 h-8 border-b-2 border-l-2 border-blue-200/30 
-                    rounded-bl-xl opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
+  {/* النص مع خط فاصل */}
+  <div className="hidden sm:block relative pr-3 mr-3 border-r-2 border-gray-200 
+                  group-hover:border-emerald-300 transition-colors duration-500">
+    <span className="block text-xl font-bold text-gray-800 group-hover:text-emerald-700 
+                   transition-colors duration-500">
+      إدارتي
+    </span>
+    <span className="block text-xs text-gray-500 group-hover:text-gray-600 
+                   transition-colors duration-500">
+      نظام إدارة متكامل
+    </span>
   </div>
 </div>              </div>
             </div>
