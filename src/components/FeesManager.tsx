@@ -158,20 +158,9 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
   };
 
   const calculateStatistics = (feesData: Fee[], studentsData: Student[]) => {
-    // حساب إجمالي المدفوعات (القيم الموجبة فقط)
-    const total_collected = feesData.reduce(
-      (sum, fee) => sum + (fee.amount > 0 ? fee.amount : 0), 
-      0
-    );
-    
-    // حساب إجمالي المسترد (القيم السالبة)
-    const total_refunded = feesData.reduce(
-      (sum, fee) => sum + (fee.amount < 0 ? Math.abs(fee.amount) : 0), 
-      0
-    );
-    
+    const total_collected = feesData.reduce((sum, fee) => sum + fee.amount, 0);
     const active_students = studentsData.filter(
-      (s) => s.status === "active"
+      (s) => s.status === "active",
     ).length;
 
     // حساب المستحق التقريبي
@@ -181,10 +170,7 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
     // حساب الطلاب الذين دفعوا كاملاً (تقديري)
     const paid_students = studentsData.filter((s) => {
       const studentFees = feesData.filter((f) => f.student_id === s.id);
-      const totalPaid = studentFees.reduce(
-        (sum, f) => sum + (f.amount > 0 ? f.amount : 0), 
-        0
-      );
+      const totalPaid = studentFees.reduce((sum, f) => sum + f.amount, 0);
       return totalPaid >= 3000; // قيمة تقديرية
     }).length;
 
@@ -203,18 +189,7 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
   const calculateBalances = () => {
     const balances: StudentBalance[] = students.map((student) => {
       const studentFees = fees.filter((f) => f.student_id === student.id);
-      
-      // ✅ تصحيح: جمع المدفوعات (القيم الموجبة) فقط لحساب المدفوع
-      const total_paid = studentFees.reduce(
-        (sum, fee) => sum + (fee.amount > 0 ? fee.amount : 0), 
-        0
-      );
-      
-      // حساب المبالغ المستردة (القيم السالبة)
-      const total_refunded = studentFees.reduce(
-        (sum, fee) => sum + (fee.amount < 0 ? Math.abs(fee.amount) : 0), 
-        0
-      );
+      const total_paid = studentFees.reduce((sum, fee) => sum + fee.amount, 0);
 
       // حساب المطلوب (تقديري - يمكن تعديله حسب النظام الفعلي)
       const total_required = Object.values(requiredFees).reduce(
@@ -222,10 +197,7 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
         0,
       );
 
-      // ✅ الرصيد = المدفوع - (المطلوب + المسترد)
-      // المسترد يزيد من الرصيد المدين لأنه تم سحبه
-      const balance = total_paid - (total_required + total_refunded);
-      
+      const balance = total_paid - total_required;
       const last_payment =
         studentFees.length > 0
           ? studentFees.sort(
@@ -236,8 +208,8 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
           : null;
 
       let status: "مدين" | "دائن" | "متوازن" = "متوازن";
-      if (balance < -100) status = "مدين"; // مدين يعني عليه متبقي
-      if (balance > 100) status = "دائن"; // دائن يعني له رصيد
+      if (balance < -100) status = "مدين";
+      if (balance > 100) status = "دائن";
 
       return {
         student_id: student.id,
@@ -246,7 +218,7 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
         parent_name: student.parent_name,
         parent_phone: student.parent_phone,
         total_paid,
-        total_required: total_required + total_refunded, // المطلوب الفعلي + المسترد
+        total_required,
         balance,
         last_payment_date: last_payment,
         status,
@@ -259,39 +231,30 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
   const loadStudentTransactions = (studentId: string) => {
     const studentFees = fees.filter((f) => f.student_id === studentId);
 
-    // ترتيب تصاعدي حسب التاريخ لحساب الرصيد التراكمي
-    const sortedFees = [...studentFees].sort(
-      (a, b) =>
-        new Date(a.payment_date).getTime() - new Date(b.payment_date).getTime(),
-    );
-
     let runningBalance = 0;
-    const transactions: Transaction[] = sortedFees.map((fee) => {
-      runningBalance += fee.amount;
-      
-      // تحديد نوع العملية
-      let type: "deposit" | "withdrawal" | "refund" = "deposit";
-      if (fee.amount < 0) {
-        type = "refund";
-      } else if (fee.payment_type.includes("استرداد")) {
-        type = "refund";
-      }
-
-      return {
-        id: fee.id,
-        date: fee.payment_date,
-        description: fee.payment_type + (fee.notes ? ` - ${fee.notes}` : ""),
-        type: type,
-        amount: Math.abs(fee.amount),
-        balance_after: runningBalance,
-        payment_type: fee.payment_type,
-      };
-    });
+    const transactions: Transaction[] = studentFees
+      .sort(
+        (a, b) =>
+          new Date(a.payment_date).getTime() -
+          new Date(b.payment_date).getTime(),
+      )
+      .map((fee) => {
+        runningBalance += fee.amount;
+        return {
+          id: fee.id,
+          date: fee.payment_date,
+          description: fee.payment_type,
+          type: fee.amount > 0 ? "deposit" : "withdrawal",
+          amount: Math.abs(fee.amount),
+          balance_after: runningBalance,
+          payment_type: fee.payment_type,
+        };
+      });
 
     setStudentTransactions(transactions);
   };
 
-  // ✅ الكود المصحح - معالجة صحيحة للاسترداد
+  // ✅ الكود المصحح - نرسل فقط الحقول الموجودة في قاعدة البيانات
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
@@ -312,24 +275,17 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
     }
 
     try {
-      // ✅ تحديد الإشارة بناءً على نوع العملية
-      // الاسترداد (refund) يكون بقيمة سالبة
-      // الدفع (deposit) يكون بقيمة موجبة
-      const finalAmount = formData.transaction_type === "refund" ? -amount : amount;
-
-      // تعديل نوع الدفعة إذا كان استرداد
-      let paymentType = formData.payment_type;
-      if (formData.transaction_type === "refund" && !paymentType.includes("استرداد")) {
-        paymentType = `استرداد ${paymentType}`;
-      }
+      // ✅ إنشاء كائن يطابق هيكل قاعدة البيانات فقط
+      const finalAmount =
+        formData.transaction_type === "refund" ? -amount : amount;
 
       const feeData = {
         student_id: formData.student_id,
-        amount: finalAmount, // ✅ القيمة السالبة للاسترداد، الموجبة للدفع
-        payment_type: paymentType,
+        amount: finalAmount,
+        payment_type: formData.payment_type,
         payment_date: formData.payment_date,
         academic_year: formData.academic_year,
-        notes: formData.notes || null,
+        notes: formData.notes || null, // تحويل السلسلة الفارغة إلى null
         user_id: user.id,
       };
 
@@ -345,8 +301,6 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
           console.error("خطأ في التحديث:", error);
           throw error;
         }
-        
-        alert("تم تحديث العملية بنجاح");
       } else {
         const { error } = await supabase.from("fees").insert([feeData]);
 
@@ -354,15 +308,13 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
           console.error("خطأ في الإدراج:", error);
           throw error;
         }
-        
-        alert(formData.transaction_type === "refund" 
-          ? "تم تنفيذ عملية الاسترداد بنجاح" 
-          : "تم إضافة الدفعة بنجاح");
       }
 
       resetForm();
       await loadData(); // انتظار تحميل البيانات
       onUpdate();
+
+      alert(editingFee ? "تم تحديث الدفعة بنجاح" : "تم إضافة الدفعة بنجاح");
     } catch (error: any) {
       console.error("Error saving fee:", error);
 
@@ -404,11 +356,11 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
     setFormData({
       student_id: fee.student_id,
       amount: Math.abs(fee.amount).toString(),
-      payment_type: fee.payment_type.replace("استرداد ", ""), // إزالة كلمة استرداد إذا وجدت
+      payment_type: fee.payment_type,
       payment_date: fee.payment_date,
       academic_year: fee.academic_year,
       notes: fee.notes || "",
-      transaction_type: fee.amount >= 0 ? "deposit" : "refund", // ✅ تحديد النوع بناءً على قيمة المبلغ
+      transaction_type: fee.amount >= 0 ? "deposit" : "refund", // ✅ هذا فقط للواجهة
     });
     setShowForm(true);
   };
@@ -421,7 +373,7 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
       payment_date: new Date().toISOString().split("T")[0],
       academic_year: new Date().getFullYear().toString(),
       notes: "",
-      transaction_type: "deposit",
+      transaction_type: "deposit", // ✅ هذا فقط للواجهة
     });
     setEditingFee(null);
     setShowForm(false);
@@ -459,7 +411,6 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
           .transactions-table td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
           .deposit { color: #059669; }
           .withdrawal { color: #dc2626; }
-          .refund { color: #f59e0b; }
           .footer { margin-top: 30px; padding-top: 20px; border-top: 2px dashed #e5e7eb; text-align: center; color: #6b7280; }
         </style>
       </head>
@@ -515,7 +466,7 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
                   <td>${formatDate(t.date)}</td>
                   <td>${t.description}</td>
                   <td>${t.type === "deposit" ? "إيداع" : t.type === "refund" ? "استرداد" : "مصروفات"}</td>
-                  <td class="${t.type === "deposit" ? "deposit" : t.type === "refund" ? "refund" : "withdrawal"}">
+                  <td class="${t.type === "deposit" ? "deposit" : "withdrawal"}">
                     ${t.type === "deposit" ? "+" : "-"}${t.amount.toFixed(2)} ج.م
                   </td>
                   <td>${t.balance_after.toFixed(2)} ج.م</td>
@@ -548,6 +499,7 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
     "رسوم الباص",
     "دفعة مقدمة",
     "تسوية رصيد",
+    "استرداد مبلغ",
   ];
 
   const filteredBalances = studentBalances.filter(
@@ -650,7 +602,7 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
                   maximumFractionDigits: 2,
                 })}{" "}
                 ج.م
-              </p>
+              </p>{" "}
               <p className="text-xs text-green-600 mt-1">
                 من {statistics.active_students} طالب نشط
               </p>
@@ -666,7 +618,7 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}{" "}
-                ج.م
+                ج.م{" "}
               </p>
               <p className="text-xs text-blue-600 mt-1">المتوقع تحصيله</p>
             </div>
@@ -684,7 +636,7 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
                     maximumFractionDigits: 2,
                   },
                 )}{" "}
-                ج.م
+                ج.م{" "}
               </p>
               <p className="text-xs text-yellow-600 mt-1">
                 مستحق على {statistics.overdue_students} طالب
@@ -704,7 +656,7 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
                     maximumFractionDigits: 2,
                   },
                 )}{" "}
-                ج.م
+                ج.م{" "}
               </p>
               <p className="text-xs text-purple-600 mt-1">لكل طالب</p>
             </div>
@@ -735,7 +687,7 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}{" "}
-                      ج.م
+                      ج.م{" "}
                     </p>
                     <p
                       className={`text-xs px-2 py-1 rounded-full ${getStatusColor(balance.status)}`}
@@ -933,7 +885,7 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
                   {fee.amount > 0 ? (
                     <ArrowUpCircle className="w-6 h-6 text-green-600" />
                   ) : (
-                    <ArrowDownCircle className="w-6 h-6 text-orange-500" />
+                    <ArrowDownCircle className="w-6 h-6 text-red-600" />
                   )}
                   <div>
                     <p className="font-medium text-gray-900">
@@ -945,14 +897,14 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
                 </div>
                 <div className="text-left">
                   <p
-                    className={`font-bold ${fee.amount >= 0 ? "text-green-600" : "text-orange-500"}`}
+                    className={`font-bold ${fee.amount >= 0 ? "text-green-600" : "text-red-600"}`}
                   >
                     {fee.amount >= 0 ? "+" : "-"}
                     {Number(Math.abs(fee.amount)).toLocaleString("ar-EG", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}{" "}
-                    ج.م
+                    ج.م{" "}
                   </p>
                   <p className="text-xs text-gray-500">{fee.academic_year}</p>
                 </div>
@@ -1014,8 +966,8 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                 >
-                  <option value="deposit">💰 إيداع / سداد</option>
-                  <option value="refund">↩️ استرداد / خصم</option>
+                  <option value="deposit">إيداع / سداد</option>
+                  <option value="refund">استرداد / خصم</option>
                 </select>
               </div>
 
@@ -1055,11 +1007,6 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                   required
                 />
-                {formData.transaction_type === "refund" && (
-                  <p className="text-xs text-orange-600 mt-1">
-                    سيتم خصم هذا المبلغ من رصيد الطالب (استرداد)
-                  </p>
-                )}
               </div>
 
               <div>
@@ -1108,37 +1055,19 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
                 />
               </div>
 
-              <div className={`p-4 rounded-lg ${
-                formData.transaction_type === "refund" 
-                  ? "bg-orange-50" 
-                  : "bg-green-50"
-              }`}>
-                <p className={`text-sm flex items-center gap-2 ${
-                  formData.transaction_type === "refund" 
-                    ? "text-orange-800" 
-                    : "text-green-800"
-                }`}>
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <p className="text-sm text-blue-800 flex items-center gap-2">
                   <Info className="w-4 h-4" />
-                  {formData.transaction_type === "refund" 
-                    ? "عملية استرداد: سيتم خصم المبلغ من رصيد الطالب" 
-                    : "عملية إيداع: سيتم إضافة المبلغ لرصيد الطالب"}
+                  بعد إتمام العملية سيتم تحديث رصيد الطالب تلقائياً
                 </p>
               </div>
 
               <div className="flex gap-3 pt-4">
                 <button
                   type="submit"
-                  className={`flex-1 text-white py-2 px-4 rounded-lg transition-all ${
-                    formData.transaction_type === "refund"
-                      ? "bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700"
-                      : "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                  }`}
+                  className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white py-2 px-4 rounded-lg transition-all"
                 >
-                  {editingFee 
-                    ? "حفظ التعديلات" 
-                    : formData.transaction_type === "refund" 
-                      ? "تنفيذ الاسترداد" 
-                      : "تسديد الدفعة"}
+                  {editingFee ? "حفظ التعديلات" : "تنفيذ العملية"}
                 </button>
                 <button
                   type="button"
