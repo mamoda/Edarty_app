@@ -585,7 +585,7 @@ export default function Dashboard() {
                     onClick={() => setCurrentView("reports")}
                     className="bg-white hover:bg-purple-50 rounded-xl shadow-md p-6 text-right transition-all group"
                   >
-                    <BarChart3 className="w-8 h-8 text-purple-600 mb-3 group-hover:scale-110 transition-transform" />
+                    <TrendingUp className="w-8 h-8 text-purple-600 mb-3 group-hover:scale-110 transition-transform" />
                     <h4 className="font-bold text-gray-900 mb-1">
                       تقارير الأرباح
                     </h4>
