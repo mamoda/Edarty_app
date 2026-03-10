@@ -231,7 +231,7 @@ export default function Dashboard() {
         /> */}
         
         {/* طبقة تعتيم إضافية لتحسين قراءة المحتوى */}
-        <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" />
+        {/* <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" /> */}
       </div>
 
       {/* المحتوى الرئيسي - فوق الخلفية */}
