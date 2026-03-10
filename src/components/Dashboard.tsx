@@ -234,38 +234,24 @@ export default function Dashboard() {
     className="relative group cursor-pointer"
     onClick={() => setCurrentView("dashboard")}
   >
-    {/* تأثير الخلفية */}
-    <div className="absolute -inset-3 bg-gradient-to-r from-emerald-600/10 to-teal-600/10 rounded-full blur-xl opacity-0 group-hover:opacity-80 transition-opacity duration-700"></div>
+    {/* خلفية متوهجة متحركة - أكثر نعومة */}
+    <div className="absolute -inset-3 bg-gradient-to-r from-blue-400/30 to-indigo-400/30 rounded-full blur-xl opacity-0 group-hover:opacity-70 transition-opacity duration-700"></div>
     
-    <div className="flex items-center gap-4">
-      {/* أيقونة الميزان - رمز المحاسبة */}
-      <div className="relative">
-        <div className="w-14 h-14 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-500">
-          <svg 
-            className="w-8 h-8 text-emerald-600 group-hover:text-teal-600 transition-colors duration-500" 
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
-          >
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              strokeWidth={1.5}
-              d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" 
-            />
-          </svg>
-        </div>
-      </div>
-
-      {/* النص */}
-      <div className="hidden sm:block">
-        <span className="block text-2xl font-light text-gray-900 leading-tight">
-          إدارتي
-        </span>
-        <span className="block text-xs text-gray-500 font-light tracking-wider">
-          نظام المحاسبة المتكامل
-        </span>
-      </div>
+    {/* اللوجو فقط - بحجم مناسب وواضح */}
+    <div className="relative">
+      {/* تأثير خلفية ناعمة للوجو */}
+      <div 
+        className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-2xl blur-md 
+                   group-hover:blur-lg transition-all duration-500"
+      ></div>
+      
+      {/* اللوجو بحجم أكبر قليلاً ليكون واضحاً */}
+      <img
+        src={logo}
+        alt="إدارتي"
+        className="h-20 w-auto relative z-10 drop-shadow-md
+                 group-hover:drop-shadow-xl group-hover:scale-105 transition-all duration-500"
+      />
     </div>
   </div>
 </div>
