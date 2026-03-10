@@ -229,32 +229,32 @@ export default function Dashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             {/* الشعار مع تأثير متحرك */}
-<div className="flex items-center gap-4">
-  <div
-    className="relative group cursor-pointer"
-    onClick={() => setCurrentView("dashboard")}
-  >
-    {/* خلفية متوهجة متحركة - أكثر نعومة */}
-    <div className="absolute -inset-3 bg-gradient-to-r from-blue-400/30 to-indigo-400/30 rounded-full blur-xl opacity-0 group-hover:opacity-70 transition-opacity duration-700"></div>
-    
-    {/* اللوجو فقط - بحجم مناسب وواضح */}
-    <div className="relative">
-      {/* تأثير خلفية ناعمة للوجو */}
-      <div 
-        className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-2xl blur-md 
+            <div className="flex items-center gap-4">
+              <div
+                className="relative group cursor-pointer"
+                onClick={() => setCurrentView("dashboard")}
+              >
+                {/* خلفية متوهجة متحركة - أكثر نعومة */}
+                <div className="absolute -inset-3 bg-gradient-to-r from-blue-400/30 to-indigo-400/30 rounded-full blur-xl opacity-0 group-hover:opacity-70 transition-opacity duration-700"></div>
+
+                {/* اللوجو فقط - بحجم مناسب وواضح */}
+                <div className="relative">
+                  {/* تأثير خلفية ناعمة للوجو */}
+                  <div
+                    className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-2xl blur-md 
                    group-hover:blur-lg transition-all duration-500"
-      ></div>
-      
-      {/* اللوجو بحجم أكبر قليلاً ليكون واضحاً */}
-      <img
-        src={logo}
-        alt="إدارتي"
-        className="h-20 w-auto relative z-10 drop-shadow-md
+                  ></div>
+
+                  {/* اللوجو بحجم أكبر قليلاً ليكون واضحاً */}
+                  <img
+                    src={logo}
+                    alt="إدارتي"
+                    className="h-20 w-auto relative z-10 drop-shadow-md
                  group-hover:drop-shadow-xl group-hover:scale-105 transition-all duration-500"
-      />
-    </div>
-  </div>
-</div>
+                  />
+                </div>
+              </div>
+            </div>
             {/* القسم الأيمن */}
             <div className="flex items-center gap-4">
               {/* زر الأبجريد (Upgrade) - تصميم احترافي وجذاب */}
