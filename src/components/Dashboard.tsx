@@ -27,6 +27,9 @@ import TeachersManager from "./TeachersManager";
 import ProfitReport from "./ProfitReport";
 import FinancialReports from "./FinancialReports";
 import logo from "../assets/logo.png";
+// استيراد صور الخلفية
+import backgroundImage1 from "../assets/background-1.webp"; // قم بتعديل المسار حسب اسم ملف الصورة الأولى
+import backgroundImage2 from "../assets/background-2.webp"; // قم بتعديل المسار حسب اسم ملف الصورة الثانية
 
 type View =
   | "dashboard"
@@ -126,7 +129,7 @@ export default function Dashboard() {
   };
 
   const handleUpgrade = () => {
-    window.location.href = "/upgrade"; // ✅ هذا سيفتح الصفحة في نفس التبويب
+    window.location.href = "/upgrade";
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -163,7 +166,7 @@ export default function Dashboard() {
 
   const StatCard = ({ title, value, icon: Icon, color, prefix = "" }: any) => (
     <div
-      className="bg-white rounded-xl shadow-md p-6 border-r-4"
+      className="bg-white/90 backdrop-blur-sm rounded-xl shadow-md p-6 border-r-4 hover:bg-white transition-all duration-300"
       style={{ borderColor: color }}
     >
       <div className="flex items-center justify-between">
@@ -190,7 +193,7 @@ export default function Dashboard() {
       className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
         currentView === view
           ? "bg-blue-600 text-white shadow-md"
-          : "text-gray-700 hover:bg-gray-100"
+          : "text-gray-700 hover:bg-white/80 backdrop-blur-sm"
       }`}
     >
       <Icon className="w-5 h-5" />
@@ -208,387 +211,412 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
-      <header className="bg-white/80 backdrop-blur-md border-b sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            {/* الشعار مع تأثير متحرك */}
-            <div className="flex items-center gap-4">
-              <div
-                className="relative group cursor-pointer"
-                onClick={() => setCurrentView("dashboard")}
-              >
-                {/* خلفية متوهجة متحركة - أكثر نعومة */}
-                <div className="absolute -inset-3 bg-gradient-to-r from-blue-400/30 to-indigo-400/30 rounded-full blur-xl opacity-0 group-hover:opacity-70 transition-opacity duration-700"></div>
-
-                {/* اللوجو فقط - بحجم مناسب وواضح */}
-                <div className="relative">
-                  {/* تأثير خلفية ناعمة للوجو */}
-                  <div
-                    className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-2xl blur-md 
-                   group-hover:blur-lg transition-all duration-500"
-                  ></div>
-
-                  {/* اللوجو بحجم أكبر قليلاً ليكون واضحاً */}
-                  <img
-                    src={logo}
-                    alt="إدارتي"
-                    className="h-20 w-auto relative z-10 drop-shadow-md
-                 group-hover:drop-shadow-xl group-hover:scale-105 transition-all duration-500"
-                  />
-                </div>
-              </div>
-            </div>
-            {/* القسم الأيمن */}
-            <div className="flex items-center gap-4">
-              {/* زر الأبجريد (Upgrade) - تصميم احترافي وجذاب */}
-              <button
-                onClick={handleUpgrade}
-                className="relative group flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden"
-              >
-                {/* تأثيرات الزر الموجودة */}
-                <Crown className="relative w-5 h-5 transition-all duration-500 group-hover:scale-110 group-hover:rotate-12" />
-                <span className="relative font-bold text-sm">الأبجريد</span>
-
-                {/* إضافة تأثير عند النقر */}
-                <span className="absolute inset-0 bg-white/30 opacity-0 group-active:opacity-100 transition-opacity duration-150"></span>
-              </button>
-
-              {/* بطاقة المستخدم */}
-              <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-gray-50 to-white rounded-2xl border border-gray-100 shadow-sm">
-                <div className="text-right">
-                  <p className="text-xs text-gray-500">المستخدم</p>
-                  <p className="text-sm font-bold text-gray-800">
-                    {user?.email?.split("@")[0] || "مستخدم"}
-                  </p>
-                </div>
-                <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md transform rotate-3">
-                  {user?.email?.charAt(0).toUpperCase() || "م"}
-                </div>
-              </div>
-
-              {/* زر الخروج بتصميم مميز */}
-              <button
-                onClick={() => signOut()}
-                className="relative group flex items-center gap-2 px-5 py-2.5 bg-white text-red-600 rounded-xl border-2 border-red-100 hover:border-red-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden"
-              >
-                {/* خلفية متحركة */}
-                <div className="absolute inset-0 bg-gradient-to-l from-red-50 to-transparent translate-x-full group-hover:translate-x-0 transition-transform duration-500"></div>
-
-                {/* المحتوى */}
-                <span className="relative font-bold text-sm">مغادرة</span>
-                <LogOut className="relative w-4 h-4 transition-transform group-hover:-translate-x-1" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* أيقونة الدردشة العائمة - تصميم احترافي */}
-      <div className="fixed bottom-6 left-6 z-50">
-        {/* نافذة الدردشة */}
-        {isChatOpen && (
-          <div className="absolute bottom-20 left-0 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden mb-4 animate-[slide-up_0.3s_ease-out]">
-            {/* رأس الدردشة */}
-            <div className="bg-gradient-to-l from-emerald-600 to-blue-600 p-4 text-white">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Headphones className="w-5 h-5" />
-                  <h3 className="font-bold">الدعم الفني</h3>
-                </div>
-                <button
-                  onClick={() => setIsChatOpen(false)}
-                  className="hover:bg-white/20 rounded-lg p-1 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <p className="text-xs text-white/80 mt-1">
-                نحن هنا لمساعدتك 24/7
-              </p>
-            </div>
-
-            {/* منطقة الرسائل */}
-            <div className="h-80 overflow-y-auto p-4 space-y-3 bg-gray-50">
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex ${msg.type === "user" ? "justify-start" : "justify-end"}`}
-                >
-                  <div
-                    className={`max-w-[80%] rounded-2xl p-3 ${
-                      msg.type === "user"
-                        ? "bg-gray-200 text-gray-800 rounded-br-none"
-                        : "bg-gradient-to-l from-emerald-600 to-blue-600 text-white rounded-bl-none"
-                    }`}
-                  >
-                    <p className="text-sm">{msg.text}</p>
-                    <p
-                      className={`text-xs mt-1 ${msg.type === "user" ? "text-gray-500" : "text-white/70"}`}
-                    >
-                      {msg.time}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* نموذج إرسال الرسالة */}
-            <form
-              onSubmit={handleSendMessage}
-              className="p-4 border-t bg-white"
-            >
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="اكتب رسالتك هنا..."
-                  className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-                />
-                <button
-                  type="submit"
-                  className="bg-gradient-to-l from-emerald-600 to-blue-600 text-white p-2 rounded-xl hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={!message.trim()}
-                >
-                  <Send className="w-5 h-5" />
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* زر الدردشة الرئيسي */}
-        <button
-          onClick={() => setIsChatOpen(!isChatOpen)}
-          className="relative group flex items-center justify-center w-14 h-14 bg-gradient-to-l from-emerald-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110"
-        >
-          {/* خلفية متوهجة متحركة */}
-          <div className="absolute -inset-2 bg-gradient-to-l from-emerald-400 to-blue-400 rounded-full blur-xl opacity-0 group-hover:opacity-75 transition-opacity duration-500 animate-pulse"></div>
-
-          {/* أيقونة الدردشة */}
-          <MessageCircle className="relative w-6 h-6 transition-transform duration-300 group-hover:rotate-12" />
-
-          {/* شريط الإشعارات */}
-          <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>
-
-          {/* أيقونة السماعة الصغيرة */}
-          <Headphones className="absolute -bottom-1 -left-1 w-4 h-4 text-white/80" />
-        </button>
+    <div className="min-h-screen relative" dir="rtl">
+      {/* صور الخلفية - فوق بعضها البعض */}
+      <div className="fixed inset-0 z-0">
+        {/* الصورة الأولى - الخلفية الأساسية */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ 
+            backgroundImage: `url(${backgroundImage1})`,
+          }}
+        />
+        
+        {/* الصورة الثانية - فوق الصورة الأولى مع تأثير شفافية */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat mix-blend-overlay opacity-30"
+          style={{ 
+            backgroundImage: `url(${backgroundImage2})`,
+          }}
+        />
+        
+        {/* طبقة تعتيم إضافية لتحسين قراءة المحتوى */}
+        <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <aside className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-md p-4 space-y-2 sticky top-24">
-              <MenuItem label="لوحة التحكم" icon={BarChart3} view="dashboard" />
-              <MenuItem
-                label="الطلاب"
-                icon={Users}
-                view="students"
-                count={stats.activeStudents}
-              />
-              <MenuItem label="المعلمين" icon={Briefcase} view="teachers" />
-              <MenuItem label="تحصيل المصاريف" icon={DollarSign} view="fees" />
-              <MenuItem label="التكاليف" icon={TrendingDown} view="expenses" />
-              <MenuItem
-                label="تقرير الأرباح"
-                icon={TrendingUp}
-                view="reports"
-              />
-              <MenuItem
-                label="التقارير المالية"
-                icon={BarChart3}
-                view="financial"
-              />
-            </div>
-          </aside>
+      {/* المحتوى الرئيسي - فوق الخلفية */}
+      <div className="relative z-10">
+        <header className="bg-white/80 backdrop-blur-md border-b sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-20">
+              {/* الشعار مع تأثير متحرك */}
+              <div className="flex items-center gap-4">
+                <div
+                  className="relative group cursor-pointer"
+                  onClick={() => setCurrentView("dashboard")}
+                >
+                  {/* خلفية متوهجة متحركة - أكثر نعومة */}
+                  <div className="absolute -inset-3 bg-gradient-to-r from-blue-400/30 to-indigo-400/30 rounded-full blur-xl opacity-0 group-hover:opacity-70 transition-opacity duration-700"></div>
 
-          <main className="lg:col-span-3">
-            {currentView === "dashboard" && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                    نظرة عامة
-                  </h2>
-                  {loading ? (
-                    <div className="text-center py-12">
-                      <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <StatCard
-                        title="إجمالي الطلاب"
-                        value={stats.totalStudents}
-                        icon={Users}
-                        color="#3b82f6"
-                      />
-                      <StatCard
-                        title="الطلاب النشطون"
-                        value={stats.activeStudents}
-                        icon={UserPlus}
-                        color="#10b981"
-                      />
-                      <StatCard
-                        title="إجمالي المعلمين"
-                        value={stats.totalTeachers}
-                        icon={Briefcase}
-                        color="#f59e0b"
-                      />
-                      <StatCard
-                        title="إجمالي الإيرادات"
-                        value={`${Number(stats.totalRevenue).toLocaleString("ar-EG")} ج.م`}
-                        icon={DollarSign}
-                        color="#8b5cf6"
-                      />
-                      <StatCard
-                        title="إجمالي التكاليف"
-                        value={`${Number(stats.totalExpenses).toLocaleString("ar-EG")} ج.م`}
-                        icon={TrendingDown}
-                        color="#ef4444"
-                      />
-                    </div>
-                  )}
-                </div>
+                  {/* اللوجو فقط - بحجم مناسب وواضح */}
+                  <div className="relative">
+                    {/* تأثير خلفية ناعمة للوجو */}
+                    <div
+                      className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-2xl blur-md 
+                     group-hover:blur-lg transition-all duration-500"
+                    ></div>
 
-                <div className="bg-white rounded-xl shadow-md p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-bold text-gray-900">
-                      صافي الربح
-                    </h3>
-                    <TrendingUp
-                      className={`w-6 h-6 ${stats.netProfit >= 0 ? "text-green-600" : "text-red-600"}`}
+                    {/* اللوجو بحجم أكبر قليلاً ليكون واضحاً */}
+                    <img
+                      src={logo}
+                      alt="إدارتي"
+                      className="h-20 w-auto relative z-10 drop-shadow-md
+                   group-hover:drop-shadow-xl group-hover:scale-105 transition-all duration-500"
                     />
                   </div>
-                  <div
-                    className={`text-3xl font-bold ${stats.netProfit >= 0 ? "text-green-600" : "text-red-600"}`}
-                  >
-                    {stats.netProfit >= 0 ? "+" : ""}
-                    {Number(stats.netProfit).toLocaleString("ar-EG", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{" "}
-                    ج.م
-                  </div>
-                  <div className="mt-4 pt-4 border-t">
-                    <div className="flex justify-between text-sm mb-2">
-                      <span className="text-gray-600">الإيرادات</span>
-                      <span className="text-green-600 font-medium">
-                        {Number(stats.totalRevenue).toLocaleString("ar-EG", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}{" "}
-                        ج.م
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">التكاليف</span>
-                      <span className="text-red-600 font-medium">
-                        {Number(stats.totalExpenses).toLocaleString("ar-EG", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}{" "}
-                        ج.م
-                      </span>
-                    </div>
-                  </div>{" "}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <button
-                    onClick={() => setCurrentView("students")}
-                    className="bg-white hover:bg-blue-50 rounded-xl shadow-md p-6 text-right transition-all group"
-                  >
-                    <UserPlus className="w-8 h-8 text-blue-600 mb-3 group-hover:scale-110 transition-transform" />
-                    <h4 className="font-bold text-gray-900 mb-1">
-                      إدارة الطلاب
-                    </h4>
-                    <p className="text-sm text-gray-600">
-                      إضافة وتعديل بيانات الطلاب
-                    </p>
-                  </button>
-
-                  <button
-                    onClick={() => setCurrentView("fees")}
-                    className="bg-white hover:bg-green-50 rounded-xl shadow-md p-6 text-right transition-all group"
-                  >
-                    <Receipt className="w-8 h-8 text-green-600 mb-3 group-hover:scale-110 transition-transform" />
-                    <h4 className="font-bold text-gray-900 mb-1">
-                      تحصيل المصاريف
-                    </h4>
-                    <p className="text-sm text-gray-600">
-                      تسجيل المدفوعات والرسوم
-                    </p>
-                  </button>
-
-                  <button
-                    onClick={() => setCurrentView("expenses")}
-                    className="bg-white hover:bg-red-50 rounded-xl shadow-md p-6 text-right transition-all group"
-                  >
-                    <FileText className="w-8 h-8 text-red-600 mb-3 group-hover:scale-110 transition-transform" />
-                    <h4 className="font-bold text-gray-900 mb-1">
-                      إدارة التكاليف
-                    </h4>
-                    <p className="text-sm text-gray-600">
-                      تسجيل المصروفات والنفقات
-                    </p>
-                  </button>
-
-                  <button
-                    onClick={() => setCurrentView("teachers")}
-                    className="bg-white hover:bg-purple-50 rounded-xl shadow-md p-6 text-right transition-all group"
-                  >
-                    <Briefcase className="w-8 h-8 text-purple-600 mb-3 group-hover:scale-110 transition-transform" />
-                    <h4 className="font-bold text-gray-900 mb-1">
-                      إدارة المعلمين
-                    </h4>
-                    <p className="text-sm text-gray-600">
-                      إدارة بيانات المعلمين والرواتب
-                    </p>
-                  </button>
-                  <button
-                    onClick={() => setCurrentView("reports")}
-                    className="bg-white hover:bg-purple-50 rounded-xl shadow-md p-6 text-right transition-all group"
-                  >
-                    <TrendingUp className="w-8 h-8 text-purple-600 mb-3 group-hover:scale-110 transition-transform" />
-                    <h4 className="font-bold text-gray-900 mb-1">
-                      تقارير الأرباح
-                    </h4>
-                    <p className="text-sm text-gray-600">
-                      تقارير الماليات والأرباح
-                    </p>
-                  </button>
-                  <button
-                    onClick={() => setCurrentView("financial")}
-                    className="bg-white hover:bg-purple-50 rounded-xl shadow-md p-6 text-right transition-all group"
-                  >
-                    <BarChart3 className="w-8 h-8 text-purple-600 mb-3 group-hover:scale-110 transition-transform" />
-                    <h4 className="font-bold text-gray-900 mb-1">
-                      تقارير المالية
-                    </h4>
-                    <p className="text-sm text-gray-600">
-                      التقارير المالية والتنبؤ المالي
-                    </p>
-                  </button>
                 </div>
               </div>
-            )}
+              {/* القسم الأيمن */}
+              <div className="flex items-center gap-4">
+                {/* زر الأبجريد (Upgrade) - تصميم احترافي وجذاب */}
+                <button
+                  onClick={handleUpgrade}
+                  className="relative group flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden"
+                >
+                  {/* تأثيرات الزر الموجودة */}
+                  <Crown className="relative w-5 h-5 transition-all duration-500 group-hover:scale-110 group-hover:rotate-12" />
+                  <span className="relative font-bold text-sm">الأبجريد</span>
 
-            {currentView === "students" && (
-              <StudentsManager onUpdate={loadStatistics} />
-            )}
-            {currentView === "teachers" && (
-              <TeachersManager onUpdate={loadStatistics} />
-            )}
-            {currentView === "fees" && (
-              <FeesManager onUpdate={loadStatistics} />
-            )}
-            {currentView === "expenses" && (
-              <ExpensesManager onUpdate={loadStatistics} />
-            )}
-            {currentView === "reports" && <ProfitReport />}
-            {currentView === "financial" && <FinancialReports />}
-          </main>
+                  {/* إضافة تأثير عند النقر */}
+                  <span className="absolute inset-0 bg-white/30 opacity-0 group-active:opacity-100 transition-opacity duration-150"></span>
+                </button>
+
+                {/* بطاقة المستخدم */}
+                <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-gray-50 to-white rounded-2xl border border-gray-100 shadow-sm">
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">المستخدم</p>
+                    <p className="text-sm font-bold text-gray-800">
+                      {user?.email?.split("@")[0] || "مستخدم"}
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md transform rotate-3">
+                    {user?.email?.charAt(0).toUpperCase() || "م"}
+                  </div>
+                </div>
+
+                {/* زر الخروج بتصميم مميز */}
+                <button
+                  onClick={() => signOut()}
+                  className="relative group flex items-center gap-2 px-5 py-2.5 bg-white text-red-600 rounded-xl border-2 border-red-100 hover:border-red-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden"
+                >
+                  {/* خلفية متحركة */}
+                  <div className="absolute inset-0 bg-gradient-to-l from-red-50 to-transparent translate-x-full group-hover:translate-x-0 transition-transform duration-500"></div>
+
+                  {/* المحتوى */}
+                  <span className="relative font-bold text-sm">مغادرة</span>
+                  <LogOut className="relative w-4 h-4 transition-transform group-hover:-translate-x-1" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* أيقونة الدردشة العائمة - تصميم احترافي */}
+        <div className="fixed bottom-6 left-6 z-50">
+          {/* نافذة الدردشة */}
+          {isChatOpen && (
+            <div className="absolute bottom-20 left-0 w-80 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-100 overflow-hidden mb-4 animate-[slide-up_0.3s_ease-out]">
+              {/* رأس الدردشة */}
+              <div className="bg-gradient-to-l from-emerald-600 to-blue-600 p-4 text-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Headphones className="w-5 h-5" />
+                    <h3 className="font-bold">الدعم الفني</h3>
+                  </div>
+                  <button
+                    onClick={() => setIsChatOpen(false)}
+                    className="hover:bg-white/20 rounded-lg p-1 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <p className="text-xs text-white/80 mt-1">
+                  نحن هنا لمساعدتك 24/7
+                </p>
+              </div>
+
+              {/* منطقة الرسائل */}
+              <div className="h-80 overflow-y-auto p-4 space-y-3 bg-gray-50/50">
+                {messages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`flex ${msg.type === "user" ? "justify-start" : "justify-end"}`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-2xl p-3 ${
+                        msg.type === "user"
+                          ? "bg-gray-200 text-gray-800 rounded-br-none"
+                          : "bg-gradient-to-l from-emerald-600 to-blue-600 text-white rounded-bl-none"
+                      }`}
+                    >
+                      <p className="text-sm">{msg.text}</p>
+                      <p
+                        className={`text-xs mt-1 ${msg.type === "user" ? "text-gray-500" : "text-white/70"}`}
+                      >
+                        {msg.time}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* نموذج إرسال الرسالة */}
+              <form
+                onSubmit={handleSendMessage}
+                className="p-4 border-t bg-white/90 backdrop-blur-sm"
+              >
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="اكتب رسالتك هنا..."
+                    className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm bg-white/80"
+                  />
+                  <button
+                    type="submit"
+                    className="bg-gradient-to-l from-emerald-600 to-blue-600 text-white p-2 rounded-xl hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!message.trim()}
+                  >
+                    <Send className="w-5 h-5" />
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* زر الدردشة الرئيسي */}
+          <button
+            onClick={() => setIsChatOpen(!isChatOpen)}
+            className="relative group flex items-center justify-center w-14 h-14 bg-gradient-to-l from-emerald-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110"
+          >
+            {/* خلفية متوهجة متحركة */}
+            <div className="absolute -inset-2 bg-gradient-to-l from-emerald-400 to-blue-400 rounded-full blur-xl opacity-0 group-hover:opacity-75 transition-opacity duration-500 animate-pulse"></div>
+
+            {/* أيقونة الدردشة */}
+            <MessageCircle className="relative w-6 h-6 transition-transform duration-300 group-hover:rotate-12" />
+
+            {/* شريط الإشعارات */}
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>
+
+            {/* أيقونة السماعة الصغيرة */}
+            <Headphones className="absolute -bottom-1 -left-1 w-4 h-4 text-white/80" />
+          </button>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <aside className="lg:col-span-1">
+              <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-md p-4 space-y-2 sticky top-24">
+                <MenuItem label="لوحة التحكم" icon={BarChart3} view="dashboard" />
+                <MenuItem
+                  label="الطلاب"
+                  icon={Users}
+                  view="students"
+                  count={stats.activeStudents}
+                />
+                <MenuItem label="المعلمين" icon={Briefcase} view="teachers" />
+                <MenuItem label="تحصيل المصاريف" icon={DollarSign} view="fees" />
+                <MenuItem label="التكاليف" icon={TrendingDown} view="expenses" />
+                <MenuItem
+                  label="تقرير الأرباح"
+                  icon={TrendingUp}
+                  view="reports"
+                />
+                <MenuItem
+                  label="التقارير المالية"
+                  icon={BarChart3}
+                  view="financial"
+                />
+              </div>
+            </aside>
+
+            <main className="lg:col-span-3">
+              {currentView === "dashboard" && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                      نظرة عامة
+                    </h2>
+                    {loading ? (
+                      <div className="text-center py-12">
+                        <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <StatCard
+                          title="إجمالي الطلاب"
+                          value={stats.totalStudents}
+                          icon={Users}
+                          color="#3b82f6"
+                        />
+                        <StatCard
+                          title="الطلاب النشطون"
+                          value={stats.activeStudents}
+                          icon={UserPlus}
+                          color="#10b981"
+                        />
+                        <StatCard
+                          title="إجمالي المعلمين"
+                          value={stats.totalTeachers}
+                          icon={Briefcase}
+                          color="#f59e0b"
+                        />
+                        <StatCard
+                          title="إجمالي الإيرادات"
+                          value={`${Number(stats.totalRevenue).toLocaleString("ar-EG")} ج.م`}
+                          icon={DollarSign}
+                          color="#8b5cf6"
+                        />
+                        <StatCard
+                          title="إجمالي التكاليف"
+                          value={`${Number(stats.totalExpenses).toLocaleString("ar-EG")} ج.م`}
+                          icon={TrendingDown}
+                          color="#ef4444"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-md p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-xl font-bold text-gray-900">
+                        صافي الربح
+                      </h3>
+                      <TrendingUp
+                        className={`w-6 h-6 ${stats.netProfit >= 0 ? "text-green-600" : "text-red-600"}`}
+                      />
+                    </div>
+                    <div
+                      className={`text-3xl font-bold ${stats.netProfit >= 0 ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {stats.netProfit >= 0 ? "+" : ""}
+                      {Number(stats.netProfit).toLocaleString("ar-EG", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}{" "}
+                      ج.م
+                    </div>
+                    <div className="mt-4 pt-4 border-t">
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-gray-600">الإيرادات</span>
+                        <span className="text-green-600 font-medium">
+                          {Number(stats.totalRevenue).toLocaleString("ar-EG", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}{" "}
+                          ج.م
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">التكاليف</span>
+                        <span className="text-red-600 font-medium">
+                          {Number(stats.totalExpenses).toLocaleString("ar-EG", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}{" "}
+                          ج.م
+                        </span>
+                      </div>
+                    </div>{" "}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <button
+                      onClick={() => setCurrentView("students")}
+                      className="bg-white/90 backdrop-blur-sm hover:bg-blue-50 rounded-xl shadow-md p-6 text-right transition-all group"
+                    >
+                      <UserPlus className="w-8 h-8 text-blue-600 mb-3 group-hover:scale-110 transition-transform" />
+                      <h4 className="font-bold text-gray-900 mb-1">
+                        إدارة الطلاب
+                      </h4>
+                      <p className="text-sm text-gray-600">
+                        إضافة وتعديل بيانات الطلاب
+                      </p>
+                    </button>
+
+                    <button
+                      onClick={() => setCurrentView("fees")}
+                      className="bg-white/90 backdrop-blur-sm hover:bg-green-50 rounded-xl shadow-md p-6 text-right transition-all group"
+                    >
+                      <Receipt className="w-8 h-8 text-green-600 mb-3 group-hover:scale-110 transition-transform" />
+                      <h4 className="font-bold text-gray-900 mb-1">
+                        تحصيل المصاريف
+                      </h4>
+                      <p className="text-sm text-gray-600">
+                        تسجيل المدفوعات والرسوم
+                      </p>
+                    </button>
+
+                    <button
+                      onClick={() => setCurrentView("expenses")}
+                      className="bg-white/90 backdrop-blur-sm hover:bg-red-50 rounded-xl shadow-md p-6 text-right transition-all group"
+                    >
+                      <FileText className="w-8 h-8 text-red-600 mb-3 group-hover:scale-110 transition-transform" />
+                      <h4 className="font-bold text-gray-900 mb-1">
+                        إدارة التكاليف
+                      </h4>
+                      <p className="text-sm text-gray-600">
+                        تسجيل المصروفات والنفقات
+                      </p>
+                    </button>
+
+                    <button
+                      onClick={() => setCurrentView("teachers")}
+                      className="bg-white/90 backdrop-blur-sm hover:bg-purple-50 rounded-xl shadow-md p-6 text-right transition-all group"
+                    >
+                      <Briefcase className="w-8 h-8 text-purple-600 mb-3 group-hover:scale-110 transition-transform" />
+                      <h4 className="font-bold text-gray-900 mb-1">
+                        إدارة المعلمين
+                      </h4>
+                      <p className="text-sm text-gray-600">
+                        إدارة بيانات المعلمين والرواتب
+                      </p>
+                    </button>
+                    <button
+                      onClick={() => setCurrentView("reports")}
+                      className="bg-white/90 backdrop-blur-sm hover:bg-purple-50 rounded-xl shadow-md p-6 text-right transition-all group"
+                    >
+                      <TrendingUp className="w-8 h-8 text-purple-600 mb-3 group-hover:scale-110 transition-transform" />
+                      <h4 className="font-bold text-gray-900 mb-1">
+                        تقارير الأرباح
+                      </h4>
+                      <p className="text-sm text-gray-600">
+                        تقارير الماليات والأرباح
+                      </p>
+                    </button>
+                    <button
+                      onClick={() => setCurrentView("financial")}
+                      className="bg-white/90 backdrop-blur-sm hover:bg-purple-50 rounded-xl shadow-md p-6 text-right transition-all group"
+                    >
+                      <BarChart3 className="w-8 h-8 text-purple-600 mb-3 group-hover:scale-110 transition-transform" />
+                      <h4 className="font-bold text-gray-900 mb-1">
+                        تقارير المالية
+                      </h4>
+                      <p className="text-sm text-gray-600">
+                        التقارير المالية والتنبؤ المالي
+                      </p>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {currentView === "students" && (
+                <StudentsManager onUpdate={loadStatistics} />
+              )}
+              {currentView === "teachers" && (
+                <TeachersManager onUpdate={loadStatistics} />
+              )}
+              {currentView === "fees" && (
+                <FeesManager onUpdate={loadStatistics} />
+              )}
+              {currentView === "expenses" && (
+                <ExpensesManager onUpdate={loadStatistics} />
+              )}
+              {currentView === "reports" && <ProfitReport />}
+              {currentView === "financial" && <FinancialReports />}
+            </main>
+          </div>
         </div>
       </div>
     </div>
