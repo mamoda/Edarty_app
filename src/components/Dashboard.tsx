@@ -29,7 +29,6 @@ import FinancialReports from "./FinancialReports";
 import logo from "../assets/logo.png";
 // استيراد صور الخلفية
 import backgroundImage1 from "../assets/background-1.webp"; // قم بتعديل المسار حسب اسم ملف الصورة الأولى
-// import backgroundImage2 from "../assets/background-2.webp"; // قم بتعديل المسار حسب اسم ملف الصورة الثانية
 
 type View =
   | "dashboard"
@@ -221,18 +220,7 @@ export default function Dashboard() {
             backgroundImage: `url(${backgroundImage1})`,
           }}
         />
-        
-        {/* الصورة الثانية - فوق الصورة الأولى مع تأثير شفافية */}
-        {/* <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat mix-blend-overlay opacity-30"
-          style={{ 
-            backgroundImage: `url(${backgroundImage2})`,
-          }}
-        /> */}
-        
-        {/* طبقة تعتيم إضافية لتحسين قراءة المحتوى */}
-        {/* <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" /> */}
-      </div>
+        </div>
 
       {/* المحتوى الرئيسي - فوق الخلفية */}
       <div className="relative z-10">
