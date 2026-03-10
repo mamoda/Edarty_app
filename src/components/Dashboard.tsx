@@ -25,8 +25,8 @@ import FeesManager from "./FeesManager";
 import ExpensesManager from "./ExpensesManager";
 import TeachersManager from "./TeachersManager";
 import ProfitReport from "./ProfitReport";
+import FinancialReports from "./FinancialReports";
 import logo from "../assets/logo.png";
-
 
 // إضافة الأنماط المخصصة في ملف CSS منفصل أو استخدام Tailwind مباشرة
 // يمكنك إضافة هذه الأنماط في ملف index.css الرئيسي
@@ -50,7 +50,8 @@ type View =
   | "teachers"
   | "fees"
   | "expenses"
-  | "reports";
+  | "reports"
+  | "financial";
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
@@ -140,10 +141,9 @@ export default function Dashboard() {
     }
   };
 
-const handleUpgrade = () => {
-  window.location.href = "/upgrade"; // ✅ هذا سيفتح الصفحة في نفس التبويب
-};
-
+  const handleUpgrade = () => {
+    window.location.href = "/upgrade"; // ✅ هذا سيفتح الصفحة في نفس التبويب
+  };
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -236,39 +236,46 @@ const handleUpgrade = () => {
               >
                 {/* خلفية متوهجة متحركة */}
                 <div className="absolute -inset-3 bg-gradient-to-r from-emerald-400 to-blue-400 rounded-full blur-xl opacity-0 group-hover:opacity-75 transition-opacity duration-500 animate-pulse"></div>
-
                 {/* اللوجو */}
-<div className="flex items-center gap-3 group">
-  {/* اللوجو مع تأثير الظل الناعم */}
-  <div className="relative">
-    <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-blue-500/20 rounded-xl blur-lg 
-                    group-hover:blur-xl transition-all duration-500"></div>
-    <img
-      src={logo}
-      alt="إدارتي"
-      className="h-16 w-auto relative z-10 drop-shadow-lg
+                <div className="flex items-center gap-3 group">
+                  {/* اللوجو مع تأثير الظل الناعم */}
+                  <div className="relative">
+                    <div
+                      className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-blue-500/20 rounded-xl blur-lg 
+                    group-hover:blur-xl transition-all duration-500"
+                    ></div>
+                    <img
+                      src={logo}
+                      alt="إدارتي"
+                      className="h-16 w-auto relative z-10 drop-shadow-lg
                group-hover:drop-shadow-2xl group-hover:scale-110 transition-all duration-500"
-    />
-  </div>
+                    />
+                  </div>
 
-  {/* النص مع خط فاصل */}
-  <div className="hidden sm:block relative pr-3 mr-3 border-r-2 border-gray-200 
-                  group-hover:border-emerald-300 transition-colors duration-500">
-    <span className="block text-xl font-bold text-gray-800 group-hover:text-emerald-700 
-                   transition-colors duration-500">
-      إدارتي
-    </span>
-    <span className="block text-xs text-gray-500 group-hover:text-gray-600 
-                   transition-colors duration-500">
-      نظام إدارة متكامل
-    </span>
-  </div>
-</div>              </div>
+                  {/* النص مع خط فاصل */}
+                  <div
+                    className="hidden sm:block relative pr-3 mr-3 border-r-2 border-gray-200 
+                  group-hover:border-emerald-300 transition-colors duration-500"
+                  >
+                    <span
+                      className="block text-xl font-bold text-gray-800 group-hover:text-emerald-700 
+                   transition-colors duration-500"
+                    >
+                      إدارتي
+                    </span>
+                    <span
+                      className="block text-xs text-gray-500 group-hover:text-gray-600 
+                   transition-colors duration-500"
+                    >
+                      نظام إدارة متكامل
+                    </span>
+                  </div>
+                </div>{" "}
+              </div>
             </div>
 
             {/* القسم الأيمن */}
             <div className="flex items-center gap-4">
-              
               {/* زر الأبجريد (Upgrade) - تصميم احترافي وجذاب */}
               <button
                 onClick={handleUpgrade}
@@ -281,7 +288,6 @@ const handleUpgrade = () => {
                 {/* إضافة تأثير عند النقر */}
                 <span className="absolute inset-0 bg-white/30 opacity-0 group-active:opacity-100 transition-opacity duration-150"></span>
               </button>
-
 
               {/* بطاقة المستخدم */}
               <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-gray-50 to-white rounded-2xl border border-gray-100 shadow-sm">
@@ -424,6 +430,11 @@ const handleUpgrade = () => {
                 label="تقرير الأرباح"
                 icon={TrendingUp}
                 view="reports"
+              />
+              <MenuItem
+                label="التقارير المالية"
+                icon={BarChart3}
+                view="financial"
               />
             </div>
           </aside>
@@ -587,6 +598,7 @@ const handleUpgrade = () => {
               <ExpensesManager onUpdate={loadStatistics} />
             )}
             {currentView === "reports" && <ProfitReport />}
+            {currentView === "financial" && <FinancialReports />}
           </main>
         </div>
       </div>
