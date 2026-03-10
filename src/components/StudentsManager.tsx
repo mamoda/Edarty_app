@@ -52,6 +52,10 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
 
       if (error) throw error;
       setStudents(data || []);
+      
+      // توسيع جميع الصفوف بعد تحميل البيانات
+      const grades = new Set((data || []).map(s => s.grade || "غير محدد"));
+      setExpandedGrades(grades);
     } catch (error) {
       console.error("Error loading students:", error);
     } finally {
@@ -169,18 +173,49 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
     }))
     .sort((a, b) => a.grade.localeCompare(b.grade, "ar"));
 
-  // Filter students by search term and selected grade
-  const filteredStudents = selectedGrade
-    ? studentsByGrade[selectedGrade]?.filter(
-        (student) =>
-          student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          student.parent_name.toLowerCase().includes(searchTerm.toLowerCase()),
-      ) || []
-    : students;
+  // Filter students by search term (تحسين وظيفة البحث)
+  const filterStudentsBySearch = (studentList: Student[]) => {
+    if (!searchTerm.trim()) return studentList;
+    
+    const term = searchTerm.toLowerCase().trim();
+    return studentList.filter(
+      (student) =>
+        student.full_name.toLowerCase().includes(term) ||
+        student.parent_name.toLowerCase().includes(term) ||
+        student.parent_phone.includes(term) || // البحث برقم الهاتف
+        student.grade.toLowerCase().includes(term) // البحث بالصف
+    );
+  };
 
-  const filteredByGrade = selectedGrade
-    ? { [selectedGrade]: filteredStudents }
-    : studentsByGrade;
+  // Filter students by search term and selected grade
+  const getFilteredStudents = () => {
+    if (selectedGrade) {
+      // إذا تم اختيار صف محدد
+      const gradeStudents = studentsByGrade[selectedGrade] || [];
+      return filterStudentsBySearch(gradeStudents);
+    } else {
+      // إذا لم يتم اختيار صف، نبحث في جميع الطلاب
+      return filterStudentsBySearch(students);
+    }
+  };
+
+  // إنشاء كائن studentsByGrade مع التصفية
+  const getFilteredStudentsByGrade = () => {
+    const filtered: Record<string, Student[]> = {};
+    
+    Object.entries(studentsByGrade).forEach(([grade, gradeStudents]) => {
+      const filteredGradeStudents = filterStudentsBySearch(gradeStudents);
+      if (filteredGradeStudents.length > 0) {
+        filtered[grade] = filteredGradeStudents;
+      }
+    });
+    
+    return filtered;
+  };
+
+  const filteredStudentsByGrade = getFilteredStudentsByGrade();
+  const filteredStudents = getFilteredStudents();
+  const totalFilteredCount = filteredStudents.length;
 
   const totalStudents = students.length;
   const totalActive = students.filter((s) => s.status === "active").length;
@@ -207,8 +242,8 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
             <div>
               <p className="text-sm text-gray-600">إجمالي الطلاب</p>
               <p className="text-2xl font-bold text-gray-900">
-                {Number(totalStudents).toLocaleString("ar-EG")}
-              </p>{" "}
+                {totalStudents.toLocaleString("ar-EG")}
+              </p>
             </div>
             <BookOpen className="w-8 h-8 text-blue-600 opacity-75" />
           </div>
@@ -218,8 +253,8 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
             <div>
               <p className="text-sm text-gray-600">الطلاب النشطون</p>
               <p className="text-2xl font-bold text-green-600">
-                {Number(totalActive).toLocaleString("ar-EG")}
-              </p>{" "}
+                {totalActive.toLocaleString("ar-EG")}
+              </p>
             </div>
             <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
               <span className="text-green-600 font-bold">✓</span>
@@ -231,8 +266,8 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
             <div>
               <p className="text-sm text-gray-600">الطلاب غير النشطين</p>
               <p className="text-2xl font-bold text-gray-600">
-                {Number(totalInactive).toLocaleString("ar-EG")}
-              </p>{" "}
+                {totalInactive.toLocaleString("ar-EG")}
+              </p>
             </div>
             <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
               <span className="text-gray-600 font-bold">○</span>
@@ -249,9 +284,17 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="البحث عن طالب..."
+            placeholder="البحث عن طالب (بالاسم، ولي الأمر، رقم الهاتف، أو الصف)..."
             className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm("")}
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Grade Filter */}
@@ -267,25 +310,40 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
-            الكل
+            الكل {searchTerm && `(${totalFilteredCount})`}
           </button>
-          {gradeStats.map(({ grade }) => (
-            <button
-              key={grade}
-              onClick={() => setSelectedGrade(grade)}
-              className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${
-                selectedGrade === grade
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              {grade}
-            </button>
-          ))}
+          {gradeStats.map(({ grade }) => {
+            const countInGrade = searchTerm 
+              ? filterStudentsBySearch(studentsByGrade[grade] || []).length
+              : studentsByGrade[grade]?.length || 0;
+            
+            if (countInGrade === 0 && searchTerm) return null;
+            
+            return (
+              <button
+                key={grade}
+                onClick={() => setSelectedGrade(grade)}
+                className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${
+                  selectedGrade === grade
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                {grade} ({countInGrade})
+              </button>
+            );
+          })}
         </div>
 
+        {/* Search Result Info */}
+        {searchTerm && (
+          <div className="text-sm text-gray-600 bg-blue-50 p-2 rounded-lg">
+            تم العثور على {totalFilteredCount} نتيجة للبحث "{searchTerm}"
+          </div>
+        )}
+
         {/* Expand/Collapse Controls */}
-        {!selectedGrade && (
+        {!selectedGrade && Object.keys(filteredStudentsByGrade).length > 0 && (
           <div className="flex justify-end gap-2">
             <button
               onClick={expandAll}
@@ -304,7 +362,7 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
         )}
       </div>
 
-      {/* Students List by Grade */}
+      {/* Students List */}
       {loading ? (
         <div className="text-center py-12">
           <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -337,20 +395,34 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
                   {filteredStudents.length} طالب
                 </span>
               </div>
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="text-sm text-gray-600 hover:text-gray-900"
+                >
+                  مسح البحث
+                </button>
+              )}
             </div>
           </div>
-          <StudentList
-            students={filteredStudents}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
+          {filteredStudents.length > 0 ? (
+            <StudentList
+              students={filteredStudents}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+          ) : (
+            <div className="bg-white rounded-xl p-8 text-center">
+              <p className="text-gray-600">لا توجد نتائج للبحث "{searchTerm}"</p>
+            </div>
+          )}
         </div>
       ) : (
         // Grouped by Grade View
         <div className="space-y-4">
-          {gradeStats.map(({ grade, count, activeCount }) => {
+          {Object.entries(filteredStudentsByGrade).map(([grade, gradeStudents]) => {
             const isExpanded = expandedGrades.has(grade);
-            const gradeStudents = studentsByGrade[grade] || [];
+            const activeCount = gradeStudents.filter(s => s.status === "active").length;
 
             return (
               <div
@@ -377,13 +449,20 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
                           {grade}
                         </h3>
                         <div className="flex items-center gap-3 mt-1 text-sm">
-                          <span className="text-gray-600">إجمالي: {count}</span>
+                          <span className="text-gray-600">
+                            إجمالي: {gradeStudents.length}
+                          </span>
                           <span className="text-green-600">
                             نشط: {activeCount}
                           </span>
                           <span className="text-gray-400">
-                            غير نشط: {count - activeCount}
+                            غير نشط: {gradeStudents.length - activeCount}
                           </span>
+                          {searchTerm && (
+                            <span className="text-blue-600 text-xs">
+                              (نتائج البحث)
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -412,10 +491,28 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
               </div>
             );
           })}
+          
+          {Object.keys(filteredStudentsByGrade).length === 0 && searchTerm && (
+            <div className="bg-white rounded-xl p-12 text-center">
+              <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                لا توجد نتائج
+              </h3>
+              <p className="text-gray-600">
+                لم يتم العثور على طلاب يطابقون بحث "{searchTerm}"
+              </p>
+              <button
+                onClick={() => setSearchTerm("")}
+                className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
+              >
+                مسح البحث
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Add/Edit Student Modal */}
+      {/* Add/Edit Student Modal (نفس الكود بدون تغيير) */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
@@ -542,7 +639,7 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
   );
 }
 
-// Separate component for student list to avoid duplication
+// Separate component for student list
 function StudentList({
   students,
   onEdit,
@@ -552,6 +649,14 @@ function StudentList({
   onEdit: (student: Student) => void;
   onDelete: (id: string) => void;
 }) {
+  if (students.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-gray-500">لا يوجد طلاب في هذا الصف</p>
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-3">
       {students.map((student) => (
@@ -592,12 +697,14 @@ function StudentList({
               <button
                 onClick={() => onEdit(student)}
                 className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-all"
+                title="تعديل"
               >
                 <Edit2 className="w-4 h-4" />
               </button>
               <button
                 onClick={() => onDelete(student.id)}
                 className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-all"
+                title="حذف"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
