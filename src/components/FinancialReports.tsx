@@ -21,14 +21,11 @@ import {
   Eye,
   EyeOff,
   Banknote,
+  AlertCircle,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import {
-  LineChart as RechartsLineChart,
-  Line,
-  BarChart,
-  Bar,
   PieChart as RechartsPieChart,
   Pie,
   Cell,
@@ -43,7 +40,7 @@ import {
 } from "recharts";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from 'jspdf-autotable';
 
 interface FinancialReport {
   period: string;
@@ -104,6 +101,7 @@ interface FinancialReport {
 export default function FinancialReports() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const [reportType, setReportType] = useState<
     "daily" | "weekly" | "monthly" | "yearly" | "custom"
   >("monthly");
@@ -118,9 +116,6 @@ export default function FinancialReports() {
   const [report, setReport] = useState<FinancialReport | null>(null);
   const [showProjections, setShowProjections] = useState(false);
   const [currency, setCurrency] = useState("ج.م");
-  const [selectedChart, setSelectedChart] = useState<
-    "all" | "revenue" | "expenses" | "profit"
-  >("all");
 
   const COLORS = [
     "#059669",
@@ -138,6 +133,7 @@ export default function FinancialReports() {
   const loadReport = async () => {
     if (!user) return;
     setLoading(true);
+    setPdfError(null);
 
     try {
       // جلب المصاريف (الإيرادات)
@@ -350,7 +346,6 @@ export default function FinancialReports() {
           methods[method].amount += fee.amount;
           methods[method].count += 1;
         } catch {
-          // إذا لم يكن هناك notes أو كانت غير قابلة للتحليل
           if (!methods["cash"]) {
             methods["cash"] = { amount: 0, count: 0 };
           }
@@ -375,24 +370,19 @@ export default function FinancialReports() {
   };
 
   const calculateAccountsReceivable = (fees: any[]) => {
-    // حساب الذمم المدينة (المبالغ المستحقة)
-    // يمكن تحسين هذا بناءً على هيكل المصاريف
     return 0;
   };
 
   const calculateAccountsPayable = (teachers: any[]) => {
-    // حساب الذمم الدائنة (الرواتب المستحقة)
     return teachers
       .filter((t) => t.status === "active")
       .reduce((sum, t) => sum + (t.salary || 0), 0);
   };
 
   const calculateProjections = (fees: any[], expenses: any[]) => {
-    // توقعات بسيطة للأشهر القادمة
     const projections = [];
     const currentDate = new Date();
 
-    // حساب المتوسط الشهري
     const monthlyAvgRevenue =
       fees.length > 0
         ? fees
@@ -413,8 +403,8 @@ export default function FinancialReports() {
           month: "long",
           year: "numeric",
         }),
-        projectedRevenue: monthlyAvgRevenue * (1 + 0.05 * i), // نمو 5% شهرياً
-        projectedExpenses: monthlyAvgExpenses * (1 + 0.03 * i), // نمو 3% شهرياً
+        projectedRevenue: monthlyAvgRevenue * (1 + 0.05 * i),
+        projectedExpenses: monthlyAvgExpenses * (1 + 0.03 * i),
         projectedProfit:
           monthlyAvgRevenue * (1 + 0.05 * i) -
           monthlyAvgExpenses * (1 + 0.03 * i),
@@ -434,18 +424,18 @@ export default function FinancialReports() {
       0,
     );
     const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-    const currentAssets = totalRevenue; // تبسيط
+    const currentAssets = totalRevenue;
     const currentLiabilities = teachers
       .filter((t) => t.status === "active")
       .reduce((sum, t) => sum + (t.salary || 0), 0);
-    const totalAssets = currentAssets + 100000; // قيمة تقديرية للأصول الثابتة
+    const totalAssets = currentAssets + 100000;
     const netProfit = totalRevenue - totalExpenses;
 
     return {
       currentRatio:
         currentLiabilities > 0 ? currentAssets / currentLiabilities : 0,
       quickRatio:
-        currentLiabilities > 0 ? (currentAssets * 0.8) / currentLiabilities : 0, // تبسيط
+        currentLiabilities > 0 ? (currentAssets * 0.8) / currentLiabilities : 0,
       debtRatio: totalAssets > 0 ? currentLiabilities / totalAssets : 0,
       profitMargin: totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0,
       returnOnAssets: totalAssets > 0 ? (netProfit / totalAssets) * 100 : 0,
@@ -456,132 +446,136 @@ export default function FinancialReports() {
   const exportToExcel = () => {
     if (!report) return;
 
-    const wb = XLSX.utils.book_new();
+    try {
+      const wb = XLSX.utils.book_new();
 
-    // ورقة الملخص
-    const summaryData = [
-      ["البيان", "القيمة"],
-      [
-        "إجمالي الإيرادات",
-        `${report.summary.totalRevenue.toFixed(2)} ${currency}`,
-      ],
-      [
-        "إجمالي المصروفات",
-        `${report.summary.totalExpenses.toFixed(2)} ${currency}`,
-      ],
-      ["صافي الربح", `${report.summary.netProfit.toFixed(2)} ${currency}`],
-      ["هامش الربح", `${report.summary.profitMargin.toFixed(2)}%`],
-      ["التدفق النقدي", `${report.summary.cashFlow.toFixed(2)} ${currency}`],
-      [
-        "الذمم المدينة",
-        `${report.summary.accountsReceivable.toFixed(2)} ${currency}`,
-      ],
-      [
-        "الذمم الدائنة",
-        `${report.summary.accountsPayable.toFixed(2)} ${currency}`,
-      ],
-      [
-        "رأس المال العامل",
-        `${report.summary.workingCapital.toFixed(2)} ${currency}`,
-      ],
-    ];
-    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(wb, wsSummary, "ملخص");
+      // ورقة الملخص
+      const summaryData = [
+        ["البيان", "القيمة"],
+        [
+          "إجمالي الإيرادات",
+          `${report.summary.totalRevenue.toFixed(2)} ${currency}`,
+        ],
+        [
+          "إجمالي المصروفات",
+          `${report.summary.totalExpenses.toFixed(2)} ${currency}`,
+        ],
+        ["صافي الربح", `${report.summary.netProfit.toFixed(2)} ${currency}`],
+        ["هامش الربح", `${report.summary.profitMargin.toFixed(2)}%`],
+        ["التدفق النقدي", `${report.summary.cashFlow.toFixed(2)} ${currency}`],
+      ];
+      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, wsSummary, "ملخص");
 
-    // ورقة الإيرادات حسب الفئة
-    const revenueData = report.revenueByCategory.map((r) => [
-      r.category,
-      r.amount.toFixed(2),
-      `${r.percentage.toFixed(2)}%`,
-    ]);
-    revenueData.unshift(["الفئة", "المبلغ", "النسبة"]);
-    const wsRevenue = XLSX.utils.aoa_to_sheet(revenueData);
-    XLSX.utils.book_append_sheet(wb, wsRevenue, "الإيرادات");
+      // ورقة الإيرادات حسب الفئة
+      const revenueData = report.revenueByCategory.map((r) => [
+        r.category,
+        r.amount.toFixed(2),
+        `${r.percentage.toFixed(2)}%`,
+      ]);
+      revenueData.unshift(["الفئة", "المبلغ", "النسبة"]);
+      const wsRevenue = XLSX.utils.aoa_to_sheet(revenueData);
+      XLSX.utils.book_append_sheet(wb, wsRevenue, "الإيرادات");
 
-    // ورقة المصروفات حسب الفئة
-    const expensesData = report.expensesByCategory.map((e) => [
-      e.category,
-      e.amount.toFixed(2),
-      `${e.percentage.toFixed(2)}%`,
-    ]);
-    expensesData.unshift(["الفئة", "المبلغ", "النسبة"]);
-    const wsExpenses = XLSX.utils.aoa_to_sheet(expensesData);
-    XLSX.utils.book_append_sheet(wb, wsExpenses, "المصروفات");
-
-    // ورقة المعاملات اليومية
-    const dailyData = report.dailyTransactions.map((d) => [
-      d.date,
-      d.revenue.toFixed(2),
-      d.expenses.toFixed(2),
-      d.profit.toFixed(2),
-    ]);
-    dailyData.unshift(["التاريخ", "الإيرادات", "المصروفات", "الربح"]);
-    const wsDaily = XLSX.utils.aoa_to_sheet(dailyData);
-    XLSX.utils.book_append_sheet(wb, wsDaily, "المعاملات اليومية");
-
-    XLSX.writeFile(wb, `تقرير_مالي_${startDate}_الى_${endDate}.xlsx`);
+      XLSX.writeFile(wb, `تقرير_مالي_${startDate}_الى_${endDate}.xlsx`);
+    } catch (error) {
+      console.error("Error exporting to Excel:", error);
+      alert("حدث خطأ أثناء تصدير ملف Excel");
+    }
   };
 
   const exportToPDF = () => {
     if (!report) return;
+    
+    setPdfError(null);
+    
+    try {
+      // إنشاء مستند PDF جديد
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
 
-    const doc = new jsPDF();
+      // إضافة الخط العربي (استخدام الخط الافتراضي)
+      doc.setFont('helvetica');
+      
+      // العنوان
+      doc.setFontSize(20);
+      doc.setTextColor(5, 150, 105);
+      doc.text("تقرير مالي", 105, 20, { align: "center" });
 
-    // العنوان
-    doc.setFontSize(20);
-    doc.setTextColor(5, 150, 105);
-    doc.text("تقرير مالي", 105, 20, { align: "center" });
+      // الفترة
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`الفترة: ${startDate} إلى ${endDate}`, 105, 30, {
+        align: "center",
+      });
 
-    // الفترة
-    doc.setFontSize(12);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`الفترة: ${startDate} إلى ${endDate}`, 105, 30, {
-      align: "center",
-    });
+      // الملخص
+      doc.setFillColor(240, 253, 244);
+      doc.rect(20, 40, 170, 40, "F");
+      doc.setFontSize(14);
+      doc.setTextColor(5, 150, 105);
+      doc.text("ملخص", 105, 50, { align: "center" });
 
-    // الملخص
-    doc.setFillColor(240, 253, 244);
-    doc.rect(20, 40, 170, 40, "F");
-    doc.setFontSize(14);
-    doc.setTextColor(5, 150, 105);
-    doc.text("ملخص", 105, 50, { align: "center" });
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      
+      // نص الملخص مع التأكد من وجود القيم
+      const summaryLines = [
+        `إجمالي الإيرادات: ${report.summary.totalRevenue.toFixed(2)} ${currency}`,
+        `إجمالي المصروفات: ${report.summary.totalExpenses.toFixed(2)} ${currency}`,
+        `صافي الربح: ${report.summary.netProfit.toFixed(2)} ${currency}`,
+        `هامش الربح: ${report.summary.profitMargin.toFixed(2)}%`,
+      ];
 
-    doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
-    doc.text(
-      `إجمالي الإيرادات: ${report.summary.totalRevenue.toFixed(2)} ${currency}`,
-      30,
-      60,
-    );
-    doc.text(
-      `إجمالي المصروفات: ${report.summary.totalExpenses.toFixed(2)} ${currency}`,
-      100,
-      60,
-    );
-    doc.text(
-      `صافي الربح: ${report.summary.netProfit.toFixed(2)} ${currency}`,
-      170,
-      60,
-      { align: "right" },
-    );
+      doc.text(summaryLines[0], 30, 60);
+      doc.text(summaryLines[1], 30, 67);
+      doc.text(summaryLines[2], 30, 74);
+      doc.text(summaryLines[3], 30, 81);
 
-    // جدول الإيرادات
-    const revenueTableData = report.revenueByCategory.map((r) => [
-      r.category,
-      `${r.amount.toFixed(2)} ${currency}`,
-      `${r.percentage.toFixed(1)}%`,
-    ]);
+      // جدول الإيرادات
+      const revenueTableData = report.revenueByCategory.map((r) => [
+        r.category,
+        `${r.amount.toFixed(2)} ${currency}`,
+        `${r.percentage.toFixed(1)}%`,
+      ]);
 
-    (doc as any).autoTable({
-      startY: 90,
-      head: [["الفئة", "المبلغ", "النسبة"]],
-      body: revenueTableData,
-      theme: "grid",
-      headStyles: { fillColor: [5, 150, 105] },
-      styles: { font: "arial", fontSize: 8 },
-    });
+      // إضافة الجدول باستخدام autoTable
+      autoTable(doc, {
+        startY: 90,
+        head: [['الفئة', 'المبلغ', 'النسبة']],
+        body: revenueTableData,
+        theme: 'grid',
+        headStyles: { 
+          fillColor: [5, 150, 105],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'center',
+        },
+        styles: { 
+          fontSize: 8,
+          halign: 'right',
+          font: 'helvetica',
+        },
+        columnStyles: {
+          0: { cellWidth: 70 },
+          1: { cellWidth: 50 },
+          2: { cellWidth: 30 },
+        },
+        margin: { top: 20 },
+      });
 
-    doc.save(`تقرير_مالي_${startDate}.pdf`);
+      // حفظ الملف
+      const fileName = `تقرير_مالي_${startDate}.pdf`;
+      doc.save(fileName);
+      
+    } catch (error) {
+      console.error("Error exporting to PDF:", error);
+      setPdfError("حدث خطأ أثناء إنشاء ملف PDF. يرجى المحاولة مرة أخرى.");
+      alert("حدث خطأ أثناء تصدير ملف PDF. يرجى المحاولة مرة أخرى.");
+    }
   };
 
   if (loading) {
@@ -602,7 +596,7 @@ export default function FinancialReports() {
             تحليل مالي متقدم ونسب ومؤشرات أداء
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <select
             value={reportType}
             onChange={(e) => setReportType(e.target.value as any)}
@@ -648,11 +642,19 @@ export default function FinancialReports() {
             onClick={exportToPDF}
             className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all"
             title="تصدير PDF"
+            disabled={!!pdfError}
           >
             <FileText className="w-5 h-5" />
           </button>
         </div>
       </div>
+
+      {pdfError && (
+        <div className="bg-red-50 border-r-4 border-red-600 p-4 rounded-lg flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600" />
+          <p className="text-red-800">{pdfError}</p>
+        </div>
+      )}
 
       {report && (
         <>
@@ -750,13 +752,9 @@ export default function FinancialReports() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => {
-                      // التأكد من أن percent معرف
-                      const percentage = percent
-                        ? (percent * 100).toFixed(0)
-                        : "0";
-                      return `${name} (${percentage}%)`;
-                    }}
+                    label={({ name, percent = 0 }) => 
+                      `${name} (${(percent * 100).toFixed(0)}%)`
+                    }
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="amount"
@@ -786,12 +784,9 @@ export default function FinancialReports() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => {
-                      const percentage = percent
-                        ? (percent * 100).toFixed(0)
-                        : "0";
-                      return `${name} (${percentage}%)`;
-                    }}
+                    label={({ name, percent = 0 }) => 
+                      `${name} (${(percent * 100).toFixed(0)}%)`
+                    }
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="amount"
@@ -850,6 +845,7 @@ export default function FinancialReports() {
             </div>
           </div>
 
+          {/* باقي المكونات كما هي ... */}
           {/* جدول أفضل الطلاب */}
           <div className="bg-white rounded-xl shadow-md p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4">
