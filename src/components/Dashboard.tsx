@@ -229,51 +229,46 @@ export default function Dashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             {/* الشعار مع تأثير متحرك */}
-            <div className="flex items-center gap-4">
-              <div
-                className="relative group cursor-pointer"
-                onClick={() => setCurrentView("dashboard")}
-              >
-                {/* خلفية متوهجة متحركة */}
-                <div className="absolute -inset-3 bg-gradient-to-r from-emerald-400 to-blue-400 rounded-full blur-xl opacity-0 group-hover:opacity-75 transition-opacity duration-500 animate-pulse"></div>
-                {/* اللوجو */}
-                <div className="flex items-center gap-3 group">
-                  {/* اللوجو مع تأثير الظل الناعم */}
-                  <div className="relative">
-                    <div
-                      className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-blue-500/20 rounded-xl blur-lg 
-                    group-hover:blur-xl transition-all duration-500"
-                    ></div>
-                    <img
-                      src={logo}
-                      alt="إدارتي"
-                      className="h-16 w-auto relative z-10 drop-shadow-lg
-               group-hover:drop-shadow-2xl group-hover:scale-110 transition-all duration-500"
-                    />
-                  </div>
+<div className="flex items-center gap-4">
+  <div
+    className="relative group cursor-pointer"
+    onClick={() => setCurrentView("dashboard")}
+  >
+    {/* تأثير الخلفية */}
+    <div className="absolute -inset-3 bg-gradient-to-r from-emerald-600/10 to-teal-600/10 rounded-full blur-xl opacity-0 group-hover:opacity-80 transition-opacity duration-700"></div>
+    
+    <div className="flex items-center gap-4">
+      {/* أيقونة الميزان - رمز المحاسبة */}
+      <div className="relative">
+        <div className="w-14 h-14 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-500">
+          <svg 
+            className="w-8 h-8 text-emerald-600 group-hover:text-teal-600 transition-colors duration-500" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth={1.5}
+              d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" 
+            />
+          </svg>
+        </div>
+      </div>
 
-                  {/* النص مع خط فاصل */}
-                  <div
-                    className="hidden sm:block relative pr-3 mr-3 border-r-2 border-gray-200 
-                  group-hover:border-emerald-300 transition-colors duration-500"
-                  >
-                    <span
-                      className="block text-xl font-bold text-gray-800 group-hover:text-emerald-700 
-                   transition-colors duration-500"
-                    >
-                      إدارتي
-                    </span>
-                    <span
-                      className="block text-xs text-gray-500 group-hover:text-gray-600 
-                   transition-colors duration-500"
-                    >
-                      نظام إدارة متكامل
-                    </span>
-                  </div>
-                </div>{" "}
-              </div>
-            </div>
-
+      {/* النص */}
+      <div className="hidden sm:block">
+        <span className="block text-2xl font-light text-gray-900 leading-tight">
+          إدارتي
+        </span>
+        <span className="block text-xs text-gray-500 font-light tracking-wider">
+          نظام المحاسبة المتكامل
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
             {/* القسم الأيمن */}
             <div className="flex items-center gap-4">
               {/* زر الأبجريد (Upgrade) - تصميم احترافي وجذاب */}
