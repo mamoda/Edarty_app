@@ -20,6 +20,7 @@ import {
   RefreshCw,
   Eye,
   EyeOff,
+  Banknote,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
@@ -40,9 +41,9 @@ import {
   AreaChart,
   Area,
 } from "recharts";
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
 interface FinancialReport {
   period: string;
@@ -103,15 +104,32 @@ interface FinancialReport {
 export default function FinancialReports() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [reportType, setReportType] = useState<"daily" | "weekly" | "monthly" | "yearly" | "custom">("monthly");
-  const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [reportType, setReportType] = useState<
+    "daily" | "weekly" | "monthly" | "yearly" | "custom"
+  >("monthly");
+  const [startDate, setStartDate] = useState(
+    new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+      .toISOString()
+      .split("T")[0],
+  );
+  const [endDate, setEndDate] = useState(
+    new Date().toISOString().split("T")[0],
+  );
   const [report, setReport] = useState<FinancialReport | null>(null);
   const [showProjections, setShowProjections] = useState(false);
   const [currency, setCurrency] = useState("ج.م");
-  const [selectedChart, setSelectedChart] = useState<"all" | "revenue" | "expenses" | "profit">("all");
+  const [selectedChart, setSelectedChart] = useState<
+    "all" | "revenue" | "expenses" | "profit"
+  >("all");
 
-  const COLORS = ['#059669', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+  const COLORS = [
+    "#059669",
+    "#3b82f6",
+    "#f59e0b",
+    "#ef4444",
+    "#8b5cf6",
+    "#ec4899",
+  ];
 
   useEffect(() => {
     loadReport();
@@ -152,30 +170,46 @@ export default function FinancialReports() {
 
       // حساب الإيرادات حسب الفئة
       const revenueByCategory = calculateRevenueByCategory(feesData || []);
-      
+
       // حساب المصروفات حسب الفئة
-      const expensesByCategory = calculateExpensesByCategory(expensesData || []);
-      
+      const expensesByCategory = calculateExpensesByCategory(
+        expensesData || [],
+      );
+
       // حساب المعاملات اليومية
-      const dailyTransactions = calculateDailyTransactions(feesData || [], expensesData || []);
-      
+      const dailyTransactions = calculateDailyTransactions(
+        feesData || [],
+        expensesData || [],
+      );
+
       // أفضل الطلاب
       const topStudents = calculateTopStudents(feesData || []);
-      
+
       // طرق الدفع
       const paymentMethods = calculatePaymentMethods(feesData || []);
-      
+
       // التوقعات
-      const projections = calculateProjections(feesData || [], expensesData || []);
-      
+      const projections = calculateProjections(
+        feesData || [],
+        expensesData || [],
+      );
+
       // النسب المالية
-      const ratios = calculateFinancialRatios(feesData || [], expensesData || [], teachersData || []);
+      const ratios = calculateFinancialRatios(
+        feesData || [],
+        expensesData || [],
+        teachersData || [],
+      );
 
       // حساب الملخص
-      const totalRevenue = feesData?.reduce((sum, f) => sum + (f.amount > 0 ? f.amount : 0), 0) || 0;
-      const totalExpenses = expensesData?.reduce((sum, e) => sum + e.amount, 0) || 0;
+      const totalRevenue =
+        feesData?.reduce((sum, f) => sum + (f.amount > 0 ? f.amount : 0), 0) ||
+        0;
+      const totalExpenses =
+        expensesData?.reduce((sum, e) => sum + e.amount, 0) || 0;
       const netProfit = totalRevenue - totalExpenses;
-      const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+      const profitMargin =
+        totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
 
       // حساب الذمم
       const accountsReceivable = calculateAccountsReceivable(feesData || []);
@@ -193,7 +227,7 @@ export default function FinancialReports() {
           cashFlow: totalRevenue - totalExpenses,
           accountsReceivable,
           accountsPayable,
-          workingCapital: (totalRevenue - totalExpenses) - accountsPayable,
+          workingCapital: totalRevenue - totalExpenses - accountsPayable,
         },
         revenueByCategory,
         expensesByCategory,
@@ -212,9 +246,10 @@ export default function FinancialReports() {
 
   const calculateRevenueByCategory = (fees: any[]) => {
     const categories: { [key: string]: number } = {};
-    fees.forEach(fee => {
+    fees.forEach((fee) => {
       if (fee.amount > 0) {
-        categories[fee.payment_type] = (categories[fee.payment_type] || 0) + fee.amount;
+        categories[fee.payment_type] =
+          (categories[fee.payment_type] || 0) + fee.amount;
       }
     });
 
@@ -228,8 +263,9 @@ export default function FinancialReports() {
 
   const calculateExpensesByCategory = (expenses: any[]) => {
     const categories: { [key: string]: number } = {};
-    expenses.forEach(expense => {
-      categories[expense.category] = (categories[expense.category] || 0) + expense.amount;
+    expenses.forEach((expense) => {
+      categories[expense.category] =
+        (categories[expense.category] || 0) + expense.amount;
     });
 
     const total = Object.values(categories).reduce((a, b) => a + b, 0);
@@ -241,9 +277,10 @@ export default function FinancialReports() {
   };
 
   const calculateDailyTransactions = (fees: any[], expenses: any[]) => {
-    const dateMap: { [key: string]: { revenue: number; expenses: number } } = {};
+    const dateMap: { [key: string]: { revenue: number; expenses: number } } =
+      {};
 
-    fees.forEach(fee => {
+    fees.forEach((fee) => {
       if (fee.amount > 0) {
         const date = fee.payment_date;
         if (!dateMap[date]) dateMap[date] = { revenue: 0, expenses: 0 };
@@ -251,7 +288,7 @@ export default function FinancialReports() {
       }
     });
 
-    expenses.forEach(expense => {
+    expenses.forEach((expense) => {
       const date = expense.expense_date;
       if (!dateMap[date]) dateMap[date] = { revenue: 0, expenses: 0 };
       dateMap[date].expenses += expense.amount;
@@ -268,9 +305,11 @@ export default function FinancialReports() {
   };
 
   const calculateTopStudents = (fees: any[]) => {
-    const studentMap: { [key: string]: { name: string; total: number; lastDate: string } } = {};
+    const studentMap: {
+      [key: string]: { name: string; total: number; lastDate: string };
+    } = {};
 
-    fees.forEach(fee => {
+    fees.forEach((fee) => {
       if (fee.amount > 0 && fee.student) {
         const studentId = fee.student_id;
         if (!studentMap[studentId]) {
@@ -290,7 +329,7 @@ export default function FinancialReports() {
     return Object.values(studentMap)
       .sort((a, b) => b.total - a.total)
       .slice(0, 10)
-      .map(s => ({
+      .map((s) => ({
         student_name: s.name,
         total_paid: s.total,
         last_payment: s.lastDate,
@@ -300,7 +339,7 @@ export default function FinancialReports() {
   const calculatePaymentMethods = (fees: any[]) => {
     const methods: { [key: string]: { amount: number; count: number } } = {};
 
-    fees.forEach(fee => {
+    fees.forEach((fee) => {
       if (fee.amount > 0 && fee.notes) {
         try {
           const notes = JSON.parse(fee.notes);
@@ -322,9 +361,14 @@ export default function FinancialReports() {
     });
 
     return Object.entries(methods).map(([method, data]) => ({
-      method: method === 'cash' ? 'نقدي' :
-              method === 'card' ? 'بطاقة' :
-              method === 'bank_transfer' ? 'تحويل بنكي' : 'شيك',
+      method:
+        method === "cash"
+          ? "نقدي"
+          : method === "card"
+            ? "بطاقة"
+            : method === "bank_transfer"
+              ? "تحويل بنكي"
+              : "شيك",
       amount: data.amount,
       count: data.count,
     }));
@@ -339,7 +383,7 @@ export default function FinancialReports() {
   const calculateAccountsPayable = (teachers: any[]) => {
     // حساب الذمم الدائنة (الرواتب المستحقة)
     return teachers
-      .filter(t => t.status === 'active')
+      .filter((t) => t.status === "active")
       .reduce((sum, t) => sum + (t.salary || 0), 0);
   };
 
@@ -347,41 +391,61 @@ export default function FinancialReports() {
     // توقعات بسيطة للأشهر القادمة
     const projections = [];
     const currentDate = new Date();
-    
+
     // حساب المتوسط الشهري
-    const monthlyAvgRevenue = fees.length > 0 
-      ? fees.filter(f => f.amount > 0).reduce((sum, f) => sum + f.amount, 0) / 3 
-      : 0;
-    const monthlyAvgExpenses = expenses.length > 0 
-      ? expenses.reduce((sum, e) => sum + e.amount, 0) / 3 
-      : 0;
+    const monthlyAvgRevenue =
+      fees.length > 0
+        ? fees
+            .filter((f) => f.amount > 0)
+            .reduce((sum, f) => sum + f.amount, 0) / 3
+        : 0;
+    const monthlyAvgExpenses =
+      expenses.length > 0
+        ? expenses.reduce((sum, e) => sum + e.amount, 0) / 3
+        : 0;
 
     for (let i = 1; i <= 6; i++) {
       const nextMonth = new Date(currentDate);
       nextMonth.setMonth(nextMonth.getMonth() + i);
-      
+
       projections.push({
-        month: nextMonth.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' }),
+        month: nextMonth.toLocaleDateString("ar-EG", {
+          month: "long",
+          year: "numeric",
+        }),
         projectedRevenue: monthlyAvgRevenue * (1 + 0.05 * i), // نمو 5% شهرياً
         projectedExpenses: monthlyAvgExpenses * (1 + 0.03 * i), // نمو 3% شهرياً
-        projectedProfit: monthlyAvgRevenue * (1 + 0.05 * i) - monthlyAvgExpenses * (1 + 0.03 * i),
+        projectedProfit:
+          monthlyAvgRevenue * (1 + 0.05 * i) -
+          monthlyAvgExpenses * (1 + 0.03 * i),
       });
     }
 
     return projections;
   };
 
-  const calculateFinancialRatios = (fees: any[], expenses: any[], teachers: any[]) => {
-    const totalRevenue = fees.reduce((sum, f) => sum + (f.amount > 0 ? f.amount : 0), 0);
+  const calculateFinancialRatios = (
+    fees: any[],
+    expenses: any[],
+    teachers: any[],
+  ) => {
+    const totalRevenue = fees.reduce(
+      (sum, f) => sum + (f.amount > 0 ? f.amount : 0),
+      0,
+    );
     const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
     const currentAssets = totalRevenue; // تبسيط
-    const currentLiabilities = teachers.filter(t => t.status === 'active').reduce((sum, t) => sum + (t.salary || 0), 0);
+    const currentLiabilities = teachers
+      .filter((t) => t.status === "active")
+      .reduce((sum, t) => sum + (t.salary || 0), 0);
     const totalAssets = currentAssets + 100000; // قيمة تقديرية للأصول الثابتة
     const netProfit = totalRevenue - totalExpenses;
 
     return {
-      currentRatio: currentLiabilities > 0 ? currentAssets / currentLiabilities : 0,
-      quickRatio: currentLiabilities > 0 ? (currentAssets * 0.8) / currentLiabilities : 0, // تبسيط
+      currentRatio:
+        currentLiabilities > 0 ? currentAssets / currentLiabilities : 0,
+      quickRatio:
+        currentLiabilities > 0 ? (currentAssets * 0.8) / currentLiabilities : 0, // تبسيط
       debtRatio: totalAssets > 0 ? currentLiabilities / totalAssets : 0,
       profitMargin: totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0,
       returnOnAssets: totalAssets > 0 ? (netProfit / totalAssets) * 100 : 0,
@@ -396,49 +460,64 @@ export default function FinancialReports() {
 
     // ورقة الملخص
     const summaryData = [
-      ['البيان', 'القيمة'],
-      ['إجمالي الإيرادات', `${report.summary.totalRevenue.toFixed(2)} ${currency}`],
-      ['إجمالي المصروفات', `${report.summary.totalExpenses.toFixed(2)} ${currency}`],
-      ['صافي الربح', `${report.summary.netProfit.toFixed(2)} ${currency}`],
-      ['هامش الربح', `${report.summary.profitMargin.toFixed(2)}%`],
-      ['التدفق النقدي', `${report.summary.cashFlow.toFixed(2)} ${currency}`],
-      ['الذمم المدينة', `${report.summary.accountsReceivable.toFixed(2)} ${currency}`],
-      ['الذمم الدائنة', `${report.summary.accountsPayable.toFixed(2)} ${currency}`],
-      ['رأس المال العامل', `${report.summary.workingCapital.toFixed(2)} ${currency}`],
+      ["البيان", "القيمة"],
+      [
+        "إجمالي الإيرادات",
+        `${report.summary.totalRevenue.toFixed(2)} ${currency}`,
+      ],
+      [
+        "إجمالي المصروفات",
+        `${report.summary.totalExpenses.toFixed(2)} ${currency}`,
+      ],
+      ["صافي الربح", `${report.summary.netProfit.toFixed(2)} ${currency}`],
+      ["هامش الربح", `${report.summary.profitMargin.toFixed(2)}%`],
+      ["التدفق النقدي", `${report.summary.cashFlow.toFixed(2)} ${currency}`],
+      [
+        "الذمم المدينة",
+        `${report.summary.accountsReceivable.toFixed(2)} ${currency}`,
+      ],
+      [
+        "الذمم الدائنة",
+        `${report.summary.accountsPayable.toFixed(2)} ${currency}`,
+      ],
+      [
+        "رأس المال العامل",
+        `${report.summary.workingCapital.toFixed(2)} ${currency}`,
+      ],
     ];
     const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(wb, wsSummary, 'ملخص');
+    XLSX.utils.book_append_sheet(wb, wsSummary, "ملخص");
 
     // ورقة الإيرادات حسب الفئة
-    const revenueData = report.revenueByCategory.map(r => ([
+    const revenueData = report.revenueByCategory.map((r) => [
       r.category,
       r.amount.toFixed(2),
       `${r.percentage.toFixed(2)}%`,
-    ]));
-    revenueData.unshift(['الفئة', 'المبلغ', 'النسبة']);
+    ]);
+    revenueData.unshift(["الفئة", "المبلغ", "النسبة"]);
     const wsRevenue = XLSX.utils.aoa_to_sheet(revenueData);
-    XLSX.utils.book_append_sheet(wb, wsRevenue, 'الإيرادات');
+    XLSX.utils.book_append_sheet(wb, wsRevenue, "الإيرادات");
 
     // ورقة المصروفات حسب الفئة
-    const expensesData = report.expensesByCategory.map(e => ([
+    const expensesData = report.expensesByCategory.map((e) => [
       e.category,
       e.amount.toFixed(2),
       `${e.percentage.toFixed(2)}%`,
-    ]));
-    expensesData.unshift(['الفئة', 'المبلغ', 'النسبة']);
+    ]);
+    expensesData.unshift(["الفئة", "المبلغ", "النسبة"]);
     const wsExpenses = XLSX.utils.aoa_to_sheet(expensesData);
-    XLSX.utils.book_append_sheet(wb, wsExpenses, 'المصروفات');
+    XLSX.utils.book_append_sheet(wb, wsExpenses, "المصروفات");
 
     // ورقة المعاملات اليومية
-    const dailyData = report.dailyTransactions.map(d => ([
+    const dailyData = report.dailyTransactions.map((d) => [
       d.date,
       d.revenue.toFixed(2),
       d.expenses.toFixed(2),
       d.profit.toFixed(2),
-    ]));
-    dailyData.unshift(['التاريخ', 'الإيرادات', 'المصروفات', 'الربح']);
+    ]);
+    dailyData.unshift(["التاريخ", "الإيرادات", "المصروفات", "الربح"]);
     const wsDaily = XLSX.utils.aoa_to_sheet(dailyData);
-    XLSX.utils.book_append_sheet(wb, wsDaily, 'المعاملات اليومية');
+    XLSX.utils.book_append_sheet(wb, wsDaily, "المعاملات اليومية");
 
     XLSX.writeFile(wb, `تقرير_مالي_${startDate}_الى_${endDate}.xlsx`);
   };
@@ -447,32 +526,47 @@ export default function FinancialReports() {
     if (!report) return;
 
     const doc = new jsPDF();
-    
+
     // العنوان
     doc.setFontSize(20);
     doc.setTextColor(5, 150, 105);
-    doc.text('تقرير مالي', 105, 20, { align: 'center' });
-    
+    doc.text("تقرير مالي", 105, 20, { align: "center" });
+
     // الفترة
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
-    doc.text(`الفترة: ${startDate} إلى ${endDate}`, 105, 30, { align: 'center' });
+    doc.text(`الفترة: ${startDate} إلى ${endDate}`, 105, 30, {
+      align: "center",
+    });
 
     // الملخص
     doc.setFillColor(240, 253, 244);
-    doc.rect(20, 40, 170, 40, 'F');
+    doc.rect(20, 40, 170, 40, "F");
     doc.setFontSize(14);
     doc.setTextColor(5, 150, 105);
-    doc.text('ملخص', 105, 50, { align: 'center' });
-    
+    doc.text("ملخص", 105, 50, { align: "center" });
+
     doc.setFontSize(10);
     doc.setTextColor(0, 0, 0);
-    doc.text(`إجمالي الإيرادات: ${report.summary.totalRevenue.toFixed(2)} ${currency}`, 30, 60);
-    doc.text(`إجمالي المصروفات: ${report.summary.totalExpenses.toFixed(2)} ${currency}`, 100, 60);
-    doc.text(`صافي الربح: ${report.summary.netProfit.toFixed(2)} ${currency}`, 170, 60, { align: 'right' });
+    doc.text(
+      `إجمالي الإيرادات: ${report.summary.totalRevenue.toFixed(2)} ${currency}`,
+      30,
+      60,
+    );
+    doc.text(
+      `إجمالي المصروفات: ${report.summary.totalExpenses.toFixed(2)} ${currency}`,
+      100,
+      60,
+    );
+    doc.text(
+      `صافي الربح: ${report.summary.netProfit.toFixed(2)} ${currency}`,
+      170,
+      60,
+      { align: "right" },
+    );
 
     // جدول الإيرادات
-    const revenueTableData = report.revenueByCategory.map(r => [
+    const revenueTableData = report.revenueByCategory.map((r) => [
       r.category,
       `${r.amount.toFixed(2)} ${currency}`,
       `${r.percentage.toFixed(1)}%`,
@@ -480,11 +574,11 @@ export default function FinancialReports() {
 
     (doc as any).autoTable({
       startY: 90,
-      head: [['الفئة', 'المبلغ', 'النسبة']],
+      head: [["الفئة", "المبلغ", "النسبة"]],
       body: revenueTableData,
-      theme: 'grid',
+      theme: "grid",
       headStyles: { fillColor: [5, 150, 105] },
-      styles: { font: 'arial', fontSize: 8 },
+      styles: { font: "arial", fontSize: 8 },
     });
 
     doc.save(`تقرير_مالي_${startDate}.pdf`);
@@ -504,7 +598,9 @@ export default function FinancialReports() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">التقارير المالية</h2>
-          <p className="text-sm text-gray-600">تحليل مالي متقدم ونسب ومؤشرات أداء</p>
+          <p className="text-sm text-gray-600">
+            تحليل مالي متقدم ونسب ومؤشرات أداء
+          </p>
         </div>
         <div className="flex gap-2">
           <select
@@ -571,7 +667,8 @@ export default function FinancialReports() {
                 {report.summary.totalRevenue.toLocaleString("ar-EG", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
-                })} {currency}
+                })}{" "}
+                {currency}
               </p>
               <div className="mt-2 flex items-center gap-1 text-sm text-green-600">
                 <ArrowUpRight className="w-4 h-4" />
@@ -588,7 +685,8 @@ export default function FinancialReports() {
                 {report.summary.totalExpenses.toLocaleString("ar-EG", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
-                })} {currency}
+                })}{" "}
+                {currency}
               </p>
               <div className="mt-2 flex items-center gap-1 text-sm text-red-600">
                 <ArrowDownRight className="w-4 h-4" />
@@ -601,12 +699,15 @@ export default function FinancialReports() {
                 <TrendingUp className="w-6 h-6 text-blue-600" />
                 <span className="text-xs text-gray-500">صافي الربح</span>
               </div>
-              <p className={`text-2xl font-bold ${report.summary.netProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
+              <p
+                className={`text-2xl font-bold ${report.summary.netProfit >= 0 ? "text-green-600" : "text-red-600"}`}
+              >
                 {report.summary.netProfit >= 0 ? "+" : ""}
                 {report.summary.netProfit.toLocaleString("ar-EG", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
-                })} {currency}
+                })}{" "}
+                {currency}
               </p>
               <div className="mt-2 text-sm text-gray-600">
                 هامش الربح: {report.summary.profitMargin.toFixed(1)}%
@@ -621,11 +722,15 @@ export default function FinancialReports() {
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
                   <span>نسبة السيولة:</span>
-                  <span className="font-medium">{report.ratios.currentRatio.toFixed(2)}</span>
+                  <span className="font-medium">
+                    {report.ratios.currentRatio.toFixed(2)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>العائد على الأصول:</span>
-                  <span className="font-medium">{report.ratios.returnOnAssets.toFixed(1)}%</span>
+                  <span className="font-medium">
+                    {report.ratios.returnOnAssets.toFixed(1)}%
+                  </span>
                 </div>
               </div>
             </div>
@@ -635,7 +740,9 @@ export default function FinancialReports() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* الإيرادات حسب الفئة */}
             <div className="bg-white rounded-xl shadow-md p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">توزيع الإيرادات</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-4">
+                توزيع الإيرادات
+              </h3>
               <ResponsiveContainer width="100%" height={300}>
                 <RechartsPieChart>
                   <Pie
@@ -643,14 +750,23 @@ export default function FinancialReports() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                    label={({ name, percent }) => {
+                      // التأكد من أن percent معرف
+                      const percentage = percent
+                        ? (percent * 100).toFixed(0)
+                        : "0";
+                      return `${name} (${percentage}%)`;
+                    }}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="amount"
                     nameKey="category"
                   >
                     {report.revenueByCategory.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
                     ))}
                   </Pie>
                   <Tooltip />
@@ -660,7 +776,9 @@ export default function FinancialReports() {
 
             {/* المصروفات حسب الفئة */}
             <div className="bg-white rounded-xl shadow-md p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">توزيع المصروفات</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-4">
+                توزيع المصروفات
+              </h3>
               <ResponsiveContainer width="100%" height={300}>
                 <RechartsPieChart>
                   <Pie
@@ -668,14 +786,22 @@ export default function FinancialReports() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                    label={({ name, percent }) => {
+                      const percentage = percent
+                        ? (percent * 100).toFixed(0)
+                        : "0";
+                      return `${name} (${percentage}%)`;
+                    }}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="amount"
                     nameKey="category"
                   >
                     {report.expensesByCategory.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
                     ))}
                   </Pie>
                   <Tooltip />
@@ -685,7 +811,9 @@ export default function FinancialReports() {
 
             {/* المعاملات اليومية */}
             <div className="lg:col-span-2 bg-white rounded-xl shadow-md p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">المعاملات اليومية</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-4">
+                المعاملات اليومية
+              </h3>
               <ResponsiveContainer width="100%" height={300}>
                 <AreaChart data={report.dailyTransactions}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -693,9 +821,30 @@ export default function FinancialReports() {
                   <YAxis />
                   <Tooltip />
                   <Legend />
-                  <Area type="monotone" dataKey="revenue" stroke="#059669" fill="#059669" fillOpacity={0.3} name="الإيرادات" />
-                  <Area type="monotone" dataKey="expenses" stroke="#ef4444" fill="#ef4444" fillOpacity={0.3} name="المصروفات" />
-                  <Area type="monotone" dataKey="profit" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} name="الربح" />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#059669"
+                    fill="#059669"
+                    fillOpacity={0.3}
+                    name="الإيرادات"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="expenses"
+                    stroke="#ef4444"
+                    fill="#ef4444"
+                    fillOpacity={0.3}
+                    name="المصروفات"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="profit"
+                    stroke="#3b82f6"
+                    fill="#3b82f6"
+                    fillOpacity={0.3}
+                    name="الربح"
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -703,7 +852,9 @@ export default function FinancialReports() {
 
           {/* جدول أفضل الطلاب */}
           <div className="bg-white rounded-xl shadow-md p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">أفضل 10 طلاب من حيث السداد</h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-4">
+              أفضل 10 طلاب من حيث السداد
+            </h3>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -718,12 +869,15 @@ export default function FinancialReports() {
                   {report.topStudents.map((student, index) => (
                     <tr key={index} className="border-b hover:bg-gray-50">
                       <td className="px-4 py-2">{index + 1}</td>
-                      <td className="px-4 py-2 font-medium">{student.student_name}</td>
+                      <td className="px-4 py-2 font-medium">
+                        {student.student_name}
+                      </td>
                       <td className="px-4 py-2 text-green-600">
                         {student.total_paid.toLocaleString("ar-EG", {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
-                        })} {currency}
+                        })}{" "}
+                        {currency}
                       </td>
                       <td className="px-4 py-2">{student.last_payment}</td>
                     </tr>
@@ -740,16 +894,23 @@ export default function FinancialReports() {
               {report.paymentMethods.map((method, index) => (
                 <div key={index} className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center gap-3 mb-2">
-                    {method.method === 'نقدي' && <Banknote className="w-5 h-5 text-green-600" />}
-                    {method.method === 'بطاقة' && <CreditCard className="w-5 h-5 text-blue-600" />}
-                    {method.method === 'تحويل بنكي' && <Landmark className="w-5 h-5 text-purple-600" />}
+                    {method.method === "نقدي" && (
+                      <Banknote className="w-5 h-5 text-green-600" />
+                    )}
+                    {method.method === "بطاقة" && (
+                      <CreditCard className="w-5 h-5 text-blue-600" />
+                    )}
+                    {method.method === "تحويل بنكي" && (
+                      <Landmark className="w-5 h-5 text-purple-600" />
+                    )}
                     <span className="font-medium">{method.method}</span>
                   </div>
                   <p className="text-xl font-bold text-gray-900">
                     {method.amount.toLocaleString("ar-EG", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
-                    })} {currency}
+                    })}{" "}
+                    {currency}
                   </p>
                   <p className="text-sm text-gray-600">{method.count} عملية</p>
                 </div>
@@ -760,12 +921,18 @@ export default function FinancialReports() {
           {/* التوقعات المستقبلية */}
           <div className="bg-white rounded-xl shadow-md p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-gray-900">التوقعات المالية للأشهر القادمة</h3>
+              <h3 className="text-lg font-bold text-gray-900">
+                التوقعات المالية للأشهر القادمة
+              </h3>
               <button
                 onClick={() => setShowProjections(!showProjections)}
                 className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
               >
-                {showProjections ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showProjections ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
                 <span>{showProjections ? "إخفاء" : "عرض"}</span>
               </button>
             </div>
@@ -775,8 +942,12 @@ export default function FinancialReports() {
                   <thead>
                     <tr className="bg-gray-50">
                       <th className="px-4 py-2 text-right">الشهر</th>
-                      <th className="px-4 py-2 text-right">الإيرادات المتوقعة</th>
-                      <th className="px-4 py-2 text-right">المصروفات المتوقعة</th>
+                      <th className="px-4 py-2 text-right">
+                        الإيرادات المتوقعة
+                      </th>
+                      <th className="px-4 py-2 text-right">
+                        المصروفات المتوقعة
+                      </th>
                       <th className="px-4 py-2 text-right">الربح المتوقع</th>
                     </tr>
                   </thead>
@@ -788,20 +959,25 @@ export default function FinancialReports() {
                           {proj.projectedRevenue.toLocaleString("ar-EG", {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
-                          })} {currency}
+                          })}{" "}
+                          {currency}
                         </td>
                         <td className="px-4 py-2 text-red-600">
                           {proj.projectedExpenses.toLocaleString("ar-EG", {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
-                          })} {currency}
+                          })}{" "}
+                          {currency}
                         </td>
-                        <td className={`px-4 py-2 ${proj.projectedProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
+                        <td
+                          className={`px-4 py-2 ${proj.projectedProfit >= 0 ? "text-green-600" : "text-red-600"}`}
+                        >
                           {proj.projectedProfit >= 0 ? "+" : ""}
                           {proj.projectedProfit.toLocaleString("ar-EG", {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
-                          })} {currency}
+                          })}{" "}
+                          {currency}
                         </td>
                       </tr>
                     ))}
