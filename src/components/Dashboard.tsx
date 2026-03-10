@@ -28,22 +28,6 @@ import ProfitReport from "./ProfitReport";
 import FinancialReports from "./FinancialReports";
 import logo from "../assets/logo.png";
 
-// إضافة الأنماط المخصصة في ملف CSS منفصل أو استخدام Tailwind مباشرة
-// يمكنك إضافة هذه الأنماط في ملف index.css الرئيسي
-// @keyframes slide-up {
-//   from {
-//     opacity: 0;
-//     transform: translateY(20px) translateX(0);
-//   }
-//   to {
-//     opacity: 1;
-//     transform: translateY(0) translateX(0);
-//   }
-// }
-// .animate-slide-up {
-//   animation: slide-up 0.3s ease-out;
-// }
-
 type View =
   | "dashboard"
   | "students"
