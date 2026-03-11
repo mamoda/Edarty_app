@@ -498,12 +498,7 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose, language, t }) => {
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
-  const { language, t } = useLanguage();
-  const [currentLanguage, setCurrentLanguage] = useState(language);
-  
-  const toggleLanguage = () => {
-    setCurrentLanguage(currentLanguage === 'ar' ? 'en' : 'ar');
-  };
+  const { language, toggleLanguage, t } = useLanguage(); // ✅ استخدام مباشر من الـ Context
   
   const [currentView, setCurrentView] = useState<View>("dashboard");
   const [stats, setStats] = useState<Statistics>({
