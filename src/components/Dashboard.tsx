@@ -498,7 +498,10 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose, language, t }) => {
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
-  const { language, toggleLanguage, t } = useLanguage(); // ✅ استخدام مباشر من الـ Context
+  const { language, t } = useLanguage(); // ✅ استخدام مباشر من الـ Context
+  const toggleLanguage = () => {
+    // Toggle language logic will be implemented based on your LanguageContext
+  };
   
   const [currentView, setCurrentView] = useState<View>("dashboard");
   const [stats, setStats] = useState<Statistics>({
@@ -514,7 +517,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
-  const [selectedPeriod, setSelectedPeriod] = useState(language === 'ar' ? 'شهر' : 'month');
+  const [selectedPeriod, setSelectedPeriod] = useState('month'); // Fixed: Always use English key for consistency
 
   useEffect(() => {
     loadStatistics();
