@@ -3,46 +3,28 @@ import {
   Users,
   TrendingDown,
   TrendingUp,
-  LogOut,
-  BarChart3,
-  Briefcase,
   Crown,
   MessageCircle,
   Headphones,
   Send,
   X,
   GraduationCap,
-  Sparkles,
-  Zap,
   Bell,
   Search,
   ChevronLeft,
   ChevronRight,
   LineChart,
   Wallet,
-  Landmark,
-  Star,
-  Moon,
-  Sun,
   Activity,
   DollarSign,
-  Calendar,
-  Clock,
-  CheckCircle,
-  AlertCircle,
   Settings,
-  Menu,
   Home,
-  Plus,
-  Minus,
-  Filter,
-  Download,
-  Upload,
   Maximize2,
-  Minimize2,
   UserPlus,
+  Globe,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../context/LanguageContext";
 import { supabase } from "../lib/supabase";
 import type { Statistics } from "../types/database";
 import StudentsManager from "./StudentsManager";
@@ -89,11 +71,16 @@ interface HeaderProps {
   user: any;
   onSignOut: () => void;
   onViewChange: (view: View) => void;
+  language: 'ar' | 'en';
+  toggleLanguage: () => void;
+  t: (key: string) => string;
 }
 
 interface ChatProps {
   isOpen: boolean;
   onClose: () => void;
+  language: 'ar' | 'en';
+  t: (key: string) => string;
 }
 
 interface Message {
@@ -115,6 +102,7 @@ const ModernStatCard: React.FC<StatCardProps> = ({
   suffix = "",
   delay = 0
 }) => {
+  const { language } = useLanguage();
   const trendPositive = trend === 'up';
   
   return (
@@ -130,7 +118,7 @@ const ModernStatCard: React.FC<StatCardProps> = ({
           <div className="space-y-2">
             <p className="text-sm font-medium text-gray-500 tracking-wide">{title}</p>
             <p className="text-3xl font-bold text-gray-900 tracking-tight">
-              {prefix}{value.toLocaleString("ar-EG")}{suffix}
+              {prefix}{value.toLocaleString(language === 'ar' ? "ar-EG" : "en-US")}{suffix}
             </p>
             
             {trend && trendValue !== undefined && (
@@ -145,7 +133,9 @@ const ModernStatCard: React.FC<StatCardProps> = ({
                   )}
                   <span>{trendValue}%</span>
                 </div>
-                <span className="text-xs text-gray-400">vs last month</span>
+                <span className="text-xs text-gray-400">
+                  {language === 'ar' ? 'مقارنة بالشهر الماضي' : 'vs last month'}
+                </span>
               </div>
             )}
           </div>
@@ -250,7 +240,7 @@ const QuickActionCard: React.FC<QuickActionProps> = ({
 );
 
 // ==================== مكون الهيدر ====================
-const ModernHeader: React.FC<HeaderProps> = ({ user, onSignOut, onViewChange }) => {
+const ModernHeader: React.FC<HeaderProps> = ({ user, onSignOut, onViewChange, language, toggleLanguage, t }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -277,13 +267,13 @@ const ModernHeader: React.FC<HeaderProps> = ({ user, onSignOut, onViewChange }) 
             
             <nav className="hidden md:flex items-center gap-1">
               <button className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200">
-                Overview
+                {t('overview')}
               </button>
               <button className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200">
-                Analytics
+                {t('analytics')}
               </button>
               <button className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200">
-                Reports
+                {t('reports')}
               </button>
             </nav>
           </div>
@@ -293,7 +283,7 @@ const ModernHeader: React.FC<HeaderProps> = ({ user, onSignOut, onViewChange }) 
             <div className="relative group">
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder={t('search')}
                 className="w-full px-4 py-2 pr-10 bg-gray-100/50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all duration-300 text-sm placeholder:text-gray-400"
               />
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors duration-300" />
@@ -306,6 +296,17 @@ const ModernHeader: React.FC<HeaderProps> = ({ user, onSignOut, onViewChange }) 
           
           {/* Right section */}
           <div className="flex items-center gap-2">
+            {/* Language toggle */}
+            <button
+              onClick={toggleLanguage}
+              className="p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-200 flex items-center gap-1"
+            >
+              <Globe className="w-4 h-4 text-gray-600" />
+              <span className="text-xs font-medium text-gray-600">
+                {language === 'ar' ? 'English' : 'العربية'}
+              </span>
+            </button>
+            
             {/* Theme toggle */}
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
@@ -331,7 +332,7 @@ const ModernHeader: React.FC<HeaderProps> = ({ user, onSignOut, onViewChange }) 
               {showNotifications && (
                 <div className="absolute left-0 mt-2 w-80 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200/50 overflow-hidden">
                   <div className="p-3 border-b border-gray-100">
-                    <h3 className="font-semibold text-gray-900">Notifications</h3>
+                    <h3 className="font-semibold text-gray-900">{t('notifications')}</h3>
                   </div>
                   <div className="max-h-96 overflow-y-auto">
                     {[1, 2, 3].map((i) => (
@@ -341,8 +342,8 @@ const ModernHeader: React.FC<HeaderProps> = ({ user, onSignOut, onViewChange }) 
                             <Activity className="w-3 h-3 text-blue-600" />
                           </div>
                           <div className="flex-1">
-                            <p className="text-sm text-gray-900">New update available</p>
-                            <p className="text-xs text-gray-500 mt-0.5">5 min ago</p>
+                            <p className="text-sm text-gray-900">{t('newUpdate')}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">{t('minAgo')}</p>
                           </div>
                         </div>
                       </div>
@@ -355,7 +356,7 @@ const ModernHeader: React.FC<HeaderProps> = ({ user, onSignOut, onViewChange }) 
             {/* Upgrade button */}
             <button className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-amber-500/25 transition-all duration-300">
               <Crown className="w-4 h-4" />
-              <span>Upgrade</span>
+              <span>{t('upgrade')}</span>
             </button>
             
             {/* User menu */}
@@ -371,13 +372,13 @@ const ModernHeader: React.FC<HeaderProps> = ({ user, onSignOut, onViewChange }) 
                 <div className="absolute left-0 mt-2 w-48 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200/50 overflow-hidden">
                   <div className="p-3 border-b border-gray-100">
                     <p className="text-sm font-medium text-gray-900">{user?.email}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Free plan</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{t('freePlan')}</p>
                   </div>
                   <button
                     onClick={onSignOut}
                     className="w-full text-right p-3 text-sm text-red-600 hover:bg-red-50/80 transition-colors duration-200"
                   >
-                    Sign out
+                    {t('signOut')}
                   </button>
                 </div>
               )}
@@ -390,14 +391,14 @@ const ModernHeader: React.FC<HeaderProps> = ({ user, onSignOut, onViewChange }) 
 };
 
 // ==================== مكون الدردشة ====================
-const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose }) => {
+const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose, language, t }) => {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
       type: "bot",
-      text: "Hi! I'm your AI assistant. How can I help you today?",
-      time: new Date().toLocaleTimeString("en-US", {
+      text: t('aiAssistant'),
+      time: new Date().toLocaleTimeString(language === 'ar' ? "ar-EG" : "en-US", {
         hour: "2-digit",
         minute: "2-digit",
       }),
@@ -412,7 +413,7 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose }) => {
       id: messages.length + 1,
       type: "user",
       text: message,
-      time: new Date().toLocaleTimeString("en-US", {
+      time: new Date().toLocaleTimeString(language === 'ar' ? "ar-EG" : "en-US", {
         hour: "2-digit",
         minute: "2-digit",
       }),
@@ -424,8 +425,8 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose }) => {
       const botMessage: Message = {
         id: messages.length + 2,
         type: "bot",
-        text: "Thanks for your message! Our support team will get back to you shortly.",
-        time: new Date().toLocaleTimeString("en-US", {
+        text: t('supportReply'),
+        time: new Date().toLocaleTimeString(language === 'ar' ? "ar-EG" : "en-US", {
           hour: "2-digit",
           minute: "2-digit",
         }),
@@ -447,8 +448,8 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose }) => {
               <span className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-green-400 rounded-full ring-2 ring-white"></span>
             </div>
             <div>
-              <h3 className="font-semibold text-white">Support</h3>
-              <p className="text-xs text-white/80">Typically replies in 5min</p>
+              <h3 className="font-semibold text-white">{t('support')}</h3>
+              <p className="text-xs text-white/80">{t('supportDesc')}</p>
             </div>
           </div>
           <button
@@ -492,7 +493,7 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose }) => {
             type="text"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Type your message..."
+            placeholder={t('typeMessage')}
             className="flex-1 px-3 py-2 bg-gray-100/50 border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
           />
           <button
@@ -511,6 +512,7 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose }) => {
 // ==================== المكون الرئيسي ====================
 export default function Dashboard() {
   const { user, signOut } = useAuth();
+  const { language, toggleLanguage, t } = useLanguage();
   const [currentView, setCurrentView] = useState<View>("dashboard");
   const [stats, setStats] = useState<Statistics>({
     totalStudents: 0,
@@ -525,7 +527,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
-  const [selectedPeriod, setSelectedPeriod] = useState("month");
+  const [selectedPeriod, setSelectedPeriod] = useState(language === 'ar' ? 'شهر' : 'month');
 
   useEffect(() => {
     loadStatistics();
@@ -578,7 +580,9 @@ export default function Dashboard() {
 
   // Mock data for charts
   const revenueData = [65, 45, 75, 55, 85, 95, 70];
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const days = language === 'ar' 
+    ? [t('mon'), t('tue'), t('wed'), t('thu'), t('fri'), t('sat'), t('sun')]
+    : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   // حساب نسب التغيير (mock data)
   const calculateTrend = (value: number): { trend: 'up' | 'down', value: number } => {
@@ -597,10 +601,17 @@ export default function Dashboard() {
   const profitTrend = calculateTrend(stats.netProfit ?? 0);
 
   return (
-    <div className="min-h-screen bg-gray-50/50" dir="rtl">
+    <div className="min-h-screen bg-gray-50/50" dir={language === 'ar' ? 'rtl' : 'ltr'}>
       {/* Main content */}
       <div className="relative">
-        <ModernHeader user={user} onSignOut={signOut} onViewChange={handleViewChange} />
+        <ModernHeader 
+          user={user} 
+          onSignOut={signOut} 
+          onViewChange={handleViewChange}
+          language={language}
+          toggleLanguage={toggleLanguage}
+          t={t}
+        />
 
         {/* Chat button */}
         <div className="fixed bottom-6 left-6 z-50">
@@ -613,7 +624,12 @@ export default function Dashboard() {
           </button>
         </div>
 
-        <ModernChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+        <ModernChat 
+          isOpen={isChatOpen} 
+          onClose={() => setIsChatOpen(false)}
+          language={language}
+          t={t}
+        />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex gap-6">
@@ -622,14 +638,14 @@ export default function Dashboard() {
               <aside className="w-64 flex-shrink-0">
                 <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-2 sticky top-20 border border-gray-100/50">
                   <ModernMenuItem
-                    label="Dashboard"
+                    label={t('dashboard')}
                     icon={Home}
                     view="dashboard"
                     currentView={currentView}
                     onClick={() => handleViewChange("dashboard")}
                   />
                   <ModernMenuItem
-                    label="Students"
+                    label={t('students')}
                     icon={GraduationCap}
                     view="students"
                     count={stats.activeStudents}
@@ -637,35 +653,35 @@ export default function Dashboard() {
                     onClick={() => handleViewChange("students")}
                   />
                   <ModernMenuItem
-                    label="Teachers"
+                    label={t('teachers')}
                     icon={Briefcase}
                     view="teachers"
                     currentView={currentView}
                     onClick={() => handleViewChange("teachers")}
                   />
                   <ModernMenuItem
-                    label="Fees"
+                    label={t('fees')}
                     icon={Wallet}
                     view="fees"
                     currentView={currentView}
                     onClick={() => handleViewChange("fees")}
                   />
                   <ModernMenuItem
-                    label="Expenses"
+                    label={t('expenses')}
                     icon={TrendingDown}
                     view="expenses"
                     currentView={currentView}
                     onClick={() => handleViewChange("expenses")}
                   />
                   <ModernMenuItem
-                    label="Profit"
+                    label={t('profit')}
                     icon={TrendingUp}
                     view="reports"
                     currentView={currentView}
                     onClick={() => handleViewChange("reports")}
                   />
                   <ModernMenuItem
-                    label="Financial"
+                    label={t('financial')}
                     icon={LineChart}
                     view="financial"
                     currentView={currentView}
@@ -676,7 +692,7 @@ export default function Dashboard() {
                   
                   <button className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200">
                     <Settings className="w-4 h-4" />
-                    <span className="flex-1 text-right font-medium">Settings</span>
+                    <span className="flex-1 text-right font-medium">{t('settings')}</span>
                   </button>
                   
                   <button
@@ -706,24 +722,29 @@ export default function Dashboard() {
                   {/* Header with period selector */}
                   <div className="flex items-center justify-between">
                     <div>
-                      <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-                      <p className="text-sm text-gray-500 mt-1">Welcome back, {user?.email?.split('@')[0]}</p>
+                      <h1 className="text-2xl font-semibold text-gray-900">{t('dashboard')}</h1>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {t('welcome')}, {user?.email?.split('@')[0]}
+                      </p>
                     </div>
                     
                     <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xl rounded-lg p-1 border border-gray-100/50">
-                      {["day", "week", "month", "year"].map((period) => (
-                        <button
-                          key={period}
-                          onClick={() => setSelectedPeriod(period)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
-                            selectedPeriod === period
-                              ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm"
-                              : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80"
-                          }`}
-                        >
-                          {period}
-                        </button>
-                      ))}
+                      {[t('day'), t('week'), t('month'), t('year')].map((period, index) => {
+                        const periods = ['day', 'week', 'month', 'year'];
+                        return (
+                          <button
+                            key={periods[index]}
+                            onClick={() => setSelectedPeriod(periods[index])}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                              selectedPeriod === periods[index]
+                                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm"
+                                : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80"
+                            }`}
+                          >
+                            {period}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -737,7 +758,7 @@ export default function Dashboard() {
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       <ModernStatCard
-                        title="Total Students"
+                        title={t('totalStudents')}
                         value={stats.totalStudents ?? 0}
                         icon={Users}
                         trend={studentsTrend.trend}
@@ -746,7 +767,7 @@ export default function Dashboard() {
                         delay={0}
                       />
                       <ModernStatCard
-                        title="Active Students"
+                        title={t('activeStudents')}
                         value={stats.activeStudents ?? 0}
                         icon={Activity}
                         trend={activeStudentsTrend.trend}
@@ -755,7 +776,7 @@ export default function Dashboard() {
                         delay={50}
                       />
                       <ModernStatCard
-                        title="Total Teachers"
+                        title={t('totalTeachers')}
                         value={stats.totalTeachers ?? 0}
                         icon={Briefcase}
                         trend={teachersTrend.trend}
@@ -764,7 +785,7 @@ export default function Dashboard() {
                         delay={100}
                       />
                       <ModernStatCard
-                        title="Revenue"
+                        title={t('revenue')}
                         value={stats.totalRevenue ?? 0}
                         icon={DollarSign}
                         prefix="$"
@@ -774,7 +795,7 @@ export default function Dashboard() {
                         delay={150}
                       />
                       <ModernStatCard
-                        title="Expenses"
+                        title={t('expenses')}
                         value={stats.totalExpenses ?? 0}
                         icon={TrendingDown}
                         prefix="$"
@@ -784,7 +805,7 @@ export default function Dashboard() {
                         delay={200}
                       />
                       <ModernStatCard
-                        title="Net Profit"
+                        title={t('netProfit')}
                         value={stats.netProfit ?? 0}
                         icon={TrendingUp}
                         prefix="$"
@@ -800,8 +821,8 @@ export default function Dashboard() {
                   <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-6 border border-gray-100/50">
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <h3 className="font-semibold text-gray-900">Revenue overview</h3>
-                        <p className="text-xs text-gray-500 mt-1">Last 7 days</p>
+                        <h3 className="font-semibold text-gray-900">{t('revenueOverview')}</h3>
+                        <p className="text-xs text-gray-500 mt-1">{t('last7Days')}</p>
                       </div>
                       <button className="p-2 hover:bg-gray-100/80 rounded-lg transition-colors duration-200">
                         <Maximize2 className="w-4 h-4 text-gray-500" />
@@ -823,32 +844,32 @@ export default function Dashboard() {
 
                   {/* Quick actions */}
                   <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-3">Quick actions</h3>
+                    <h3 className="text-sm font-medium text-gray-700 mb-3">{t('quickActions')}</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                       <QuickActionCard
-                        title="Add Student"
-                        description="Register a new student"
+                        title={t('addStudent')}
+                        description={t('addStudentDesc')}
                         icon={UserPlus}
                         color="from-blue-600 to-indigo-600"
                         onClick={() => handleViewChange("students")}
                       />
                       <QuickActionCard
-                        title="Record Fee"
-                        description="Collect payment"
+                        title={t('recordFee')}
+                        description={t('recordFeeDesc')}
                         icon={Wallet}
                         color="from-emerald-600 to-teal-600"
                         onClick={() => handleViewChange("fees")}
                       />
                       <QuickActionCard
-                        title="Add Expense"
-                        description="Record a cost"
+                        title={t('addExpense')}
+                        description={t('addExpenseDesc')}
                         icon={TrendingDown}
                         color="from-red-600 to-rose-600"
                         onClick={() => handleViewChange("expenses")}
                       />
                       <QuickActionCard
-                        title="View Reports"
-                        description="Check analytics"
+                        title={t('viewReports')}
+                        description={t('viewReportsDesc')}
                         icon={BarChart3}
                         color="from-purple-600 to-pink-600"
                         onClick={() => handleViewChange("reports")}
@@ -871,3 +892,11 @@ export default function Dashboard() {
     </div>
   );
 }
+
+// استيراد الأيقونات المفقودة
+import { Briefcase, TrendingDown as TrendingDownIcon, TrendingUp as TrendingUpIcon, Moon as MoonIcon, Sun as SunIcon } from "lucide-react";
+const BriefcaseIcon = Briefcase;
+const TrendingDownIcon2 = TrendingDownIcon;
+const TrendingUpIcon2 = TrendingUpIcon;
+const MoonIcon2 = MoonIcon;
+const SunIcon2 = SunIcon;

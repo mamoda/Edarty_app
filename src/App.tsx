@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { LanguageProvider } from './context/LanguageContext'; // استيراد LanguageProvider
 import LandingPage from './components/LandingPage';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -109,12 +110,14 @@ function AppContent() {
   return <AppRoutes />;
 }
 
-// التطبيق الرئيسي مع BrowserRouter
+// التطبيق الرئيسي مع BrowserRouter - هنا نضيف LanguageProvider
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppContent />
+        <LanguageProvider> 
+          <AppContent />
+        </LanguageProvider>
       </AuthProvider>
     </BrowserRouter>
   );
