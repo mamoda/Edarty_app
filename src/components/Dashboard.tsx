@@ -498,10 +498,9 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose, language, t }) => {
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
-  const { language, t } = useLanguage(); // ✅ استخدام مباشر من الـ Context
-  const toggleLanguage = () => {
-    // Toggle language logic will be implemented based on your LanguageContext
-  };
+  const { language, toggleLanguage, t } = useLanguage(); // ✅ Fixed: Destructure toggleLanguage from context
+  
+  // Removed the local toggleLanguage function as it's now from the context
   
   const [currentView, setCurrentView] = useState<View>("dashboard");
   const [stats, setStats] = useState<Statistics>({
@@ -572,7 +571,7 @@ export default function Dashboard() {
     ? [t('mon'), t('tue'), t('wed'), t('thu'), t('fri'), t('sat'), t('sun')]
     : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-  const calculateTrend = (value: number): { trend: 'up' | 'down', value: number } => {
+  const calculateTrend = (): { trend: 'up' | 'down', value: number } => {
     const mockChange = Math.random() * 20 - 10;
     return {
       trend: mockChange >= 0 ? 'up' : 'down',
@@ -580,12 +579,12 @@ export default function Dashboard() {
     };
   };
 
-  const studentsTrend = calculateTrend(stats.totalStudents ?? 0);
-  const activeStudentsTrend = calculateTrend(stats.activeStudents ?? 0);
-  const teachersTrend = calculateTrend(stats.totalTeachers ?? 0);
-  const revenueTrend = calculateTrend(stats.totalRevenue ?? 0);
-  const expensesTrend = calculateTrend(stats.totalExpenses ?? 0);
-  const profitTrend = calculateTrend(stats.netProfit ?? 0);
+  const studentsTrend = calculateTrend();
+  const activeStudentsTrend = calculateTrend();
+  const teachersTrend = calculateTrend();
+  const revenueTrend = calculateTrend();
+  const expensesTrend = calculateTrend();
+  const profitTrend = calculateTrend();
 
   return (
     <div className="min-h-screen bg-gray-50/50" dir={language === 'ar' ? 'rtl' : 'ltr'}>
