@@ -1,14 +1,9 @@
-import { useState, useEffect } from "react";
-
+import React, { useState, useEffect } from "react";
 import {
   Users,
-  DollarSign,
   TrendingDown,
   TrendingUp,
   LogOut,
-  UserPlus,
-  Receipt,
-  FileText,
   BarChart3,
   Briefcase,
   Crown,
@@ -16,10 +11,40 @@ import {
   Headphones,
   Send,
   X,
+  GraduationCap,
+  Sparkles,
+  Zap,
+  Bell,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  LineChart,
+  Wallet,
+  Landmark,
+  Star,
+  Moon,
+  Sun,
+  Activity,
+  DollarSign,
+  Calendar,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Settings,
+  Menu,
+  Home,
+  Plus,
+  Minus,
+  Filter,
+  Download,
+  Upload,
+  Maximize2,
+  Minimize2,
+  UserPlus,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
-import { Statistics } from "../types/database";
+import type { Statistics } from "../types/database";
 import StudentsManager from "./StudentsManager";
 import FeesManager from "./FeesManager";
 import ExpensesManager from "./ExpensesManager";
@@ -27,18 +52,463 @@ import TeachersManager from "./TeachersManager";
 import ProfitReport from "./ProfitReport";
 import FinancialReports from "./FinancialReports";
 import logo from "../assets/logo.png";
-// استيراد صور الخلفية
-import backgroundImage1 from "../assets/background-1.webp"; // قم بتعديل المسار حسب اسم ملف الصورة الأولى
 
-type View =
-  | "dashboard"
-  | "students"
-  | "teachers"
-  | "fees"
-  | "expenses"
-  | "reports"
-  | "financial";
+type View = "dashboard" | "students" | "teachers" | "fees" | "expenses" | "reports" | "financial";
 
+// ==================== أنواع البيانات ====================
+interface StatCardProps {
+  title: string;
+  value: number;
+  icon: React.ElementType;
+  trend?: 'up' | 'down';
+  trendValue?: number;
+  color: string;
+  prefix?: string;
+  suffix?: string;
+  delay?: number;
+}
+
+interface MenuItemProps {
+  label: string;
+  icon: React.ElementType;
+  view: View;
+  count?: number;
+  currentView: View;
+  onClick: () => void;
+}
+
+interface QuickActionProps {
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  color: string;
+  onClick: () => void;
+}
+
+interface HeaderProps {
+  user: any;
+  onSignOut: () => void;
+  onViewChange: (view: View) => void;
+}
+
+interface ChatProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+interface Message {
+  id: number;
+  type: 'user' | 'bot';
+  text: string;
+  time: string;
+}
+
+// ==================== مكون البطاقة الإحصائية ====================
+const ModernStatCard: React.FC<StatCardProps> = ({ 
+  title, 
+  value, 
+  icon: Icon, 
+  trend, 
+  trendValue, 
+  color, 
+  prefix = "", 
+  suffix = "",
+  delay = 0
+}) => {
+  const trendPositive = trend === 'up';
+  
+  return (
+    <div 
+      className="group relative bg-white/90 backdrop-blur-xl rounded-2xl shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden border border-gray-100/50 hover:border-gray-200/80"
+      style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+      <div className="absolute -inset-px bg-gradient-to-r from-blue-500/5 via-indigo-500/5 to-purple-500/5 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+      
+      <div className="relative p-6">
+        <div className="flex items-start justify-between">
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-gray-500 tracking-wide">{title}</p>
+            <p className="text-3xl font-bold text-gray-900 tracking-tight">
+              {prefix}{value.toLocaleString("ar-EG")}{suffix}
+            </p>
+            
+            {trend && trendValue !== undefined && (
+              <div className="flex items-center gap-2 mt-2">
+                <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                  trendPositive ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+                }`}>
+                  {trendPositive ? (
+                    <TrendingUp className="w-3 h-3" />
+                  ) : (
+                    <TrendingDown className="w-3 h-3" />
+                  )}
+                  <span>{trendValue}%</span>
+                </div>
+                <span className="text-xs text-gray-400">vs last month</span>
+              </div>
+            )}
+          </div>
+          
+          <div className="relative">
+            <div className={`absolute inset-0 bg-gradient-to-br ${color} rounded-xl blur-xl opacity-30 group-hover:opacity-40 transition-opacity duration-500`}></div>
+            <div className={`relative p-3.5 bg-gradient-to-br ${color} rounded-xl shadow-lg transform group-hover:scale-110 group-hover:-rotate-3 transition-all duration-500`}>
+              <Icon className="w-5 h-5 text-white" />
+            </div>
+          </div>
+        </div>
+        
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-gray-200/50 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-700 origin-left"></div>
+      </div>
+    </div>
+  );
+};
+
+// ==================== مكون القائمة الجانبية ====================
+const ModernMenuItem: React.FC<MenuItemProps> = ({ 
+  label, 
+  icon: Icon, 
+  view, 
+  count, 
+  currentView, 
+  onClick 
+}) => {
+  const isActive = currentView === view;
+  
+  return (
+    <button
+      onClick={onClick}
+      className={`relative w-full group rounded-xl transition-all duration-300 ${
+        isActive ? 'scale-[1.02]' : 'hover:scale-[1.01]'
+      }`}
+    >
+      <div className={`absolute inset-0 rounded-xl transition-all duration-300 ${
+        isActive 
+          ? 'bg-gradient-to-r from-blue-600/90 to-indigo-600/90 shadow-lg shadow-blue-600/20' 
+          : 'bg-gray-100/50 opacity-0 group-hover:opacity-100'
+      }`}></div>
+      
+      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-xl opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500"></div>
+      
+      <div className="relative flex items-center gap-3 px-4 py-2.5">
+        <div className={`p-2 rounded-lg transition-all duration-300 ${
+          isActive 
+            ? 'bg-white/20 text-white' 
+            : 'bg-white/80 text-gray-600 group-hover:bg-white group-hover:text-blue-600'
+        }`}>
+          <Icon className="w-4 h-4" />
+        </div>
+        
+        <span className={`flex-1 text-right font-medium transition-colors duration-300 ${
+          isActive ? 'text-white' : 'text-gray-700'
+        }`}>
+          {label}
+        </span>
+        
+        {count !== undefined && (
+          <span className={`text-xs px-2 py-1 rounded-full transition-all duration-300 ${
+            isActive 
+              ? 'bg-white/20 text-white' 
+              : 'bg-gray-200/80 text-gray-600'
+          }`}>
+            {count}
+          </span>
+        )}
+      </div>
+      
+      {isActive && (
+        <div className="absolute right-0 top-2 bottom-2 w-1 bg-white rounded-full shadow-lg shadow-white/50"></div>
+      )}
+    </button>
+  );
+};
+
+// ==================== مكون الإجراء السريع ====================
+const QuickActionCard: React.FC<QuickActionProps> = ({ 
+  title, 
+  description, 
+  icon: Icon, 
+  color, 
+  onClick 
+}) => (
+  <button
+    onClick={onClick}
+    className="group relative bg-white/90 backdrop-blur-xl rounded-xl shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden border border-gray-100/50 hover:border-gray-200/80"
+  >
+    <div className={`absolute inset-0 bg-gradient-to-br ${color} opacity-0 group-hover:opacity-5 transition-opacity duration-700`}></div>
+    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+    
+    <div className="relative p-5 text-right">
+      <div className={`inline-flex p-2.5 bg-gradient-to-br ${color} rounded-xl shadow-lg mb-3 transform group-hover:scale-110 group-hover:-rotate-3 transition-all duration-500`}>
+        <Icon className="w-5 h-5 text-white" />
+      </div>
+      
+      <h4 className="font-semibold text-gray-900 mb-1">{title}</h4>
+      <p className="text-xs text-gray-500 leading-relaxed">{description}</p>
+    </div>
+  </button>
+);
+
+// ==================== مكون الهيدر ====================
+const ModernHeader: React.FC<HeaderProps> = ({ user, onSignOut, onViewChange }) => {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  
+  return (
+    <header className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <div className="flex items-center gap-4">
+            <div
+              className="relative group cursor-pointer"
+              onClick={() => onViewChange("dashboard")}
+            >
+              <div className="absolute -inset-2 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <img
+                src={logo}
+                alt="إدارتي"
+                className="h-8 w-auto relative z-10"
+              />
+            </div>
+            
+            <div className="h-6 w-px bg-gray-200"></div>
+            
+            <nav className="hidden md:flex items-center gap-1">
+              <button className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200">
+                Overview
+              </button>
+              <button className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200">
+                Analytics
+              </button>
+              <button className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200">
+                Reports
+              </button>
+            </nav>
+          </div>
+          
+          {/* Search */}
+          <div className="hidden md:block flex-1 max-w-md mx-8">
+            <div className="relative group">
+              <input
+                type="text"
+                placeholder="Search..."
+                className="w-full px-4 py-2 pr-10 bg-gray-100/50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all duration-300 text-sm placeholder:text-gray-400"
+              />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors duration-300" />
+              
+              <kbd className="absolute left-10 top-1/2 transform -translate-y-1/2 hidden group-focus-within:inline-flex items-center gap-1 px-1.5 py-0.5 bg-gray-200/80 rounded text-xs text-gray-500">
+                ⌘K
+              </kbd>
+            </div>
+          </div>
+          
+          {/* Right section */}
+          <div className="flex items-center gap-2">
+            {/* Theme toggle */}
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-200"
+            >
+              {isDarkMode ? (
+                <Sun className="w-4 h-4 text-gray-600" />
+              ) : (
+                <Moon className="w-4 h-4 text-gray-600" />
+              )}
+            </button>
+            
+            {/* Notifications */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-200 relative"
+              >
+                <Bell className="w-4 h-4 text-gray-600" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-600 rounded-full ring-2 ring-white"></span>
+              </button>
+              
+              {showNotifications && (
+                <div className="absolute left-0 mt-2 w-80 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200/50 overflow-hidden">
+                  <div className="p-3 border-b border-gray-100">
+                    <h3 className="font-semibold text-gray-900">Notifications</h3>
+                  </div>
+                  <div className="max-h-96 overflow-y-auto">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="p-3 hover:bg-gray-50/80 transition-colors duration-200 border-b border-gray-100 last:border-0">
+                        <div className="flex items-start gap-3">
+                          <div className="p-1.5 bg-blue-100 rounded-lg">
+                            <Activity className="w-3 h-3 text-blue-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-900">New update available</p>
+                            <p className="text-xs text-gray-500 mt-0.5">5 min ago</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Upgrade button */}
+            <button className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-amber-500/25 transition-all duration-300">
+              <Crown className="w-4 h-4" />
+              <span>Upgrade</span>
+            </button>
+            
+            {/* User menu */}
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center text-white font-medium text-sm shadow-sm hover:shadow-md transition-all duration-200"
+              >
+                {user?.email?.charAt(0).toUpperCase() || "U"}
+              </button>
+              
+              {showUserMenu && (
+                <div className="absolute left-0 mt-2 w-48 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200/50 overflow-hidden">
+                  <div className="p-3 border-b border-gray-100">
+                    <p className="text-sm font-medium text-gray-900">{user?.email}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Free plan</p>
+                  </div>
+                  <button
+                    onClick={onSignOut}
+                    className="w-full text-right p-3 text-sm text-red-600 hover:bg-red-50/80 transition-colors duration-200"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+};
+
+// ==================== مكون الدردشة ====================
+const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose }) => {
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: 1,
+      type: "bot",
+      text: "Hi! I'm your AI assistant. How can I help you today?",
+      time: new Date().toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    },
+  ]);
+
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!message.trim()) return;
+
+    const userMessage: Message = {
+      id: messages.length + 1,
+      type: "user",
+      text: message,
+      time: new Date().toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+    setMessages([...messages, userMessage]);
+    setMessage("");
+
+    setTimeout(() => {
+      const botMessage: Message = {
+        id: messages.length + 2,
+        type: "bot",
+        text: "Thanks for your message! Our support team will get back to you shortly.",
+        time: new Date().toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      };
+      setMessages((prev) => [...prev, botMessage]);
+    }, 1000);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed bottom-6 left-6 z-50 w-96 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200/50 overflow-hidden">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Headphones className="w-5 h-5 text-white" />
+              <span className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-green-400 rounded-full ring-2 ring-white"></span>
+            </div>
+            <div>
+              <h3 className="font-semibold text-white">Support</h3>
+              <p className="text-xs text-white/80">Typically replies in 5min</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-white/20 rounded-lg transition-all duration-200"
+          >
+            <X className="w-4 h-4 text-white" />
+          </button>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div className="h-96 overflow-y-auto p-4 space-y-3 bg-gray-50/50">
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            className={`flex ${msg.type === "user" ? "justify-start" : "justify-end"}`}
+          >
+            <div
+              className={`relative max-w-[80%] rounded-lg p-3 ${
+                msg.type === "user"
+                  ? "bg-gray-200 text-gray-900"
+                  : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
+              }`}
+            >
+              <p className="text-sm">{msg.text}</p>
+              <p className={`text-xs mt-1 ${
+                msg.type === "user" ? "text-gray-500" : "text-white/70"
+              }`}>
+                {msg.time}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Input */}
+      <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-100 bg-white">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Type your message..."
+            className="flex-1 px-3 py-2 bg-gray-100/50 border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
+          />
+          <button
+            type="submit"
+            className="p-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:shadow-lg transition-all duration-300 disabled:opacity-50"
+            disabled={!message.trim()}
+          >
+            <Send className="w-4 h-4" />
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+// ==================== المكون الرئيسي ====================
 export default function Dashboard() {
   const { user, signOut } = useAuth();
   const [currentView, setCurrentView] = useState<View>("dashboard");
@@ -54,18 +524,8 @@ export default function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      type: "bot",
-      text: "مرحباً! كيف يمكنني مساعدتك اليوم؟",
-      time: new Date().toLocaleTimeString("ar-EG", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    },
-  ]);
+  const [showSidebar, setShowSidebar] = useState(true);
+  const [selectedPeriod, setSelectedPeriod] = useState("month");
 
   useEffect(() => {
     loadStatistics();
@@ -76,32 +536,21 @@ export default function Dashboard() {
 
     setLoading(true);
     try {
-      const [studentsRes, feesRes, expensesRes, teachersRes] =
-        await Promise.all([
-          supabase
-            .from("students")
-            .select("*", { count: "exact" })
-            .eq("user_id", user.id),
-          supabase.from("fees").select("amount").eq("user_id", user.id),
-          supabase.from("expenses").select("amount").eq("user_id", user.id),
-          supabase.from("teachers").select("*").eq("user_id", user.id),
-        ]);
+      const [studentsRes, feesRes, expensesRes, teachersRes] = await Promise.all([
+        supabase.from("students").select("*", { count: "exact" }).eq("user_id", user.id),
+        supabase.from("fees").select("amount").eq("user_id", user.id),
+        supabase.from("expenses").select("amount").eq("user_id", user.id),
+        supabase.from("teachers").select("*").eq("user_id", user.id),
+      ]);
 
-      const totalStudents = studentsRes.count || 0;
-      const activeStudents =
-        studentsRes.data?.filter((s) => s.status === "active").length || 0;
-      const totalRevenue =
-        feesRes.data?.reduce((sum, fee) => sum + Number(fee.amount), 0) || 0;
-      const totalExpenses =
-        expensesRes.data?.reduce((sum, exp) => sum + Number(exp.amount), 0) ||
-        0;
-      const totalTeachers = teachersRes.data?.length || 0;
-      const activeTeachers =
-        teachersRes.data?.filter((t) => t.status === "active").length || 0;
-      const totalSalaries =
-        teachersRes.data
-          ?.filter((t) => t.status === "active")
-          .reduce((sum, t) => sum + Number(t.salary), 0) || 0;
+      // حساب جميع القيم مع التأكد من أنها أرقام حقيقية
+      const totalStudents = studentsRes.count ?? 0;
+      const activeStudents = studentsRes.data?.filter((s) => s.status === "active").length ?? 0;
+      const totalRevenue = feesRes.data?.reduce((sum, fee) => sum + Number(fee.amount), 0) ?? 0;
+      const totalExpenses = expensesRes.data?.reduce((sum, exp) => sum + Number(exp.amount), 0) ?? 0;
+      const totalTeachers = teachersRes.data?.length ?? 0;
+      const activeTeachers = teachersRes.data?.filter((t) => t.status === "active").length ?? 0;
+      const totalSalaries = teachersRes.data?.filter((t) => t.status === "active").reduce((sum, t) => sum + Number(t.salary), 0) ?? 0;
 
       setStats({
         totalStudents,
@@ -127,480 +576,292 @@ export default function Dashboard() {
     }
   };
 
-  const handleUpgrade = () => {
-    window.location.href = "/upgrade";
-  };
+  // Mock data for charts
+  const revenueData = [65, 45, 75, 55, 85, 95, 70];
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!message.trim()) return;
-
-    // إضافة رسالة المستخدم
-    const userMessage = {
-      id: messages.length + 1,
-      type: "user",
-      text: message,
-      time: new Date().toLocaleTimeString("ar-EG", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+  // حساب نسب التغيير (mock data)
+  const calculateTrend = (value: number): { trend: 'up' | 'down', value: number } => {
+    const mockChange = Math.random() * 20 - 10;
+    return {
+      trend: mockChange >= 0 ? 'up' : 'down',
+      value: Math.abs(Math.round(mockChange * 10) / 10)
     };
-    setMessages([...messages, userMessage]);
-    setMessage("");
-
-    // محاكاة رد البوت بعد ثانية
-    setTimeout(() => {
-      const botMessage = {
-        id: messages.length + 2,
-        type: "bot",
-        text: "شكراً لتواصلك معنا. أحد ممثلي الدعم سيرد عليك قريباً.",
-        time: new Date().toLocaleTimeString("ar-EG", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      };
-      setMessages((prev) => [...prev, botMessage]);
-    }, 1000);
   };
 
-  const StatCard = ({ title, value, icon: Icon, color, prefix = "" }: any) => (
-    <div
-      className="bg-white/90 backdrop-blur-sm rounded-xl shadow-md p-6 border-r-4 hover:bg-white transition-all duration-300"
-      style={{ borderColor: color }}
-    >
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-gray-600 text-sm mb-1">{title}</p>
-          <p className="text-2xl font-bold text-gray-900">
-            {prefix}
-            {typeof value === "number" ? value.toLocaleString("ar-EG") : value}
-          </p>
-        </div>
-        <div
-          className="p-3 rounded-full"
-          style={{ backgroundColor: `${color}20` }}
-        >
-          <Icon className="w-6 h-6" style={{ color }} />
-        </div>
-      </div>
-    </div>
-  );
-
-  const MenuItem = ({ label, icon: Icon, view, count }: any) => (
-    <button
-      onClick={() => handleViewChange(view)}
-      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-        currentView === view
-          ? "bg-blue-600 text-white shadow-md"
-          : "text-gray-700 hover:bg-white/80 backdrop-blur-sm"
-      }`}
-    >
-      <Icon className="w-5 h-5" />
-      <span className="flex-1 text-right font-medium">{label}</span>
-      {count !== undefined && (
-        <span
-          className={`text-xs px-2 py-1 rounded-full ${
-            currentView === view ? "bg-blue-500" : "bg-gray-200 text-gray-700"
-          }`}
-        >
-          {count}
-        </span>
-      )}
-    </button>
-  );
+  const studentsTrend = calculateTrend(stats.totalStudents);
+  const activeStudentsTrend = calculateTrend(stats.activeStudents);
+  const teachersTrend = calculateTrend(stats.totalTeachers);
+  const revenueTrend = calculateTrend(stats.totalRevenue);
+  const expensesTrend = calculateTrend(stats.totalExpenses);
+  const profitTrend = calculateTrend(stats.netProfit);
 
   return (
-    <div className="min-h-screen relative" dir="rtl">
-      {/* صور الخلفية - فوق بعضها البعض */}
-      <div className="fixed inset-0 z-0">
-        {/* الصورة الأولى - الخلفية الأساسية */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ 
-            backgroundImage: `url(${backgroundImage1})`,
-          }}
-        />
-        </div>
+    <div className="min-h-screen bg-gray-50/50" dir="rtl">
+      {/* Main content */}
+      <div className="relative">
+        <ModernHeader user={user} onSignOut={signOut} onViewChange={handleViewChange} />
 
-      {/* المحتوى الرئيسي - فوق الخلفية */}
-      <div className="relative z-10">
-        <header className="bg-white/80 backdrop-blur-md border-b sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-20">
-              {/* الشعار مع تأثير متحرك */}
-              <div className="flex items-center gap-4">
-                <div
-                  className="relative group cursor-pointer"
-                  onClick={() => setCurrentView("dashboard")}
-                >
-                  {/* خلفية متوهجة متحركة - أكثر نعومة */}
-                  <div className="absolute -inset-3 bg-gradient-to-r from-blue-400/30 to-indigo-400/30 rounded-full blur-xl opacity-0 group-hover:opacity-70 transition-opacity duration-700"></div>
-
-                  {/* اللوجو فقط - بحجم مناسب وواضح */}
-                  <div className="relative">
-                    {/* تأثير خلفية ناعمة للوجو */}
-                    <div
-                      className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-2xl blur-md 
-                     group-hover:blur-lg transition-all duration-500"
-                    ></div>
-
-                    {/* اللوجو بحجم أكبر قليلاً ليكون واضحاً */}
-                    <img
-                      src={logo}
-                      alt="إدارتي"
-                      className="h-20 w-auto relative z-10 drop-shadow-md
-                   group-hover:drop-shadow-xl group-hover:scale-105 transition-all duration-500"
-                    />
-                  </div>
-                </div>
-              </div>
-              {/* القسم الأيمن */}
-              <div className="flex items-center gap-4">
-                {/* زر الأبجريد (Upgrade) - تصميم احترافي وجذاب */}
-                <button
-                  onClick={handleUpgrade}
-                  className="relative group flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden"
-                >
-                  {/* تأثيرات الزر الموجودة */}
-                  <Crown className="relative w-5 h-5 transition-all duration-500 group-hover:scale-110 group-hover:rotate-12" />
-                  <span className="relative font-bold text-sm">الأبجريد</span>
-
-                  {/* إضافة تأثير عند النقر */}
-                  <span className="absolute inset-0 bg-white/30 opacity-0 group-active:opacity-100 transition-opacity duration-150"></span>
-                </button>
-
-                {/* بطاقة المستخدم */}
-                <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-gray-50 to-white rounded-2xl border border-gray-100 shadow-sm">
-                  <div className="text-right">
-                    <p className="text-xs text-gray-500">المستخدم</p>
-                    <p className="text-sm font-bold text-gray-800">
-                      {user?.email?.split("@")[0] || "مستخدم"}
-                    </p>
-                  </div>
-                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md transform rotate-3">
-                    {user?.email?.charAt(0).toUpperCase() || "م"}
-                  </div>
-                </div>
-
-                {/* زر الخروج بتصميم مميز */}
-                <button
-                  onClick={() => signOut()}
-                  className="relative group flex items-center gap-2 px-5 py-2.5 bg-white text-red-600 rounded-xl border-2 border-red-100 hover:border-red-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden"
-                >
-                  {/* خلفية متحركة */}
-                  <div className="absolute inset-0 bg-gradient-to-l from-red-50 to-transparent translate-x-full group-hover:translate-x-0 transition-transform duration-500"></div>
-
-                  {/* المحتوى */}
-                  <span className="relative font-bold text-sm">مغادرة</span>
-                  <LogOut className="relative w-4 h-4 transition-transform group-hover:-translate-x-1" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        {/* أيقونة الدردشة العائمة - تصميم احترافي */}
+        {/* Chat button */}
         <div className="fixed bottom-6 left-6 z-50">
-          {/* نافذة الدردشة */}
-          {isChatOpen && (
-            <div className="absolute bottom-20 left-0 w-80 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-100 overflow-hidden mb-4 animate-[slide-up_0.3s_ease-out]">
-              {/* رأس الدردشة */}
-              <div className="bg-gradient-to-l from-emerald-600 to-blue-600 p-4 text-white">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Headphones className="w-5 h-5" />
-                    <h3 className="font-bold">الدعم الفني</h3>
-                  </div>
-                  <button
-                    onClick={() => setIsChatOpen(false)}
-                    className="hover:bg-white/20 rounded-lg p-1 transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                <p className="text-xs text-white/80 mt-1">
-                  نحن هنا لمساعدتك 24/7
-                </p>
-              </div>
-
-              {/* منطقة الرسائل */}
-              <div className="h-80 overflow-y-auto p-4 space-y-3 bg-gray-50/50">
-                {messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex ${msg.type === "user" ? "justify-start" : "justify-end"}`}
-                  >
-                    <div
-                      className={`max-w-[80%] rounded-2xl p-3 ${
-                        msg.type === "user"
-                          ? "bg-gray-200 text-gray-800 rounded-br-none"
-                          : "bg-gradient-to-l from-emerald-600 to-blue-600 text-white rounded-bl-none"
-                      }`}
-                    >
-                      <p className="text-sm">{msg.text}</p>
-                      <p
-                        className={`text-xs mt-1 ${msg.type === "user" ? "text-gray-500" : "text-white/70"}`}
-                      >
-                        {msg.time}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* نموذج إرسال الرسالة */}
-              <form
-                onSubmit={handleSendMessage}
-                className="p-4 border-t bg-white/90 backdrop-blur-sm"
-              >
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="اكتب رسالتك هنا..."
-                    className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm bg-white/80"
-                  />
-                  <button
-                    type="submit"
-                    className="bg-gradient-to-l from-emerald-600 to-blue-600 text-white p-2 rounded-xl hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={!message.trim()}
-                  >
-                    <Send className="w-5 h-5" />
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-
-          {/* زر الدردشة الرئيسي */}
           <button
             onClick={() => setIsChatOpen(!isChatOpen)}
-            className="relative group flex items-center justify-center w-14 h-14 bg-gradient-to-l from-emerald-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110"
+            className="group relative w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow-lg hover:shadow-xl hover:shadow-blue-600/25 transition-all duration-300 hover:scale-110"
           >
-            {/* خلفية متوهجة متحركة */}
-            <div className="absolute -inset-2 bg-gradient-to-l from-emerald-400 to-blue-400 rounded-full blur-xl opacity-0 group-hover:opacity-75 transition-opacity duration-500 animate-pulse"></div>
-
-            {/* أيقونة الدردشة */}
-            <MessageCircle className="relative w-6 h-6 transition-transform duration-300 group-hover:rotate-12" />
-
-            {/* شريط الإشعارات */}
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>
-
-            {/* أيقونة السماعة الصغيرة */}
-            <Headphones className="absolute -bottom-1 -left-1 w-4 h-4 text-white/80" />
+            <MessageCircle className="w-5 h-5 mx-auto transition-transform duration-300 group-hover:rotate-12" />
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full"></span>
           </button>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <aside className="lg:col-span-1">
-              <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-md p-4 space-y-2 sticky top-24">
-                <MenuItem label="لوحة التحكم" icon={BarChart3} view="dashboard" />
-                <MenuItem
-                  label="الطلاب"
-                  icon={Users}
-                  view="students"
-                  count={stats.activeStudents}
-                />
-                <MenuItem label="المعلمين" icon={Briefcase} view="teachers" />
-                <MenuItem label="تحصيل المصاريف" icon={DollarSign} view="fees" />
-                <MenuItem label="التكاليف" icon={TrendingDown} view="expenses" />
-                <MenuItem
-                  label="تقرير الأرباح"
-                  icon={TrendingUp}
-                  view="reports"
-                />
-                <MenuItem
-                  label="التقارير المالية"
-                  icon={BarChart3}
-                  view="financial"
-                />
-              </div>
-            </aside>
+        <ModernChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
 
-            <main className="lg:col-span-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex gap-6">
+            {/* Sidebar */}
+            {showSidebar && (
+              <aside className="w-64 flex-shrink-0">
+                <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-2 sticky top-20 border border-gray-100/50">
+                  <ModernMenuItem
+                    label="Dashboard"
+                    icon={Home}
+                    view="dashboard"
+                    currentView={currentView}
+                    onClick={() => handleViewChange("dashboard")}
+                  />
+                  <ModernMenuItem
+                    label="Students"
+                    icon={GraduationCap}
+                    view="students"
+                    count={stats.activeStudents}
+                    currentView={currentView}
+                    onClick={() => handleViewChange("students")}
+                  />
+                  <ModernMenuItem
+                    label="Teachers"
+                    icon={Briefcase}
+                    view="teachers"
+                    currentView={currentView}
+                    onClick={() => handleViewChange("teachers")}
+                  />
+                  <ModernMenuItem
+                    label="Fees"
+                    icon={Wallet}
+                    view="fees"
+                    currentView={currentView}
+                    onClick={() => handleViewChange("fees")}
+                  />
+                  <ModernMenuItem
+                    label="Expenses"
+                    icon={TrendingDown}
+                    view="expenses"
+                    currentView={currentView}
+                    onClick={() => handleViewChange("expenses")}
+                  />
+                  <ModernMenuItem
+                    label="Profit"
+                    icon={TrendingUp}
+                    view="reports"
+                    currentView={currentView}
+                    onClick={() => handleViewChange("reports")}
+                  />
+                  <ModernMenuItem
+                    label="Financial"
+                    icon={LineChart}
+                    view="financial"
+                    currentView={currentView}
+                    onClick={() => handleViewChange("financial")}
+                  />
+                  
+                  <div className="h-px bg-gray-200 my-2"></div>
+                  
+                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200">
+                    <Settings className="w-4 h-4" />
+                    <span className="flex-1 text-right font-medium">Settings</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setShowSidebar(false)}
+                    className="w-full mt-2 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100/80 rounded-lg transition-colors duration-200"
+                  >
+                    <ChevronRight className="w-4 h-4 mx-auto" />
+                  </button>
+                </div>
+              </aside>
+            )}
+            
+            {/* Toggle sidebar button */}
+            {!showSidebar && (
+              <button
+                onClick={() => setShowSidebar(true)}
+                className="fixed right-4 top-20 z-40 p-2 bg-white/90 backdrop-blur-xl rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100/50"
+              >
+                <ChevronLeft className="w-4 h-4 text-gray-600" />
+              </button>
+            )}
+
+            {/* Main content */}
+            <main className="flex-1 min-w-0">
               {currentView === "dashboard" && (
                 <div className="space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                      نظرة عامة
-                    </h2>
-                    {loading ? (
-                      <div className="text-center py-12">
-                        <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <StatCard
-                          title="إجمالي الطلاب"
-                          value={stats.totalStudents}
-                          icon={Users}
-                          color="#3b82f6"
-                        />
-                        <StatCard
-                          title="الطلاب النشطون"
-                          value={stats.activeStudents}
-                          icon={UserPlus}
-                          color="#10b981"
-                        />
-                        <StatCard
-                          title="إجمالي المعلمين"
-                          value={stats.totalTeachers}
-                          icon={Briefcase}
-                          color="#f59e0b"
-                        />
-                        <StatCard
-                          title="إجمالي الإيرادات"
-                          value={`${Number(stats.totalRevenue).toLocaleString("ar-EG")} ج.م`}
-                          icon={DollarSign}
-                          color="#8b5cf6"
-                        />
-                        <StatCard
-                          title="إجمالي التكاليف"
-                          value={`${Number(stats.totalExpenses).toLocaleString("ar-EG")} ج.م`}
-                          icon={TrendingDown}
-                          color="#ef4444"
-                        />
-                      </div>
-                    )}
+                  {/* Header with period selector */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+                      <p className="text-sm text-gray-500 mt-1">Welcome back, {user?.email?.split('@')[0]}</p>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xl rounded-lg p-1 border border-gray-100/50">
+                      {["day", "week", "month", "year"].map((period) => (
+                        <button
+                          key={period}
+                          onClick={() => setSelectedPeriod(period)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                            selectedPeriod === period
+                              ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm"
+                              : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80"
+                          }`}
+                        >
+                          {period}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-md p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-xl font-bold text-gray-900">
-                        صافي الربح
-                      </h3>
-                      <TrendingUp
-                        className={`w-6 h-6 ${stats.netProfit >= 0 ? "text-green-600" : "text-red-600"}`}
+                  {/* Stats grid */}
+                  {loading ? (
+                    <div className="flex items-center justify-center py-20">
+                      <div className="relative">
+                        <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <ModernStatCard
+                        title="Total Students"
+                        value={stats.totalStudents}
+                        icon={Users}
+                        trend={studentsTrend.trend}
+                        trendValue={studentsTrend.value}
+                        color="from-blue-600 to-indigo-600"
+                        delay={0}
+                      />
+                      <ModernStatCard
+                        title="Active Students"
+                        value={stats.activeStudents}
+                        icon={Activity}
+                        trend={activeStudentsTrend.trend}
+                        trendValue={activeStudentsTrend.value}
+                        color="from-emerald-600 to-teal-600"
+                        delay={50}
+                      />
+                      <ModernStatCard
+                        title="Total Teachers"
+                        value={stats.totalTeachers}
+                        icon={Briefcase}
+                        trend={teachersTrend.trend}
+                        trendValue={teachersTrend.value}
+                        color="from-amber-500 to-orange-600"
+                        delay={100}
+                      />
+                      <ModernStatCard
+                        title="Revenue"
+                        value={stats.totalRevenue}
+                        icon={DollarSign}
+                        prefix="$"
+                        trend={revenueTrend.trend}
+                        trendValue={revenueTrend.value}
+                        color="from-green-600 to-emerald-600"
+                        delay={150}
+                      />
+                      <ModernStatCard
+                        title="Expenses"
+                        value={stats.totalExpenses}
+                        icon={TrendingDown}
+                        prefix="$"
+                        trend={expensesTrend.trend}
+                        trendValue={expensesTrend.value}
+                        color="from-red-600 to-rose-600"
+                        delay={200}
+                      />
+                      <ModernStatCard
+                        title="Net Profit"
+                        value={stats.netProfit}
+                        icon={TrendingUp}
+                        prefix="$"
+                        trend={profitTrend.trend}
+                        trendValue={profitTrend.value}
+                        color="from-purple-600 to-pink-600"
+                        delay={250}
                       />
                     </div>
-                    <div
-                      className={`text-3xl font-bold ${stats.netProfit >= 0 ? "text-green-600" : "text-red-600"}`}
-                    >
-                      {stats.netProfit >= 0 ? "+" : ""}
-                      {Number(stats.netProfit).toLocaleString("ar-EG", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}{" "}
-                      ج.م
+                  )}
+
+                  {/* Mini chart */}
+                  <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-6 border border-gray-100/50">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="font-semibold text-gray-900">Revenue overview</h3>
+                        <p className="text-xs text-gray-500 mt-1">Last 7 days</p>
+                      </div>
+                      <button className="p-2 hover:bg-gray-100/80 rounded-lg transition-colors duration-200">
+                        <Maximize2 className="w-4 h-4 text-gray-500" />
+                      </button>
                     </div>
-                    <div className="mt-4 pt-4 border-t">
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="text-gray-600">الإيرادات</span>
-                        <span className="text-green-600 font-medium">
-                          {Number(stats.totalRevenue).toLocaleString("ar-EG", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}{" "}
-                          ج.م
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">التكاليف</span>
-                        <span className="text-red-600 font-medium">
-                          {Number(stats.totalExpenses).toLocaleString("ar-EG", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}{" "}
-                          ج.م
-                        </span>
-                      </div>
-                    </div>{" "}
+                    
+                    <div className="h-32 flex items-end gap-2">
+                      {revenueData.map((value, i) => (
+                        <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                          <div 
+                            className="w-full bg-gradient-to-t from-blue-600 to-indigo-600 rounded-t-lg transition-all duration-500 hover:from-blue-500 hover:to-indigo-500"
+                            style={{ height: `${value}%` }}
+                          ></div>
+                          <span className="text-xs text-gray-500">{days[i]}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <button
-                      onClick={() => setCurrentView("students")}
-                      className="bg-white/90 backdrop-blur-sm hover:bg-blue-50 rounded-xl shadow-md p-6 text-right transition-all group"
-                    >
-                      <UserPlus className="w-8 h-8 text-blue-600 mb-3 group-hover:scale-110 transition-transform" />
-                      <h4 className="font-bold text-gray-900 mb-1">
-                        إدارة الطلاب
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        إضافة وتعديل بيانات الطلاب
-                      </p>
-                    </button>
-
-                    <button
-                      onClick={() => setCurrentView("fees")}
-                      className="bg-white/90 backdrop-blur-sm hover:bg-green-50 rounded-xl shadow-md p-6 text-right transition-all group"
-                    >
-                      <Receipt className="w-8 h-8 text-green-600 mb-3 group-hover:scale-110 transition-transform" />
-                      <h4 className="font-bold text-gray-900 mb-1">
-                        تحصيل المصاريف
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        تسجيل المدفوعات والرسوم
-                      </p>
-                    </button>
-
-                    <button
-                      onClick={() => setCurrentView("expenses")}
-                      className="bg-white/90 backdrop-blur-sm hover:bg-red-50 rounded-xl shadow-md p-6 text-right transition-all group"
-                    >
-                      <FileText className="w-8 h-8 text-red-600 mb-3 group-hover:scale-110 transition-transform" />
-                      <h4 className="font-bold text-gray-900 mb-1">
-                        إدارة التكاليف
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        تسجيل المصروفات والنفقات
-                      </p>
-                    </button>
-
-                    <button
-                      onClick={() => setCurrentView("teachers")}
-                      className="bg-white/90 backdrop-blur-sm hover:bg-purple-50 rounded-xl shadow-md p-6 text-right transition-all group"
-                    >
-                      <Briefcase className="w-8 h-8 text-purple-600 mb-3 group-hover:scale-110 transition-transform" />
-                      <h4 className="font-bold text-gray-900 mb-1">
-                        إدارة المعلمين
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        إدارة بيانات المعلمين والرواتب
-                      </p>
-                    </button>
-                    <button
-                      onClick={() => setCurrentView("reports")}
-                      className="bg-white/90 backdrop-blur-sm hover:bg-purple-50 rounded-xl shadow-md p-6 text-right transition-all group"
-                    >
-                      <TrendingUp className="w-8 h-8 text-purple-600 mb-3 group-hover:scale-110 transition-transform" />
-                      <h4 className="font-bold text-gray-900 mb-1">
-                        تقارير الأرباح
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        تقارير الماليات والأرباح
-                      </p>
-                    </button>
-                    <button
-                      onClick={() => setCurrentView("financial")}
-                      className="bg-white/90 backdrop-blur-sm hover:bg-purple-50 rounded-xl shadow-md p-6 text-right transition-all group"
-                    >
-                      <BarChart3 className="w-8 h-8 text-purple-600 mb-3 group-hover:scale-110 transition-transform" />
-                      <h4 className="font-bold text-gray-900 mb-1">
-                        تقارير المالية
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        التقارير المالية والتنبؤ المالي
-                      </p>
-                    </button>
+                  {/* Quick actions */}
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-3">Quick actions</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      <QuickActionCard
+                        title="Add Student"
+                        description="Register a new student"
+                        icon={UserPlus}
+                        color="from-blue-600 to-indigo-600"
+                        onClick={() => handleViewChange("students")}
+                      />
+                      <QuickActionCard
+                        title="Record Fee"
+                        description="Collect payment"
+                        icon={Wallet}
+                        color="from-emerald-600 to-teal-600"
+                        onClick={() => handleViewChange("fees")}
+                      />
+                      <QuickActionCard
+                        title="Add Expense"
+                        description="Record a cost"
+                        icon={TrendingDown}
+                        color="from-red-600 to-rose-600"
+                        onClick={() => handleViewChange("expenses")}
+                      />
+                      <QuickActionCard
+                        title="View Reports"
+                        description="Check analytics"
+                        icon={BarChart3}
+                        color="from-purple-600 to-pink-600"
+                        onClick={() => handleViewChange("reports")}
+                      />
+                    </div>
                   </div>
                 </div>
               )}
 
-              {currentView === "students" && (
-                <StudentsManager onUpdate={loadStatistics} />
-              )}
-              {currentView === "teachers" && (
-                <TeachersManager onUpdate={loadStatistics} />
-              )}
-              {currentView === "fees" && (
-                <FeesManager onUpdate={loadStatistics} />
-              )}
-              {currentView === "expenses" && (
-                <ExpensesManager onUpdate={loadStatistics} />
-              )}
+              {currentView === "students" && <StudentsManager onUpdate={loadStatistics} />}
+              {currentView === "teachers" && <TeachersManager onUpdate={loadStatistics} />}
+              {currentView === "fees" && <FeesManager onUpdate={loadStatistics} />}
+              {currentView === "expenses" && <ExpensesManager onUpdate={loadStatistics} />}
               {currentView === "reports" && <ProfitReport />}
               {currentView === "financial" && <FinancialReports />}
             </main>
