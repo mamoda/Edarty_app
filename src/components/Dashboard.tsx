@@ -589,12 +589,12 @@ export default function Dashboard() {
     };
   };
 
-  const studentsTrend = calculateTrend(stats.totalStudents);
-  const activeStudentsTrend = calculateTrend(stats.activeStudents);
-  const teachersTrend = calculateTrend(stats.totalTeachers);
-  const revenueTrend = calculateTrend(stats.totalRevenue);
-  const expensesTrend = calculateTrend(stats.totalExpenses);
-  const profitTrend = calculateTrend(stats.netProfit);
+  const studentsTrend = calculateTrend(stats.totalStudents ?? 0);
+  const activeStudentsTrend = calculateTrend(stats.activeStudents ?? 0);
+  const teachersTrend = calculateTrend(stats.totalTeachers ?? 0);
+  const revenueTrend = calculateTrend(stats.totalRevenue ?? 0);
+  const expensesTrend = calculateTrend(stats.totalExpenses ?? 0);
+  const profitTrend = calculateTrend(stats.netProfit ?? 0);
 
   return (
     <div className="min-h-screen bg-gray-50/50" dir="rtl">
@@ -738,7 +738,7 @@ export default function Dashboard() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       <ModernStatCard
                         title="Total Students"
-                        value={stats.totalStudents}
+                        value={stats.totalStudents ?? 0}
                         icon={Users}
                         trend={studentsTrend.trend}
                         trendValue={studentsTrend.value}
@@ -747,7 +747,7 @@ export default function Dashboard() {
                       />
                       <ModernStatCard
                         title="Active Students"
-                        value={stats.activeStudents}
+                        value={stats.activeStudents ?? 0}
                         icon={Activity}
                         trend={activeStudentsTrend.trend}
                         trendValue={activeStudentsTrend.value}
@@ -756,7 +756,7 @@ export default function Dashboard() {
                       />
                       <ModernStatCard
                         title="Total Teachers"
-                        value={stats.totalTeachers}
+                        value={stats.totalTeachers ?? 0}
                         icon={Briefcase}
                         trend={teachersTrend.trend}
                         trendValue={teachersTrend.value}
@@ -765,7 +765,7 @@ export default function Dashboard() {
                       />
                       <ModernStatCard
                         title="Revenue"
-                        value={stats.totalRevenue}
+                        value={stats.totalRevenue ?? 0}
                         icon={DollarSign}
                         prefix="$"
                         trend={revenueTrend.trend}
@@ -775,7 +775,7 @@ export default function Dashboard() {
                       />
                       <ModernStatCard
                         title="Expenses"
-                        value={stats.totalExpenses}
+                        value={stats.totalExpenses ?? 0}
                         icon={TrendingDown}
                         prefix="$"
                         trend={expensesTrend.trend}
@@ -785,7 +785,7 @@ export default function Dashboard() {
                       />
                       <ModernStatCard
                         title="Net Profit"
-                        value={stats.netProfit}
+                        value={stats.netProfit ?? 0}
                         icon={TrendingUp}
                         prefix="$"
                         trend={profitTrend.trend}
