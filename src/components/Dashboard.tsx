@@ -504,6 +504,7 @@ export default function Dashboard() {
   const toggleLanguage = () => {
     setCurrentLanguage(currentLanguage === 'ar' ? 'en' : 'ar');
   };
+  
   const [currentView, setCurrentView] = useState<View>("dashboard");
   const [stats, setStats] = useState<Statistics>({
     totalStudents: 0,
@@ -596,7 +597,7 @@ export default function Dashboard() {
           onSignOut={signOut} 
           onViewChange={handleViewChange}
           language={language}
-          toggleLanguage={toggleLanguage}
+          toggleLanguage={toggleLanguage} // ✅ الآن يستخدم toggleLanguage من الـ Context
           t={t}
         />
 
