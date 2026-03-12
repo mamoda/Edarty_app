@@ -1,3 +1,5 @@
+// Dashboard.tsx - التصحيح النهائي
+
 import React, { useState, useEffect } from "react";
 import {
   Users,
@@ -41,6 +43,8 @@ import logo from "../assets/logo.png";
 
 type View = "dashboard" | "students" | "teachers" | "fees" | "expenses" | "reports" | "financial";
 
+// إزالة الواجهات غير المستخدمة واستخدام any مؤقتاً للبيانات القادمة من Supabase
+
 interface StatCardProps {
   title: string;
   value: number;
@@ -51,6 +55,7 @@ interface StatCardProps {
   prefix?: string;
   suffix?: string;
   delay?: number;
+  isLoading?: boolean;
 }
 
 interface MenuItemProps {
@@ -93,6 +98,19 @@ interface Message {
   time: string;
 }
 
+interface StatisticsValidation {
+  isValid: boolean;
+  errors: string[];
+  lastUpdated: Date;
+}
+
+// دالة مساعدة للتأكد من أن القيمة رقم
+const ensureNumber = (value: any, defaultValue: number = 0): number => {
+  if (typeof value === 'number' && !isNaN(value)) return value;
+  const parsed = Number(value);
+  return !isNaN(parsed) ? parsed : defaultValue;
+};
+
 const ModernStatCard: React.FC<StatCardProps> = ({ 
   title, 
   value, 
@@ -102,10 +120,31 @@ const ModernStatCard: React.FC<StatCardProps> = ({
   color, 
   prefix = "", 
   suffix = "",
-  delay = 0
+  delay = 0,
+  isLoading = false
 }) => {
   const { language } = useLanguage();
   const trendPositive = trend === 'up';
+  const safeValue = ensureNumber(value);
+  
+  if (isLoading) {
+    return (
+      <div className="group relative bg-white/90 backdrop-blur-xl rounded-2xl shadow-sm overflow-hidden border border-gray-100/50">
+        <div className="relative p-6">
+          <div className="flex items-start justify-between">
+            <div className="space-y-3 flex-1">
+              <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
+              <div className="h-8 bg-gray-200 rounded w-32 animate-pulse"></div>
+              <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+            </div>
+            <div className="p-3.5 bg-gray-200 rounded-xl animate-pulse">
+              <div className="w-5 h-5"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div 
@@ -120,7 +159,10 @@ const ModernStatCard: React.FC<StatCardProps> = ({
           <div className="space-y-2">
             <p className="text-sm font-medium text-gray-500 tracking-wide">{title}</p>
             <p className="text-3xl font-bold text-gray-900 tracking-tight">
-              {prefix}{value.toLocaleString(language === 'ar' ? "ar-EG" : "en-US")}{suffix}
+              {prefix}{safeValue.toLocaleString(language === 'ar' ? "ar-EG" : "en-US", { 
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2 
+              })}{suffix}
             </p>
             
             {trend && trendValue !== undefined && (
@@ -496,13 +538,110 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose, language, t }) => {
   );
 };
 
+// مكون مؤشر دقة البيانات
+const DataAccuracyIndicator: React.FC<{ validation: StatisticsValidation; onRefresh: () => void }> = ({ validation, onRefresh }) => {
+  const { language } = useLanguage();
+  
+  if (validation.isValid) return null;
+  
+  return (
+    <div className="fixed bottom-6 right-6 z-50">
+      <div className="bg-amber-50/95 backdrop-blur-sm border border-amber-200 rounded-xl p-4 shadow-lg max-w-sm">
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-amber-100 rounded-lg">
+            <Activity className="w-4 h-4 text-amber-600" />
+          </div>
+          <div className="flex-1">
+            <h4 className="text-sm font-semibold text-amber-800">
+              {language === 'ar' ? 'تنبيه دقة البيانات' : 'Data Accuracy Alert'}
+            </h4>
+            <p className="text-xs text-amber-700 mt-1">
+              {validation.errors.length} {language === 'ar' ? 'مشكلة في البيانات' : 'data issues found'}
+            </p>
+            <button 
+              onClick={onRefresh}
+              className="mt-2 text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              {language === 'ar' ? 'تحديث البيانات' : 'Refresh Data'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// مكون شريط تقدم دقيق للتحميل
+const PreciseLoadingBar: React.FC<{ loading: boolean }> = ({ loading }) => {
+  const [progress, setProgress] = useState(0);
+  
+  useEffect(() => {
+    if (loading) {
+      setProgress(0);
+      const interval = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 90) return prev;
+          return prev + (90 - prev) * 0.1;
+        });
+      }, 100);
+      
+      return () => clearInterval(interval);
+    } else {
+      setProgress(100);
+      const timeout = setTimeout(() => setProgress(0), 300);
+      return () => clearTimeout(timeout);
+    }
+  }, [loading]);
+  
+  if (!loading && progress === 0) return null;
+  
+  return (
+    <div className="fixed top-16 left-0 right-0 z-50 h-0.5 bg-gray-100">
+      <div 
+        className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-300 ease-out"
+        style={{ width: `${progress}%` }}
+      />
+    </div>
+  );
+};
+
+// مكون شريط حالة التحديث
+const UpdateStatusBar: React.FC<{ lastUpdated: number }> = ({ lastUpdated }) => {
+  const { language } = useLanguage();
+  
+  const getTimeAgo = (timestamp: number) => {
+    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+    
+    if (seconds < 60) return language === 'ar' ? 'الآن' : 'now';
+    if (seconds < 3600) {
+      const minutes = Math.floor(seconds / 60);
+      return language === 'ar' ? `منذ ${minutes} دقيقة` : `${minutes} min ago`;
+    }
+    if (seconds < 86400) {
+      const hours = Math.floor(seconds / 3600);
+      return language === 'ar' ? `منذ ${hours} ساعة` : `${hours} hours ago`;
+    }
+    const days = Math.floor(seconds / 86400);
+    return language === 'ar' ? `منذ ${days} يوم` : `${days} days ago`;
+  };
+
+  return (
+    <div className="absolute top-0 left-0 right-0 flex justify-center pointer-events-none">
+      <div className="bg-white/80 backdrop-blur-sm px-3 py-1 rounded-b-lg text-xs text-gray-500 border border-gray-200/50">
+        {language === 'ar' ? 'آخر تحديث: ' : 'Last updated: '}
+        {getTimeAgo(lastUpdated)}
+      </div>
+    </div>
+  );
+};
+
 export default function Dashboard() {
   const { user, signOut } = useAuth();
-  const { language, toggleLanguage, t } = useLanguage(); // ✅ Fixed: Destructure toggleLanguage from context
-  
-  // Removed the local toggleLanguage function as it's now from the context
+  const { language, toggleLanguage, t } = useLanguage();
   
   const [currentView, setCurrentView] = useState<View>("dashboard");
+  
+  // تعريف Statistics مع التأكد من أن جميع القيم أرقام
   const [stats, setStats] = useState<Statistics>({
     totalStudents: 0,
     activeStudents: 0,
@@ -513,49 +652,206 @@ export default function Dashboard() {
     activeTeachers: 0,
     totalSalaries: 0,
   });
+  
   const [loading, setLoading] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
-  const [selectedPeriod, setSelectedPeriod] = useState('month'); // Fixed: Always use English key for consistency
+  const [selectedPeriod, setSelectedPeriod] = useState('month');
+  const [dataValidation, setDataValidation] = useState<StatisticsValidation>({
+    isValid: true,
+    errors: [],
+    lastUpdated: new Date()
+  });
+  const [dataFreshness, setDataFreshness] = useState<number>(Date.now());
+  
+  // تعريف previousStats بنفس النوع Statistics
+  const [previousStats, setPreviousStats] = useState<Statistics>({
+    totalStudents: 0,
+    activeStudents: 0,
+    totalRevenue: 0,
+    totalExpenses: 0,
+    netProfit: 0,
+    totalTeachers: 0,
+    activeTeachers: 0,
+    totalSalaries: 0,
+  });
 
   useEffect(() => {
     loadStatistics();
-  }, []);
+    
+    // تحديث البيانات كل 5 دقائق
+    const intervalId = setInterval(() => {
+      loadStatistics(false);
+    }, 5 * 60 * 1000);
+    
+    return () => clearInterval(intervalId);
+  }, [user]);
 
-  const loadStatistics = async () => {
+  // الاستماع للتغييرات في الجداول المهمة
+  useEffect(() => {
     if (!user) return;
 
-    setLoading(true);
+    const subscriptions = [
+      supabase
+        .channel('students-changes')
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'students', filter: `user_id=eq.${user.id}` },
+          () => loadStatistics(false)
+        )
+        .subscribe(),
+        
+      supabase
+        .channel('fees-changes')
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'fees', filter: `user_id=eq.${user.id}` },
+          () => loadStatistics(false)
+        )
+        .subscribe(),
+        
+      supabase
+        .channel('expenses-changes')
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'expenses', filter: `user_id=eq.${user.id}` },
+          () => loadStatistics(false)
+        )
+        .subscribe(),
+        
+      supabase
+        .channel('teachers-changes')
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'teachers', filter: `user_id=eq.${user.id}` },
+          () => loadStatistics(false)
+        )
+        .subscribe()
+    ];
+
+    return () => {
+      subscriptions.forEach(sub => sub.unsubscribe());
+    };
+  }, [user]);
+
+  const loadStatistics = async (showLoadingIndicator = true) => {
+    if (!user) return;
+
+    if (showLoadingIndicator) setLoading(true);
+    
     try {
+      // حفظ الإحصائيات السابقة
+      setPreviousStats({...stats});
+      
       const [studentsRes, feesRes, expensesRes, teachersRes] = await Promise.all([
-        supabase.from("students").select("*", { count: "exact" }).eq("user_id", user.id),
-        supabase.from("fees").select("amount").eq("user_id", user.id),
-        supabase.from("expenses").select("amount").eq("user_id", user.id),
-        supabase.from("teachers").select("*").eq("user_id", user.id),
+        supabase
+          .from("students")
+          .select("*")
+          .eq("user_id", user.id),
+        
+        supabase
+          .from("fees")
+          .select("amount")
+          .eq("user_id", user.id)
+          .gte("date", new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString()),
+        
+        supabase
+          .from("expenses")
+          .select("amount")
+          .eq("user_id", user.id)
+          .gte("date", new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString()),
+        
+        supabase
+          .from("teachers")
+          .select("*")
+          .eq("user_id", user.id)
       ]);
 
-      const totalStudents = studentsRes.count ?? 0;
-      const activeStudents = studentsRes.data?.filter((s) => s.status === "active").length ?? 0;
-      const totalRevenue = feesRes.data?.reduce((sum, fee) => sum + Number(fee.amount), 0) ?? 0;
-      const totalExpenses = expensesRes.data?.reduce((sum, exp) => sum + Number(exp.amount), 0) ?? 0;
-      const totalTeachers = teachersRes.data?.length ?? 0;
-      const activeTeachers = teachersRes.data?.filter((t) => t.status === "active").length ?? 0;
-      const totalSalaries = teachersRes.data?.filter((t) => t.status === "active").reduce((sum, t) => sum + Number(t.salary), 0) ?? 0;
+      // التحقق من صحة البيانات
+      const validationErrors: string[] = [];
+      
+      const validateAmount = (amount: any): boolean => {
+        const num = Number(amount);
+        return !isNaN(num) && num >= 0 && num < 10000000;
+      };
 
-      setStats({
+      const totalStudents = studentsRes.data?.length ?? 0;
+      const activeStudents = studentsRes.data?.filter((s: any) => s.status === "active").length ?? 0;
+      
+      // معالجة الإيرادات مع التحقق من النوع
+      let totalRevenue = 0;
+      if (feesRes.data) {
+        (feesRes.data as any[]).forEach((fee: any) => {
+          const amount = Number(fee.amount);
+          if (validateAmount(amount)) {
+            totalRevenue += amount;
+          } else {
+            validationErrors.push(`Invalid fee amount: ${fee.amount}`);
+          }
+        });
+      }
+      
+      // معالجة المصروفات مع التحقق من النوع
+      let totalExpenses = 0;
+      if (expensesRes.data) {
+        (expensesRes.data as any[]).forEach((exp: any) => {
+          const amount = Number(exp.amount);
+          if (validateAmount(amount)) {
+            totalExpenses += amount;
+          } else {
+            validationErrors.push(`Invalid expense amount: ${exp.amount}`);
+          }
+        });
+      }
+      
+      const totalTeachers = teachersRes.data?.length ?? 0;
+      const activeTeachers = teachersRes.data?.filter((t: any) => t.status === "active").length ?? 0;
+      
+      // معالجة الرواتب مع التحقق من النوع
+      let totalSalaries = 0;
+      if (teachersRes.data) {
+        (teachersRes.data as any[]).forEach((teacher: any) => {
+          if (teacher.status === "active") {
+            const salary = Number(teacher.salary);
+            if (validateAmount(salary)) {
+              totalSalaries += salary;
+            } else {
+              validationErrors.push(`Invalid salary for teacher ${teacher.id}: ${teacher.salary}`);
+            }
+          }
+        });
+      }
+
+      const newStats = {
         totalStudents,
         activeStudents,
-        totalRevenue,
-        totalExpenses,
-        netProfit: totalRevenue - totalExpenses,
+        totalRevenue: Math.round(totalRevenue * 100) / 100,
+        totalExpenses: Math.round(totalExpenses * 100) / 100,
+        netProfit: Math.round((totalRevenue - totalExpenses) * 100) / 100,
         totalTeachers,
         activeTeachers,
-        totalSalaries,
+        totalSalaries: Math.round(totalSalaries * 100) / 100,
+      };
+
+      setStats(newStats);
+
+      setDataValidation({
+        isValid: validationErrors.length === 0,
+        errors: validationErrors,
+        lastUpdated: new Date()
       });
+
+      setDataFreshness(Date.now());
+
+      if (validationErrors.length > 0) {
+        console.warn("Data validation warnings:", validationErrors);
+      }
+
     } catch (error) {
       console.error("Error loading statistics:", error);
+      setDataValidation(prev => ({
+        ...prev,
+        isValid: false,
+        errors: [...prev.errors, "Failed to load statistics"]
+      }));
     } finally {
-      setLoading(false);
+      if (showLoadingIndicator) setLoading(false);
     }
   };
 
@@ -566,35 +862,38 @@ export default function Dashboard() {
     }
   };
 
+  const calculateTrend = (currentValue: number, previousValue: number): { trend: 'up' | 'down', value: number } => {
+    // التأكد من أن القيم أرقام
+    const safeCurrent = ensureNumber(currentValue);
+    const safePrevious = ensureNumber(previousValue);
+    
+    if (safePrevious === 0) return { trend: 'up', value: 0 };
+    
+    const change = ((safeCurrent - safePrevious) / safePrevious) * 100;
+    const roundedChange = Math.min(Math.abs(Math.round(change * 100) / 100), 999.99);
+    
+    return {
+      trend: change >= 0 ? 'up' : 'down',
+      value: roundedChange
+    };
+  };
+
   const revenueData = [65, 45, 75, 55, 85, 95, 70];
   const days = language === 'ar' 
     ? [t('mon'), t('tue'), t('wed'), t('thu'), t('fri'), t('sat'), t('sun')]
     : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-  const calculateTrend = (): { trend: 'up' | 'down', value: number } => {
-    const mockChange = Math.random() * 20 - 10;
-    return {
-      trend: mockChange >= 0 ? 'up' : 'down',
-      value: Math.abs(Math.round(mockChange * 10) / 10)
-    };
-  };
-
-  const studentsTrend = calculateTrend();
-  const activeStudentsTrend = calculateTrend();
-  const teachersTrend = calculateTrend();
-  const revenueTrend = calculateTrend();
-  const expensesTrend = calculateTrend();
-  const profitTrend = calculateTrend();
-
   return (
     <div className="min-h-screen bg-gray-50/50" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+      <PreciseLoadingBar loading={loading} />
+      
       <div className="relative">
         <ModernHeader 
           user={user} 
           onSignOut={signOut} 
           onViewChange={handleViewChange}
           language={language}
-          toggleLanguage={toggleLanguage} // ✅ الآن يستخدم toggleLanguage من الـ Context
+          toggleLanguage={toggleLanguage}
           t={t}
         />
 
@@ -616,6 +915,8 @@ export default function Dashboard() {
         />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <UpdateStatusBar lastUpdated={dataFreshness} />
+          
           <div className="flex gap-6">
             {showSidebar && (
               <aside className="w-64 flex-shrink-0">
@@ -729,67 +1030,74 @@ export default function Dashboard() {
                   </div>
 
                   {loading ? (
-                    <div className="flex items-center justify-center py-20">
-                      <div className="relative">
-                        <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                      </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {[1, 2, 3, 4, 5, 6].map((i) => (
+                        <ModernStatCard
+                          key={i}
+                          title=""
+                          value={0}
+                          icon={Users}
+                          color="from-gray-600 to-gray-600"
+                          isLoading={true}
+                        />
+                      ))}
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       <ModernStatCard
                         title={t('totalStudents')}
-                        value={stats.totalStudents ?? 0}
+                        value={stats.totalStudents}
                         icon={Users}
-                        trend={studentsTrend.trend}
-                        trendValue={studentsTrend.value}
+                        trend={calculateTrend(stats.totalStudents, previousStats.totalStudents).trend}
+                        trendValue={calculateTrend(stats.totalStudents, previousStats.totalStudents).value}
                         color="from-blue-600 to-indigo-600"
                         delay={0}
                       />
                       <ModernStatCard
                         title={t('activeStudents')}
-                        value={stats.activeStudents ?? 0}
+                        value={stats.activeStudents}
                         icon={Activity}
-                        trend={activeStudentsTrend.trend}
-                        trendValue={activeStudentsTrend.value}
+                        trend={calculateTrend(stats.activeStudents, previousStats.activeStudents).trend}
+                        trendValue={calculateTrend(stats.activeStudents, previousStats.activeStudents).value}
                         color="from-emerald-600 to-teal-600"
                         delay={50}
                       />
                       <ModernStatCard
                         title={t('totalTeachers')}
-                        value={stats.totalTeachers ?? 0}
+                        value={stats.totalTeachers}
                         icon={Briefcase}
-                        trend={teachersTrend.trend}
-                        trendValue={teachersTrend.value}
+                        trend={calculateTrend(stats.totalTeachers, previousStats.totalTeachers).trend}
+                        trendValue={calculateTrend(stats.totalTeachers, previousStats.totalTeachers).value}
                         color="from-amber-500 to-orange-600"
                         delay={100}
                       />
                       <ModernStatCard
                         title={t('revenue')}
-                        value={stats.totalRevenue ?? 0}
+                        value={stats.totalRevenue}
                         icon={DollarSign}
                         prefix="$"
-                        trend={revenueTrend.trend}
-                        trendValue={revenueTrend.value}
+                        trend={calculateTrend(stats.totalRevenue, previousStats.totalRevenue).trend}
+                        trendValue={calculateTrend(stats.totalRevenue, previousStats.totalRevenue).value}
                         color="from-green-600 to-emerald-600"
                         delay={150}
                       />
                       <ModernStatCard
                         title={t('expenses')}
-                        value={stats.totalExpenses ?? 0}
+                        value={stats.totalExpenses}
                         icon={TrendingDown}
                         prefix="$"
-                        trend={expensesTrend.trend}
-                        trendValue={expensesTrend.value}
+                        trend={calculateTrend(stats.totalExpenses, previousStats.totalExpenses).trend}
+                        trendValue={calculateTrend(stats.totalExpenses, previousStats.totalExpenses).value}
                         color="from-red-600 to-rose-600"
                         delay={200}
                       />
                       <ModernStatCard
                         title={t('netProfit')}
-                        value={stats.netProfit ?? 0}
+                        value={stats.netProfit}
                         icon={TrendingUp}
                         prefix="$"
-                        trend={profitTrend.trend}
-                        trendValue={profitTrend.value}
+                        trend={calculateTrend(stats.netProfit, previousStats.netProfit).trend}
+                        trendValue={calculateTrend(stats.netProfit, previousStats.netProfit).value}
                         color="from-purple-600 to-pink-600"
                         delay={250}
                       />
@@ -856,16 +1164,21 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {currentView === "students" && <StudentsManager onUpdate={loadStatistics} />}
-              {currentView === "teachers" && <TeachersManager onUpdate={loadStatistics} />}
-              {currentView === "fees" && <FeesManager onUpdate={loadStatistics} />}
-              {currentView === "expenses" && <ExpensesManager onUpdate={loadStatistics} />}
+              {currentView === "students" && <StudentsManager onUpdate={() => loadStatistics(false)} />}
+              {currentView === "teachers" && <TeachersManager onUpdate={() => loadStatistics(false)} />}
+              {currentView === "fees" && <FeesManager onUpdate={() => loadStatistics(false)} />}
+              {currentView === "expenses" && <ExpensesManager onUpdate={() => loadStatistics(false)} />}
               {currentView === "reports" && <ProfitReport />}
               {currentView === "financial" && <FinancialReports />}
             </main>
           </div>
         </div>
       </div>
+      
+      <DataAccuracyIndicator 
+        validation={dataValidation} 
+        onRefresh={() => loadStatistics(true)} 
+      />
     </div>
   );
 }
