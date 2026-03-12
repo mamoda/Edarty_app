@@ -321,6 +321,8 @@ const ModernHeader: React.FC<HeaderProps> = ({
             </nav>{" "}
           </div>
 
+
+
           <div className="hidden md:block flex-1 max-w-md mx-8">
             <div className="relative group">
               <input
@@ -589,6 +591,8 @@ export default function Dashboard() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState("month"); // Fixed: Always use English key for consistency
+
+  
 
   useEffect(() => {
     loadStatistics();
