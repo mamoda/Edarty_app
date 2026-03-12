@@ -299,7 +299,6 @@ const ModernHeader: React.FC<HeaderProps> = ({
               />
             </div>
             <div className="h-6 w-px bg-gray-200"></div>
-            // الحل الصحيح - إضافة onClick وتغيير view
             <nav className="hidden md:flex items-center gap-1">
               <button
                 onClick={() => onViewChange("dashboard")} // أو view مخصصة
