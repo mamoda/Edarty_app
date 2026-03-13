@@ -27,11 +27,9 @@ import {
   Moon,
   Sun,
   RefreshCw,
-  Landmark,
   CreditCard,
+  Landmark,
   FileText,
-
-  
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -61,8 +59,8 @@ interface StatCardProps {
   trend?: "up" | "down";
   trendValue?: number;
   color: string;
-  prefix?: string;
-  suffix?: string;
+  isCurrency?: boolean;
+  isPercentage?: boolean;
   delay?: number;
   subValue?: string;
 }
@@ -124,6 +122,32 @@ interface EnhancedStatistics extends Statistics {
   thisMonthCollections: number;
 }
 
+// دوال التنسيق المحسنة
+const formatCurrency = (num: number, language: string): string => {
+  const formattedNumber = num.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  
+  return language === 'ar' ? `${formattedNumber} ج.م` : `EGP ${formattedNumber}`;
+};
+
+const formatPercentage = (num: number, language: string): string => {
+  const formattedNumber = num.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+  
+  return `${formattedNumber}%`;
+};
+
+const formatNumber = (num: number, language: string): string => {
+  return num.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+};
+
 const ModernStatCard: React.FC<StatCardProps> = ({
   title,
   value,
@@ -131,18 +155,33 @@ const ModernStatCard: React.FC<StatCardProps> = ({
   trend,
   trendValue,
   color,
-  prefix = "",
-  suffix = "",
+  isCurrency = false,
+  isPercentage = false,
   delay = 0,
   subValue,
 }) => {
   const { language } = useLanguage();
   const trendPositive = trend === "up";
 
+  // تحديد طريقة التنسيق حسب نوع القيمة
+  const getDisplayValue = () => {
+    if (isCurrency) {
+      return formatCurrency(value, language);
+    } else if (isPercentage) {
+      return formatPercentage(value, language);
+    } else {
+      return formatNumber(value, language);
+    }
+  };
+
   return (
     <div
       className="group relative bg-white/90 backdrop-blur-xl rounded-2xl shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden border border-gray-100/50 hover:border-gray-200/80"
-      style={{ animationDelay: `${delay}ms`, animationFillMode: "both" }}
+      style={{ 
+        animationDelay: `${delay}ms`, 
+        animationFillMode: "both",
+        fontFamily: language === 'ar' ? 'Cairo, sans-serif' : 'inherit'
+      }}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
       <div className="absolute -inset-px bg-gradient-to-r from-blue-500/5 via-indigo-500/5 to-purple-500/5 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
@@ -154,9 +193,7 @@ const ModernStatCard: React.FC<StatCardProps> = ({
               {title}
             </p>
             <p className="text-3xl font-bold text-gray-900 tracking-tight">
-              {prefix}
-              {value.toLocaleString(language === "ar" ? "ar-EG" : "en-US")}
-              {suffix}
+              {getDisplayValue()}
             </p>
 
             {subValue && (
@@ -258,7 +295,7 @@ const ModernMenuItem: React.FC<MenuItemProps> = ({
                 : "bg-gray-200/80 text-gray-600"
             }`}
           >
-            {count}
+            {formatNumber(count, 'ar')}
           </span>
         )}
       </div>
@@ -1000,13 +1037,13 @@ export default function Dashboard() {
                           trendValue={studentsTrend.value}
                           color="from-blue-600 to-indigo-600"
                           delay={0}
-                          subValue={`${stats.activeStudents} ${t("active")}`}
+                          subValue={`${formatNumber(stats.activeStudents, language)} ${t("active")}`}
                         />
                         <ModernStatCard
                           title={t("netRevenue")}
                           value={stats.netRevenue}
                           icon={DollarSign}
-                          prefix="$"
+                          isCurrency={true}
                           trend={revenueTrend.trend}
                           trendValue={revenueTrend.value}
                           color="from-emerald-600 to-teal-600"
@@ -1017,7 +1054,7 @@ export default function Dashboard() {
                           title={t("totalExpenses")}
                           value={stats.totalExpenses}
                           icon={TrendingDown}
-                          prefix="$"
+                          isCurrency={true}
                           trend={expensesTrend.trend}
                           trendValue={expensesTrend.value}
                           color="from-red-600 to-rose-600"
@@ -1027,7 +1064,7 @@ export default function Dashboard() {
                           title={t("netProfit")}
                           value={stats.netProfit}
                           icon={TrendingUp}
-                          prefix="$"
+                          isCurrency={true}
                           trend={profitTrend.trend}
                           trendValue={profitTrend.value}
                           color="from-purple-600 to-pink-600"
@@ -1041,7 +1078,7 @@ export default function Dashboard() {
                           title={t("collectionRate")}
                           value={stats.collectionRate}
                           icon={Activity}
-                          suffix="%"
+                          isPercentage={true}
                           color="from-blue-600 to-indigo-600"
                           delay={200}
                         />
@@ -1049,7 +1086,7 @@ export default function Dashboard() {
                           title={t("todayCollections")}
                           value={stats.todayCollections}
                           icon={Wallet}
-                          prefix="$"
+                          isCurrency={true}
                           color="from-amber-500 to-orange-600"
                           delay={250}
                         />
@@ -1075,7 +1112,7 @@ export default function Dashboard() {
                           title={t("cashPayments")}
                           value={stats.cashPayments}
                           icon={Wallet}
-                          prefix="$"
+                          isCurrency={true}
                           color="from-green-600 to-emerald-600"
                           delay={400}
                         />
@@ -1083,7 +1120,7 @@ export default function Dashboard() {
                           title={t("cardPayments")}
                           value={stats.cardPayments}
                           icon={CreditCard}
-                          prefix="$"
+                          isCurrency={true}
                           color="from-blue-600 to-indigo-600"
                           delay={450}
                         />
@@ -1091,7 +1128,7 @@ export default function Dashboard() {
                           title={t("bankTransferPayments")}
                           value={stats.bankTransferPayments}
                           icon={Landmark}
-                          prefix="$"
+                          isCurrency={true}
                           color="from-purple-600 to-pink-600"
                           delay={500}
                         />
@@ -1099,7 +1136,7 @@ export default function Dashboard() {
                           title={t("checkPayments")}
                           value={stats.checkPayments}
                           icon={FileText}
-                          prefix="$"
+                          isCurrency={true}
                           color="from-amber-500 to-orange-600"
                           delay={550}
                         />
