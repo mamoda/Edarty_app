@@ -193,7 +193,7 @@ const ModernMenuItem: React.FC<MenuItemProps> = ({
       }`}
     >
       <div
-        className={`absolute inset-0 rounded-xl transition-all duration-300 ج.م{
+        className={`absolute inset-0 rounded-xl transition-all duration-300 ${
           isActive
             ? "bg-gradient-to-r from-blue-600/90 to-indigo-600/90 shadow-lg shadow-blue-600/20"
             : "bg-gray-100/50 opacity-0 group-hover:opacity-100"
@@ -204,7 +204,7 @@ const ModernMenuItem: React.FC<MenuItemProps> = ({
 
       <div className="relative flex items-center gap-3 px-4 py-2.5">
         <div
-          className={`p-2 rounded-lg transition-all duration-300 ج.م{
+          className={`p-2 rounded-lg transition-all duration-300 ${
             isActive
               ? "bg-white/20 text-white"
               : "bg-white/80 text-gray-600 group-hover:bg-white group-hover:text-blue-600"
@@ -214,7 +214,7 @@ const ModernMenuItem: React.FC<MenuItemProps> = ({
         </div>
 
         <span
-          className={`flex-1 text-right font-medium transition-colors duration-300 ج.م{
+          className={`flex-1 text-right font-medium transition-colors duration-300 ${
             isActive ? "text-white" : "text-gray-700"
           }`}
         >
@@ -223,7 +223,7 @@ const ModernMenuItem: React.FC<MenuItemProps> = ({
 
         {count !== undefined && (
           <span
-            className={`text-xs px-2 py-1 rounded-full transition-all duration-300 ج.م{
+            className={`text-xs px-2 py-1 rounded-full transition-all duration-300 ${
               isActive
                 ? "bg-white/20 text-white"
                 : "bg-gray-200/80 text-gray-600"
@@ -572,9 +572,8 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose, language, t }) => {
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
-  const { language, toggleLanguage, t } = useLanguage(); // ✅ Fixed: Destructure toggleLanguage from context
+  const { language, toggleLanguage, t } = useLanguage(); 
 
-  // Removed the local toggleLanguage function as it's now from the context
 
   const [currentView, setCurrentView] = useState<View>("dashboard");
   const [stats, setStats] = useState<Statistics>({
@@ -590,8 +589,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
-  const [selectedPeriod, setSelectedPeriod] = useState("month"); // Fixed: Always use English key for consistency
-
+  const [selectedPeriod, setSelectedPeriod] = useState("month"); 
   
 
   useEffect(() => {
@@ -686,7 +684,7 @@ export default function Dashboard() {
           onSignOut={signOut}
           onViewChange={handleViewChange}
           language={language}
-          toggleLanguage={toggleLanguage} // ✅ الآن يستخدم toggleLanguage من الـ Context
+          toggleLanguage={toggleLanguage} 
           t={t}
         />
 

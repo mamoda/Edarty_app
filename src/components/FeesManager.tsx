@@ -414,211 +414,283 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
     return `RCP-${year}${month}${day}-${random}`;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) {
-      alert("الرجاء تسجيل الدخول أولاً");
-      return;
-    }
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!user) {
+    alert("الرجاء تسجيل الدخول أولاً");
+    return;
+  }
 
-    if (!formData.student_id) {
-      alert("الرجاء اختيار الطالب");
-      return;
-    }
+  if (!formData.student_id) {
+    alert("الرجاء اختيار الطالب");
+    return;
+  }
 
-    const amount = parseFloat(formData.amount);
-    if (isNaN(amount) || amount <= 0) {
-      alert("الرجاء إدخال مبلغ صحيح");
-      return;
-    }
+  const amount = parseFloat(formData.amount);
+  if (isNaN(amount) || amount <= 0) {
+    alert("الرجاء إدخال مبلغ صحيح");
+    return;
+  }
 
-    try {
-      let finalAmount = amount;
+  try {
+    // التحقق من رصيد الطالب في حالة الاسترداد
+    if (formData.transaction_type === "refund") {
+      const studentBalance = studentBalances.find(
+        b => b.student_id === formData.student_id
+      );
       
-      // تحديد المبلغ النهائي حسب نوع العملية
-      switch (formData.transaction_type) {
-        case "refund":
-        case "discount":
-          finalAmount = -amount;
-          break;
-        case "late_fee":
-          finalAmount = amount; // غرامة تأخير تضاف كمبلغ موجب
-          break;
-        default:
-          finalAmount = amount;
+      if (!studentBalance) {
+        alert("لم يتم العثور على بيانات الطالب");
+        return;
       }
 
-      // تطبيق الخصم إذا وجد
-      if (formData.discount_percentage > 0 && formData.transaction_type === "deposit") {
-        finalAmount = finalAmount * (1 - formData.discount_percentage / 100);
+      if (amount > studentBalance.total_paid) {
+        alert(`لا يمكن استرداد مبلغ أكبر من المدفوع (${studentBalance.total_paid.toFixed(2)} ج.م)`);
+        return;
       }
 
-      // تخزين معلومات إضافية في حقل notes
-      const notesData = {
-        text: formData.notes,
-        payment_method: formData.payment_method,
-        receipt_number: formData.receipt_number || generateReceiptNumber(),
-        discount_percentage: formData.discount_percentage,
-        discount_reason: formData.discount_reason,
-        late_fee_reason: formData.late_fee_reason,
-        is_installment: formData.is_installment,
-        installment_number: formData.installment_number,
-        total_installments: formData.total_installments,
-        timestamp: new Date().toISOString(),
-      };
-
-      const feeData = {
-        student_id: formData.student_id,
-        amount: finalAmount,
-        payment_type: formData.payment_type,
-        payment_date: formData.payment_date,
-        academic_year: formData.academic_year,
-        notes: JSON.stringify(notesData),
-        user_id: user.id,
-      };
-
-      if (editingFee) {
-        const { error } = await supabase
-          .from("fees")
-          .update(feeData)
-          .eq("id", editingFee.id);
-
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("fees").insert([feeData]);
-        if (error) throw error;
+      if (!confirm(`هل أنت متأكد من استرداد مبلغ ${amount.toFixed(2)} ج.م؟`)) {
+        return;
       }
-
-      resetForm();
-      await loadData();
-      onUpdate();
-
-      // عرض الإيصال بعد الدفع الناجح
-      if (formData.transaction_type === "deposit") {
-        showPaymentReceipt(formData, finalAmount);
-      }
-
-      alert(editingFee ? "تم تحديث الدفعة بنجاح" : "تم إضافة الدفعة بنجاح");
-    } catch (error: any) {
-      console.error("Error saving fee:", error);
-      alert(error.message || "حدث خطأ أثناء حفظ البيانات");
     }
-  };
 
-  // عرض إيصال الدفع
-  const showPaymentReceipt = (data: typeof formData, finalAmount: number) => {
-    const student = students.find(s => s.id === data.student_id);
-    if (!student) return;
+    let finalAmount = amount;
+    let transactionDescription = "";
+    
+    // تحديد المبلغ النهائي ووصف العملية حسب نوعها
+    switch (formData.transaction_type) {
+      case "refund":
+        finalAmount = -amount;
+        transactionDescription = "استرداد مبلغ";
+        break;
+      case "discount":
+        finalAmount = -amount;
+        transactionDescription = "خصم";
+        break;
+      case "late_fee":
+        finalAmount = amount;
+        transactionDescription = "غرامة تأخير";
+        break;
+      default: // deposit
+        finalAmount = amount;
+        transactionDescription = "دفع";
+    }
 
-    const receipt = {
-      receipt_number: data.receipt_number || generateReceiptNumber(),
-      student_name: student.full_name,
-      grade: student.grade,
-      amount: finalAmount,
-      payment_date: data.payment_date,
-      payment_method: data.payment_method,
-      payment_type: data.payment_type,
+    // تطبيق الخصم إذا وجد (لعملية الدفع فقط)
+    if (formData.discount_percentage > 0 && formData.transaction_type === "deposit") {
+      finalAmount = finalAmount * (1 - formData.discount_percentage / 100);
+    }
+
+    // إنشاء رقم إيصال فريد
+    const receiptNumber = formData.receipt_number || generateReceiptNumber();
+
+    // تخزين معلومات إضافية في حقل notes
+    const notesData: any = {
+      text: formData.notes,
+      payment_method: formData.payment_method,
+      receipt_number: receiptNumber,
+      discount_percentage: formData.discount_percentage,
+      discount_reason: formData.discount_reason,
+      late_fee_reason: formData.late_fee_reason,
+      is_installment: formData.is_installment,
+      installment_number: formData.installment_number,
+      total_installments: formData.total_installments,
+      transaction_type: formData.transaction_type,
+      original_amount: amount,
+      timestamp: new Date().toISOString(),
     };
 
-    setCurrentReceipt(receipt);
-    setShowReceiptModal(true);
+    // إضافة سبب الاسترداد إذا كان موجوداً
+    if (formData.transaction_type === "refund" && formData.notes) {
+      notesData.refund_reason = formData.notes;
+    }
+
+    const feeData = {
+      student_id: formData.student_id,
+      amount: finalAmount,
+      payment_type: formData.transaction_type === "refund" ? "استرداد مبلغ" : formData.payment_type,
+      payment_date: formData.payment_date,
+      academic_year: formData.academic_year,
+      notes: JSON.stringify(notesData),
+      user_id: user.id,
+    };
+
+    if (editingFee) {
+      const { error } = await supabase
+        .from("fees")
+        .update(feeData)
+        .eq("id", editingFee.id);
+
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from("fees").insert([feeData]);
+      if (error) throw error;
+    }
+
+    resetForm();
+    await loadData();
+    onUpdate();
+
+    // عرض الإيصال المناسب حسب نوع العملية
+    if (formData.transaction_type === "refund") {
+      showRefundReceipt(formData, finalAmount, receiptNumber);
+    } else if (formData.transaction_type === "deposit") {
+      showPaymentReceipt(formData, finalAmount, receiptNumber);
+    }
+
+    alert(editingFee ? "تم تحديث العملية بنجاح" : "تم إضافة العملية بنجاح");
+  } catch (error: any) {
+    console.error("Error saving fee:", error);
+    alert(error.message || "حدث خطأ أثناء حفظ البيانات");
+  }
+};
+
+// دالة عرض إيصال الدفع
+const showPaymentReceipt = (data: typeof formData, finalAmount: number, receiptNumber: string) => {
+  const student = students.find(s => s.id === data.student_id);
+  if (!student) return;
+
+  const receipt = {
+    receipt_number: receiptNumber,
+    student_name: student.full_name,
+    grade: student.grade,
+    amount: finalAmount,
+    payment_date: data.payment_date,
+    payment_method: data.payment_method,
+    payment_type: data.payment_type,
   };
 
-  // طباعة الإيصال
-  const printReceipt = () => {
-    if (!currentReceipt) return;
+  setCurrentReceipt(receipt);
+  setShowReceiptModal(true);
+};
 
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
+// دالة عرض إيصال الاسترداد
+const showRefundReceipt = (data: typeof formData, finalAmount: number, receiptNumber: string) => {
+  const student = students.find(s => s.id === data.student_id);
+  if (!student) return;
 
-    const formatDate = (date: string) =>
-      new Date(date).toLocaleDateString("ar-EG");
+  const receipt = {
+    receipt_number: receiptNumber,
+    student_name: student.full_name,
+    grade: student.grade,
+    amount: Math.abs(finalAmount),
+    refund_amount: Math.abs(finalAmount),
+    payment_date: data.payment_date,
+    payment_method: data.payment_method,
+    refund_reason: data.notes || "استرداد مبلغ",
+    original_payment_type: data.payment_type,
+    is_refund: true,
+  };
 
-    const paymentMethodLabel = 
-      currentReceipt.payment_method === 'cash' ? 'نقدي' :
-      currentReceipt.payment_method === 'card' ? 'بطاقة ائتمان' :
-      currentReceipt.payment_method === 'bank_transfer' ? 'تحويل بنكي' : 'شيك';
+  setCurrentReceipt(receipt);
+  setShowReceiptModal(true);
+};
 
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html dir="rtl">
-      <head>
-        <meta charset="UTF-8">
-        <title>إيصال دفع - ${currentReceipt.student_name}</title>
-        <style>
-          body { font-family: 'Arial', sans-serif; background: #f3f4f6; padding: 20px; }
-          .receipt { max-width: 400px; margin: 0 auto; background: white; border-radius: 20px; padding: 30px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-          .header { text-align: center; margin-bottom: 20px; border-bottom: 2px dashed #e5e7eb; padding-bottom: 20px; }
-          .school-name { font-size: 24px; font-weight: bold; color: #059669; }
-          .receipt-title { font-size: 18px; color: #6b7280; margin-top: 5px; }
-          .receipt-number { background: #f0fdf4; padding: 10px; border-radius: 10px; text-align: center; margin-bottom: 20px; }
-          .receipt-number .label { font-size: 12px; color: #6b7280; }
-          .receipt-number .value { font-size: 18px; font-weight: bold; color: #059669; }
-          .details { margin-bottom: 20px; }
-          .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
-          .detail-label { color: #6b7280; }
-          .detail-value { font-weight: bold; color: #1f2937; }
-          .amount { background: linear-gradient(135deg, #f0fdf4, #dcfce7); padding: 15px; border-radius: 10px; text-align: center; margin: 20px 0; }
-          .amount .label { font-size: 14px; color: #166534; }
-          .amount .value { font-size: 32px; font-weight: bold; color: #059669; }
-          .footer { text-align: center; margin-top: 20px; padding-top: 20px; border-top: 2px dashed #e5e7eb; font-size: 12px; color: #9ca3af; }
-        </style>
-      </head>
-      <body>
-        <div class="receipt">
-          <div class="header">
-            <div class="school-name">مدارس الإدارة التعليمية</div>
-            <div class="receipt-title">إيصال دفع المصاريف الدراسية</div>
+// دالة طباعة الإيصال المحسنة
+const printReceipt = () => {
+  if (!currentReceipt) return;
+
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) return;
+
+  const formatDate = (date: string) =>
+    new Date(date).toLocaleDateString("ar-EG");
+
+  const paymentMethodLabel = 
+    currentReceipt.payment_method === 'cash' ? 'نقدي' :
+    currentReceipt.payment_method === 'card' ? 'بطاقة ائتمان' :
+    currentReceipt.payment_method === 'bank_transfer' ? 'تحويل بنكي' : 'شيك';
+
+  // تحديد إذا كان هذا إيصال استرداد
+  const isRefund = currentReceipt.is_refund === true;
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html dir="rtl">
+    <head>
+      <meta charset="UTF-8">
+      <title>${isRefund ? 'إيصال استرداد' : 'إيصال دفع'} - ${currentReceipt.student_name}</title>
+      <style>
+        body { font-family: 'Arial', sans-serif; background: #f3f4f6; padding: 20px; }
+        .receipt { max-width: 400px; margin: 0 auto; background: white; border-radius: 20px; padding: 30px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px dashed #e5e7eb; padding-bottom: 20px; }
+        .school-name { font-size: 24px; font-weight: bold; ${isRefund ? 'color: #dc2626;' : 'color: #059669;'} }
+        .receipt-title { font-size: 18px; color: #6b7280; margin-top: 5px; }
+        .receipt-number { background: ${isRefund ? '#fef2f2' : '#f0fdf4'}; padding: 10px; border-radius: 10px; text-align: center; margin-bottom: 20px; }
+        .receipt-number .label { font-size: 12px; color: #6b7280; }
+        .receipt-number .value { font-size: 18px; font-weight: bold; ${isRefund ? 'color: #dc2626;' : 'color: #059669;'} }
+        .details { margin-bottom: 20px; }
+        .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
+        .detail-label { color: #6b7280; }
+        .detail-value { font-weight: bold; color: #1f2937; }
+        .amount { background: ${isRefund ? 'linear-gradient(135deg, #fef2f2, #fee2e2)' : 'linear-gradient(135deg, #f0fdf4, #dcfce7)'}; padding: 15px; border-radius: 10px; text-align: center; margin: 20px 0; }
+        .amount .label { font-size: 14px; ${isRefund ? 'color: #991b1b;' : 'color: #166534;'} }
+        .amount .value { font-size: 32px; font-weight: bold; ${isRefund ? 'color: #dc2626;' : 'color: #059669;'} }
+        .refund-reason { background: #f3f4f6; padding: 10px; border-radius: 8px; margin: 15px 0; font-size: 14px; text-align: center; }
+        .footer { text-align: center; margin-top: 20px; padding-top: 20px; border-top: 2px dashed #e5e7eb; font-size: 12px; color: #9ca3af; }
+      </style>
+    </head>
+    <body>
+      <div class="receipt">
+        <div class="header">
+          <div class="school-name">${isRefund ? '🏦 بنك إدارتي - استرداد' : 'مدارس الإدارة التعليمية'}</div>
+          <div class="receipt-title">${isRefund ? 'إيصال استرداد مبلغ' : 'إيصال دفع المصاريف الدراسية'}</div>
+        </div>
+        
+        <div class="receipt-number">
+          <div class="label">رقم الإيصال</div>
+          <div class="value">${currentReceipt.receipt_number}</div>
+        </div>
+
+        <div class="details">
+          <div class="detail-row">
+            <span class="detail-label">اسم الطالب:</span>
+            <span class="detail-value">${currentReceipt.student_name}</span>
           </div>
-          
-          <div class="receipt-number">
-            <div class="label">رقم الإيصال</div>
-            <div class="value">${currentReceipt.receipt_number}</div>
+          <div class="detail-row">
+            <span class="detail-label">الصف الدراسي:</span>
+            <span class="detail-value">${currentReceipt.grade}</span>
           </div>
-
-          <div class="details">
-            <div class="detail-row">
-              <span class="detail-label">اسم الطالب:</span>
-              <span class="detail-value">${currentReceipt.student_name}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">الصف الدراسي:</span>
-              <span class="detail-value">${currentReceipt.grade}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">نوع الدفعة:</span>
-              <span class="detail-value">${currentReceipt.payment_type}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">تاريخ الدفع:</span>
-              <span class="detail-value">${formatDate(currentReceipt.payment_date)}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">طريقة الدفع:</span>
-              <span class="detail-value">${paymentMethodLabel}</span>
-            </div>
+          ${!isRefund ? `
+          <div class="detail-row">
+            <span class="detail-label">نوع الدفعة:</span>
+            <span class="detail-value">${currentReceipt.payment_type}</span>
           </div>
-
-          <div class="amount">
-            <div class="label">المبلغ المدفوع</div>
-            <div class="value">${currentReceipt.amount.toFixed(2)} ج.م</div>
+          ` : ''}
+          <div class="detail-row">
+            <span class="detail-label">تاريخ ${isRefund ? 'الاسترداد' : 'الدفع'}:</span>
+            <span class="detail-value">${formatDate(currentReceipt.payment_date)}</span>
           </div>
-
-          <div class="footer">
-            <p>هذا الإيصال معتمد إلكترونياً ويعتبر بمثابة سداد رسمي</p>
-            <p style="margin-top: 5px;">نظام إدارتي - إدارة المصاريف الدراسية</p>
+          <div class="detail-row">
+            <span class="detail-label">طريقة ${isRefund ? 'الاسترداد' : 'الدفع'}:</span>
+            <span class="detail-value">${paymentMethodLabel}</span>
           </div>
         </div>
-      </body>
-      </html>
-    `);
 
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => printWindow.print(), 500);
-  };
+        ${isRefund && currentReceipt.refund_reason ? `
+        <div class="refund-reason">
+          <strong>سبب الاسترداد:</strong> ${currentReceipt.refund_reason}
+        </div>
+        ` : ''}
 
-  const handleDelete = async (id: string) => {
+        <div class="amount">
+          <div class="label">${isRefund ? 'المبلغ المسترد' : 'المبلغ المدفوع'}</div>
+          <div class="value">${currentReceipt.amount.toFixed(2)} ج.م</div>
+        </div>
+
+        <div class="footer">
+          <p>${isRefund ? 'هذا الإيصال يثبت عملية استرداد مبلغ للطالب' : 'هذا الإيصال معتمد إلكترونياً ويعتبر بمثابة سداد رسمي'}</p>
+          <p style="margin-top: 5px;">نظام إدارتي - إدارة المصاريف الدراسية</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => printWindow.print(), 500);
+};  const handleDelete = async (id: string) => {
     if (!confirm("هل أنت متأكد من حذف هذه الدفعة؟")) return;
 
     try {
