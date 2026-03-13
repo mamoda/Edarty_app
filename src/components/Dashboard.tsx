@@ -42,9 +42,9 @@ import TeachersManager from "./TeachersManager";
 import ProfitReport from "./ProfitReport";
 import FinancialReports from "./FinancialReports";
 import logo from "../assets/logo.png";
-import backgroundPattern from "../assets/background-pattern.svg";
-import backgroundWave from "../assets/background-wave.svg";
-import backgroundDots from "../assets/background-dots.svg";
+import backgroundPattern from "../assets/background-pattern.png";
+import backgroundWave from "../assets/background-wave.png";
+import backgroundDots from "../assets/background-dots.png";
 
 type View =
   | "dashboard"
