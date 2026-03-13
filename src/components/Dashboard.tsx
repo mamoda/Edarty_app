@@ -42,6 +42,9 @@ import TeachersManager from "./TeachersManager";
 import ProfitReport from "./ProfitReport";
 import FinancialReports from "./FinancialReports";
 import logo from "../assets/logo.png";
+import backgroundPattern from "../assets/background-pattern.svg";
+import backgroundWave from "../assets/background-wave.svg";
+import backgroundDots from "../assets/background-dots.svg";
 
 type View =
   | "dashboard"
@@ -132,7 +135,6 @@ const formatCurrency = (num: number, language: string): string => {
     },
   );
 
-  // جعل "ج.م" بنفس حجم الخط باستخدام span منفصل
   return language === "ar"
     ? `${formattedNumber} ج.م`
     : `EGP ${formattedNumber}`;
@@ -156,6 +158,7 @@ const formatNumber = (num: number, language: string): string => {
     maximumFractionDigits: 0,
   });
 };
+
 const ModernStatCard: React.FC<StatCardProps> = ({
   title,
   value,
@@ -171,7 +174,6 @@ const ModernStatCard: React.FC<StatCardProps> = ({
   const { language } = useLanguage();
   const trendPositive = trend === "up";
 
-  // تحديد طريقة التنسيق حسب نوع القيمة
   const getDisplayValue = () => {
     if (isCurrency) {
       return formatCurrency(value, language);
@@ -201,7 +203,6 @@ const ModernStatCard: React.FC<StatCardProps> = ({
               {title}
             </p>
 
-            {/* سطر القيمة الرئيسية - تعديل هنا */}
             <div className="flex items-baseline gap-1 flex-wrap">
               <span className="text-2xl font-bold text-gray-900 tracking-tight">
                 {getDisplayValue()}
@@ -251,6 +252,7 @@ const ModernStatCard: React.FC<StatCardProps> = ({
     </div>
   );
 };
+
 const ModernMenuItem: React.FC<MenuItemProps> = ({
   label,
   icon: Icon,
@@ -676,6 +678,31 @@ export default function Dashboard() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState("month");
+  const [currentBackground, setCurrentBackground] = useState(0);
+
+  // مجموعة الخلفيات المتاحة
+  const backgrounds = [
+    {
+      image: backgroundPattern,
+      overlay: "from-blue-50/30 to-indigo-50/30",
+    },
+    {
+      image: backgroundWave,
+      overlay: "from-emerald-50/30 to-teal-50/30",
+    },
+    {
+      image: backgroundDots,
+      overlay: "from-purple-50/30 to-pink-50/30",
+    },
+  ];
+
+  // تغيير الخلفية كل 30 ثانية
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentBackground((prev) => (prev + 1) % backgrounds.length);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     loadStatistics();
@@ -743,7 +770,6 @@ export default function Dashboard() {
         const netPaid = totalPaid - totalRefunded;
 
         if (netPaid >= 5000) {
-          // افتراض أن إجمالي المصاريف 5000
           paidStudents++;
         } else if (netPaid > 0) {
           partialPaidStudents++;
@@ -808,7 +834,7 @@ export default function Dashboard() {
       const thisMonthCollections = monthPayments - monthRefunds;
 
       // نسبة التحصيل
-      const expectedRevenue = activeStudents * 5000; // افتراض أن كل طالب عليه 5000
+      const expectedRevenue = activeStudents * 5000;
       const collectionRate =
         expectedRevenue > 0 ? (netRevenue / expectedRevenue) * 100 : 0;
 
@@ -872,10 +898,46 @@ export default function Dashboard() {
 
   return (
     <div
-      className="min-h-screen bg-gray-50/50"
+      className="min-h-screen bg-gray-50/50 relative"
       dir={language === "ar" ? "rtl" : "ltr"}
     >
-      <div className="relative">
+      {/* خلفية متحركة مع صورة */}
+      <div className="fixed inset-0 z-0">
+        {/* الصورة الأساسية */}
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000"
+          style={{
+            backgroundImage: `url(${backgrounds[currentBackground].image})`,
+            opacity: 0.15,
+          }}
+        />
+        
+        {/* طبقة التدرج اللوني */}
+        <div
+          className={`absolute inset-0 bg-gradient-to-br ${backgrounds[currentBackground].overlay} transition-all duration-1000`}
+        />
+        
+        {/* تأثير النقاط المتحركة (اختياري) */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.03),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(139,92,246,0.03),transparent_50%)]" />
+        
+        {/* مؤشر تغيير الخلفية (اختياري) */}
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+          {backgrounds.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentBackground(index)}
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                currentBackground === index
+                  ? "w-6 bg-blue-600"
+                  : "bg-gray-300 hover:bg-gray-400"
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="relative z-10">
         <ModernHeader
           user={user}
           onSignOut={signOut}
@@ -1040,7 +1102,6 @@ export default function Dashboard() {
                     </div>
                   ) : (
                     <>
-                      {/* البطاقات الرئيسية */}
                       <div className="grid grid-cols-1 md:grid-cols-2 xlg:grid-cols-4 gap-4">
                         <ModernStatCard
                           title={t("totalStudents")}
@@ -1085,7 +1146,6 @@ export default function Dashboard() {
                         />
                       </div>
 
-                      {/* بطاقات إضافية للرسوم */}
                       <div className="grid grid-cols-1 md:grid-cols-2 xlg:grid-cols-4 gap-4">
                         <ModernStatCard
                           title={t("collectionRate")}
@@ -1119,7 +1179,6 @@ export default function Dashboard() {
                         />
                       </div>
 
-                      {/* بطاقات طرق الدفع */}
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <ModernStatCard
                           title={t("cashPayments")}
