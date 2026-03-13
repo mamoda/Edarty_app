@@ -1032,130 +1032,132 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-{loading ? (
-  <div className="flex items-center justify-center py-20">
-    <div className="relative">
-      <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-    </div>
-  </div>
-) : (
-  <>
-    {/* البطاقات الرئيسية - معدلة */}
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4 gap-6">
-      <ModernStatCard
-        title={t("totalStudents")}
-        value={stats.totalStudents}
-        icon={Users}
-        trend={studentsTrend.trend}
-        trendValue={studentsTrend.value}
-        color="from-blue-600 to-indigo-600"
-        delay={0}
-        subValue={`${formatNumber(stats.activeStudents, language)} ${t("active")}`}
-      />
-      <ModernStatCard
-        title={t("netRevenue")}
-        value={stats.netRevenue}
-        icon={DollarSign}
-        isCurrency={true}
-        trend={revenueTrend.trend}
-        trendValue={revenueTrend.value}
-        color="from-emerald-600 to-teal-600"
-        delay={50}
-        subValue={t("afterRefunds")}
-      />
-      <ModernStatCard
-        title={t("totalExpenses")}
-        value={stats.totalExpenses}
-        icon={TrendingDown}
-        isCurrency={true}
-        trend={expensesTrend.trend}
-        trendValue={expensesTrend.value}
-        color="from-red-600 to-rose-600"
-        delay={100}
-      />
-      <ModernStatCard
-        title={t("netProfit")}
-        value={stats.netProfit}
-        icon={TrendingUp}
-        isCurrency={true}
-        trend={profitTrend.trend}
-        trendValue={profitTrend.value}
-        color="from-purple-600 to-pink-600"
-        delay={150}
-      />
-    </div>
+                  {loading ? (
+                    <div className="flex items-center justify-center py-20">
+                      <div className="relative">
+                        <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {/* البطاقات الرئيسية */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <ModernStatCard
+                          title={t("totalStudents")}
+                          value={stats.totalStudents}
+                          icon={Users}
+                          trend={studentsTrend.trend}
+                          trendValue={studentsTrend.value}
+                          color="from-blue-600 to-indigo-600"
+                          delay={0}
+                          subValue={`${formatNumber(stats.activeStudents, language)} ${t("active")}`}
+                        />
+                        <ModernStatCard
+                          title={t("netRevenue")}
+                          value={stats.netRevenue}
+                          icon={DollarSign}
+                          isCurrency={true}
+                          trend={revenueTrend.trend}
+                          trendValue={revenueTrend.value}
+                          color="from-emerald-600 to-teal-600"
+                          delay={50}
+                          subValue={t("afterRefunds")}
+                        />
+                        <ModernStatCard
+                          title={t("totalExpenses")}
+                          value={stats.totalExpenses}
+                          icon={TrendingDown}
+                          isCurrency={true}
+                          trend={expensesTrend.trend}
+                          trendValue={expensesTrend.value}
+                          color="from-red-600 to-rose-600"
+                          delay={100}
+                        />
+                        <ModernStatCard
+                          title={t("netProfit")}
+                          value={stats.netProfit}
+                          icon={TrendingUp}
+                          isCurrency={true}
+                          trend={profitTrend.trend}
+                          trendValue={profitTrend.value}
+                          color="from-purple-600 to-pink-600"
+                          delay={150}
+                        />
+                      </div>
 
-    {/* بطاقات إضافية للرسوم - معدلة */}
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4 gap-6">
-      <ModernStatCard
-        title={t("collectionRate")}
-        value={stats.collectionRate}
-        icon={Activity}
-        isPercentage={true}
-        color="from-blue-600 to-indigo-600"
-        delay={200}
-      />
-      <ModernStatCard
-        title={t("todayCollections")}
-        value={stats.todayCollections}
-        icon={Wallet}
-        isCurrency={true}
-        color="from-amber-500 to-orange-600"
-        delay={250}
-      />
-      <ModernStatCard
-        title={t("paidStudents")}
-        value={stats.paidStudents}
-        icon={Users}
-        color="from-green-600 to-emerald-600"
-        delay={300}
-      />
-      <ModernStatCard
-        title={t("unpaidStudents")}
-        value={stats.unpaidStudents}
-        icon={Users}
-        color="from-red-600 to-rose-600"
-        delay={350}
-      />
-    </div>
+                      {/* بطاقات إضافية للرسوم */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <ModernStatCard
+                          title={t("collectionRate")}
+                          value={stats.collectionRate}
+                          icon={Activity}
+                          isPercentage={true}
+                          color="from-blue-600 to-indigo-600"
+                          delay={200}
+                        />
+                        <ModernStatCard
+                          title={t("todayCollections")}
+                          value={stats.todayCollections}
+                          icon={Wallet}
+                          isCurrency={true}
+                          color="from-amber-500 to-orange-600"
+                          delay={250}
+                        />
+                        <ModernStatCard
+                          title={t("paidStudents")}
+                          value={stats.paidStudents}
+                          icon={Users}
+                          color="from-green-600 to-emerald-600"
+                          delay={300}
+                        />
+                        <ModernStatCard
+                          title={t("unpaidStudents")}
+                          value={stats.unpaidStudents}
+                          icon={Users}
+                          color="from-red-600 to-rose-600"
+                          delay={350}
+                        />
+                      </div>
 
-    {/* بطاقات طرق الدفع - معدلة */}
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4 gap-6">
-      <ModernStatCard
-        title={t("cashPayments")}
-        value={stats.cashPayments}
-        icon={Wallet}
-        isCurrency={true}
-        color="from-green-600 to-emerald-600"
-        delay={400}
-      />
-      <ModernStatCard
-        title={t("cardPayments")}
-        value={stats.cardPayments}
-        icon={CreditCard}
-        isCurrency={true}
-        color="from-blue-600 to-indigo-600"
-        delay={450}
-      />
-      <ModernStatCard
-        title={t("bankTransferPayments")}
-        value={stats.bankTransferPayments}
-        icon={Landmark}
-        isCurrency={true}
-        color="from-purple-600 to-pink-600"
-        delay={500}
-      />
-      <ModernStatCard
-        title={t("checkPayments")}
-        value={stats.checkPayments}
-        icon={FileText}
-        isCurrency={true}
-        color="from-amber-500 to-orange-600"
-        delay={550}
-      />
-    </div>
-  </>
-)}                  <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-6 border border-gray-100/50">
+                      {/* بطاقات طرق الدفع */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <ModernStatCard
+                          title={t("cashPayments")}
+                          value={stats.cashPayments}
+                          icon={Wallet}
+                          isCurrency={true}
+                          color="from-green-600 to-emerald-600"
+                          delay={400}
+                        />
+                        <ModernStatCard
+                          title={t("cardPayments")}
+                          value={stats.cardPayments}
+                          icon={CreditCard}
+                          isCurrency={true}
+                          color="from-blue-600 to-indigo-600"
+                          delay={450}
+                        />
+                        <ModernStatCard
+                          title={t("bankTransferPayments")}
+                          value={stats.bankTransferPayments}
+                          icon={Landmark}
+                          isCurrency={true}
+                          color="from-purple-600 to-pink-600"
+                          delay={500}
+                        />
+                        <ModernStatCard
+                          title={t("checkPayments")}
+                          value={stats.checkPayments}
+                          icon={FileText}
+                          isCurrency={true}
+                          color="from-amber-500 to-orange-600"
+                          delay={550}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-6 border border-gray-100/50">
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <h3 className="font-semibold text-gray-900">
