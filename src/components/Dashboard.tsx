@@ -1086,7 +1086,7 @@ export default function Dashboard() {
                       </div>
 
                       {/* بطاقات إضافية للرسوم */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 xlg:grid-cols-4 gap-4">
                         <ModernStatCard
                           title={t("collectionRate")}
                           value={stats.collectionRate}
