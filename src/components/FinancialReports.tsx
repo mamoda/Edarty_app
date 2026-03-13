@@ -52,12 +52,15 @@ interface FinancialReport {
     operatingCashFlow: number;
     investingCashFlow: number;
     financingCashFlow: number;
+    collectionRate: number;
+    expectedRevenue: number;
   };
   revenueByCategory: {
     category: string;
     amount: number;
     percentage: number;
     count: number;
+    type: 'payment' | 'refund' | 'discount' | 'late_fee';
   }[];
   expensesByCategory: {
     category: string;
@@ -71,28 +74,37 @@ interface FinancialReport {
     expenses: number;
     profit: number;
     cumulativeProfit: number;
+    payments: number;
+    refunds: number;
   }[];
   topStudents: {
     student_name: string;
     total_paid: number;
+    total_refunded: number;
+    net_paid: number;
     last_payment: string;
     payments_count: number;
     average_payment: number;
+    status: string;
   }[];
   paymentMethods: {
     method: string;
     amount: number;
     count: number;
     percentage: number;
+    icon?: string;
   }[];
   projections: {
     month: string;
     projectedRevenue: number;
     projectedExpenses: number;
     projectedProfit: number;
+    projectedRefunds: number;
+    projectedNet: number;
     confidence: 'high' | 'medium' | 'low';
     seasonalFactor: number;
-    growthRate: number;
+    expectedStudents: number;
+    expectedPerStudent: number;
   }[];
   ratios: {
     // نسب السيولة
@@ -107,10 +119,13 @@ interface FinancialReport {
     operatingMargin: number;
     grossMargin: number;
     
-    // نسب النشاط
+    // نسب النشاط والتحصيل
     assetTurnover: number;
     receivableTurnover: number;
     averageCollectionPeriod: number;
+    collectionRate: number;
+    averagePerStudent: number;
+    expectedPerStudent: number;
     
     // نسب المديونية
     debtRatio: number;
@@ -132,7 +147,20 @@ interface FinancialReport {
   receivables: {
     total: number;
     overdue: number;
-    byStudent: any[];
+    byStudent: {
+      studentId: string;
+      studentName: string;
+      grade: string;
+      totalRequired: number;
+      totalPaid: number;
+      totalRefunded: number;
+      netPaid: number;
+      outstanding: number;
+      paymentRatio: number;
+      status: string;
+      paymentsByType: any;
+      lastPaymentDate?: string;
+    }[];
   };
   payables: {
     total: number;
@@ -143,6 +171,12 @@ interface FinancialReport {
       expenses: number;
       bills: number;
     };
+  };
+  feesBreakdown: {
+    requiredFees: { [key: string]: number };
+    totalRequiredPerStudent: number;
+    collectedByType: { [key: string]: number };
+    pendingByType: { [key: string]: number };
   };
 }
 
@@ -178,8 +212,18 @@ const validateData = (data: any[], requiredFields: string[]): boolean => {
 const calculateSeasonalFactors = (months: number = 12): number[] => {
   const factors = [];
   for (let i = 0; i < months; i++) {
-    // عامل موسمي يعتمد على الشهر (مثال: سبتمبر أعلى نسبة تحصيل)
-    const monthFactor = 0.8 + (Math.sin((i - 8) * Math.PI / 6) * 0.3);
+    // عامل موسمي يعتمد على الشهر
+    // سبتمبر (شهر 8) أعلى نسبة تحصيل (بداية السنة)
+    // يونيو ويوليو وأغسطس أقل نسبة (إجازة)
+    let monthFactor = 1.0;
+    
+    if (i === 8) monthFactor = 1.5; // سبتمبر
+    else if (i === 9) monthFactor = 1.3; // أكتوبر
+    else if (i === 10) monthFactor = 1.2; // نوفمبر
+    else if (i === 11) monthFactor = 1.1; // ديسمبر
+    else if (i === 5 || i === 6 || i === 7) monthFactor = 0.7; // يونيو-أغسطس
+    else monthFactor = 0.9; // باقي الشهور
+    
     factors.push(monthFactor);
   }
   return factors;
@@ -223,6 +267,17 @@ export default function FinancialReports() {
     "#f97316",
   ];
 
+  // قيم المصاريف المطلوبة من FeesManager
+  const REQUIRED_FEES_MAP = {
+    "رسوم دراسية": 5000,
+    "رسوم الكتب": 500,
+    "رسوم الأنشطة": 300,
+    "رسوم الزي المدرسي": 400,
+    "رسوم الباص": 800,
+  };
+  
+  const TOTAL_REQUIRED_FEES_PER_STUDENT = Object.values(REQUIRED_FEES_MAP).reduce((a, b) => a + b, 0); // 7000
+
   useEffect(() => {
     if (validateDates()) {
       loadReport();
@@ -244,53 +299,137 @@ export default function FinancialReports() {
 
   const calculateAccountsReceivable = (fees: any[], students: any[]) => {
     try {
-      // إجمالي الرسوم المطلوبة لكل طالب
-      const REQUIRED_FEES = 5000; // يجب جلبها من قاعدة البيانات
-    
-      const receivablesMap: { [key: string]: number } = {};
+      // هيكل لتخزين المدفوعات والاستردادات لكل طالب
+      const paymentsMap: { 
+        [key: string]: { 
+          paid: number; 
+          refunded: number; 
+          net: number;
+          paymentsByType: { [key: string]: { positive: number; negative: number } };
+          lastPaymentDate: string | undefined ;
+        } 
+      } = {};
       
-      // حساب المدفوعات لكل طالب
       fees.forEach(fee => {
-        if (!receivablesMap[fee.student_id]) {
-          receivablesMap[fee.student_id] = 0;
+        if (!paymentsMap[fee.student_id]) {
+          paymentsMap[fee.student_id] = { 
+            paid: 0, 
+            refunded: 0, 
+            net: 0,
+            paymentsByType: {},
+            lastPaymentDate: undefined 
+          };
         }
-        // الأرقام الموجبة مدفوعات، السالبة استردادات
-        receivablesMap[fee.student_id] += fee.amount;
+        
+        if (fee.amount > 0) {
+          // دفعة موجبة (إيداع)
+          paymentsMap[fee.student_id].paid += fee.amount;
+          paymentsMap[fee.student_id].net += fee.amount;
+          
+          // تسجيل حسب نوع الدفعة
+          if (!paymentsMap[fee.student_id].paymentsByType[fee.payment_type]) {
+            paymentsMap[fee.student_id].paymentsByType[fee.payment_type] = { positive: 0, negative: 0 };
+          }
+          paymentsMap[fee.student_id].paymentsByType[fee.payment_type].positive += fee.amount;
+        } else {
+          // دفعة سالبة (استرداد أو خصم)
+          const absAmount = Math.abs(fee.amount);
+          paymentsMap[fee.student_id].refunded += absAmount;
+          paymentsMap[fee.student_id].net -= absAmount;
+          
+          // تسجيل حسب نوع الدفعة
+          if (!paymentsMap[fee.student_id].paymentsByType[fee.payment_type]) {
+            paymentsMap[fee.student_id].paymentsByType[fee.payment_type] = { positive: 0, negative: 0 };
+          }
+          paymentsMap[fee.student_id].paymentsByType[fee.payment_type].negative += absAmount;
+        }
+
+        // تحديث تاريخ آخر دفعة
+        if (!paymentsMap[fee.student_id].lastPaymentDate || fee.payment_date > paymentsMap[fee.student_id].lastPaymentDate!) {
+          paymentsMap[fee.student_id].lastPaymentDate = fee.payment_date;
+        }
       });
 
       // حساب المستحقات
       let totalReceivable = 0;
       let overdueReceivables = 0;
       const today = new Date();
+      const currentAcademicYear = new Date().getFullYear();
 
       students.forEach(student => {
-        const paid = receivablesMap[student.id] || 0;
-        const outstanding = Math.max(0, REQUIRED_FEES - paid);
+        const studentData = paymentsMap[student.id] || { 
+          paid: 0, 
+          refunded: 0, 
+          net: 0, 
+          paymentsByType: {},
+          lastPaymentDate: null 
+        };
+        
+        const outstanding = Math.max(0, TOTAL_REQUIRED_FEES_PER_STUDENT - studentData.net);
         
         if (outstanding > 0) {
           totalReceivable += outstanding;
           
-          // التحقق من التأخير (افترض أن المدة شهر)
-          const enrollmentDate = new Date(student.enrollment_date);
-          const monthsSinceEnrollment = (today.getFullYear() - enrollmentDate.getFullYear()) * 12 +
-            (today.getMonth() - enrollmentDate.getMonth());
-          
-          if (monthsSinceEnrollment > 1 && paid < REQUIRED_FEES * 0.3) {
-            overdueReceivables += outstanding;
+          // التحقق من التأخير
+          if (studentData.lastPaymentDate) {
+            const lastPaymentDate = new Date(studentData.lastPaymentDate);
+            const monthsSinceLastPayment = (today.getFullYear() - lastPaymentDate.getFullYear()) * 12 +
+              (today.getMonth() - lastPaymentDate.getMonth());
+            
+            // إذا مر أكثر من شهرين على آخر دفعة ولا يزال عليه مستحقات
+            if (monthsSinceLastPayment > 2 && outstanding > 0) {
+              overdueReceivables += outstanding;
+            }
+          } else {
+            // طالب لم يدفع أي شيء
+            const enrollmentDate = new Date(student.enrollment_date || today);
+            const monthsSinceEnrollment = (today.getFullYear() - enrollmentDate.getFullYear()) * 12 +
+              (today.getMonth() - enrollmentDate.getMonth());
+            
+            if (monthsSinceEnrollment > 1) {
+              overdueReceivables += outstanding;
+            }
           }
         }
+      });
+
+      // تحليل تفصيلي لكل طالب
+      const byStudent = students.map(student => {
+        const studentData = paymentsMap[student.id] || { 
+          paid: 0, 
+          refunded: 0, 
+          net: 0, 
+          paymentsByType: {},
+          lastPaymentDate: null 
+        };
+        
+        const outstanding = Math.max(0, TOTAL_REQUIRED_FEES_PER_STUDENT - studentData.net);
+        const paymentRatio = TOTAL_REQUIRED_FEES_PER_STUDENT > 0 
+          ? (studentData.net / TOTAL_REQUIRED_FEES_PER_STUDENT) * 100 
+          : 0;
+        
+        return {
+          studentId: student.id,
+          studentName: student.full_name,
+          grade: student.grade,
+          totalRequired: TOTAL_REQUIRED_FEES_PER_STUDENT,
+          totalPaid: studentData.paid,
+          totalRefunded: studentData.refunded,
+          netPaid: studentData.net,
+          outstanding,
+          paymentRatio,
+          status: outstanding <= 0 ? 'مدفوع بالكامل' : 
+                  paymentRatio >= 70 ? 'مدفوع معظمه' :
+                  paymentRatio >= 30 ? 'مدفوع جزئياً' : 'غير مدفوع',
+          paymentsByType: studentData.paymentsByType,
+          lastPaymentDate: studentData.lastPaymentDate
+        };
       });
 
       return {
         total: totalReceivable,
         overdue: overdueReceivables,
-        byStudent: Object.entries(receivablesMap).map(([studentId, paid]) => ({
-          studentId,
-          paid,
-          outstanding: Math.max(0, REQUIRED_FEES - paid),
-          status: REQUIRED_FEES - paid <= 0 ? 'paid' : 
-                  REQUIRED_FEES - paid < 1000 ? 'partial' : 'unpaid'
-        }))
+        byStudent
       };
     } catch (error) {
       console.error("Error calculating receivables:", error);
@@ -340,64 +479,101 @@ export default function FinancialReports() {
   const calculateProjections = (
     fees: any[], 
     expenses: any[], 
+    students: any[],
     months: number = 6
   ) => {
     try {
-      // تحليل البيانات التاريخية
-      const historicalRevenue = fees
-        .filter(f => f.amount > 0)
-        .map(f => f.amount);
+      const activeStudents = students.filter(s => s.status === "active").length;
       
-      const historicalExpenses = expenses.map(e => e.amount);
-
-      // حساب المتوسطات
-      const avgRevenue = historicalRevenue.length > 0
-        ? historicalRevenue.reduce((a, b) => a + b, 0) / historicalRevenue.length
-        : 0;
+      // الإيرادات المتوقعة بناءً على عدد الطلاب النشطين
+      const expectedAnnualRevenue = activeStudents * TOTAL_REQUIRED_FEES_PER_STUDENT;
       
-      const avgExpenses = historicalExpenses.length > 0
-        ? historicalExpenses.reduce((a, b) => a + b, 0) / historicalExpenses.length
+      // تحليل البيانات التاريخية للدفعات
+      const paymentsByMonth: { [key: string]: { payments: number; refunds: number; net: number } } = {};
+      
+      fees.forEach(fee => {
+        const month = fee.payment_date.substring(0, 7); // YYYY-MM
+        if (!paymentsByMonth[month]) {
+          paymentsByMonth[month] = { payments: 0, refunds: 0, net: 0 };
+        }
+        
+        if (fee.amount > 0) {
+          paymentsByMonth[month].payments += fee.amount;
+          paymentsByMonth[month].net += fee.amount;
+        } else {
+          paymentsByMonth[month].refunds += Math.abs(fee.amount);
+          paymentsByMonth[month].net -= Math.abs(fee.amount);
+        }
+      });
+
+      // حساب المتوسطات الشهرية
+      const months_data = Object.keys(paymentsByMonth);
+      const avgMonthlyPayment = months_data.length > 0
+        ? months_data.reduce((sum, m) => sum + (paymentsByMonth[m].payments || 0), 0) / months_data.length
+        : expectedAnnualRevenue / 12;
+      
+      const avgMonthlyRefund = months_data.length > 0
+        ? months_data.reduce((sum, m) => sum + (paymentsByMonth[m].refunds || 0), 0) / months_data.length
         : 0;
 
-      // حساب معدل النمو
-      const revenueGrowth = calculateGrowthRate(historicalRevenue);
-      const expenseGrowth = calculateGrowthRate(historicalExpenses);
+      // متوسط المصروفات الشهرية
+      const expensesByMonth: { [key: string]: number } = {};
+      expenses.forEach(expense => {
+        const month = expense.expense_date.substring(0, 7);
+        expensesByMonth[month] = (expensesByMonth[month] || 0) + expense.amount;
+      });
+      
+      const avgMonthlyExpenses = Object.keys(expensesByMonth).length > 0
+        ? Object.values(expensesByMonth).reduce((a, b) => a + b, 0) / Object.keys(expensesByMonth).length
+        : 0;
 
       // عوامل موسمية
-      const seasonalFactors = calculateSeasonalFactors(months);
+      const seasonalFactors = calculateSeasonalFactors(12);
       
-      // مستويات الثقة
-      const dataQuality = historicalRevenue.length / months; // جودة البيانات
-      const confidenceLevels: ('high' | 'medium' | 'low')[] = 
-        dataQuality > 0.8 ? ['high', 'high', 'high', 'medium', 'medium', 'low'] :
-        dataQuality > 0.5 ? ['medium', 'medium', 'medium', 'low', 'low', 'low'] :
-        ['low', 'low', 'low', 'low', 'low', 'low'];
-
+      // حساب مستوى الثقة بناءً على كمية البيانات التاريخية
+      const dataQuality = months_data.length / 12; // جودة البيانات (سنة كاملة = 1)
+      
       const projections = [];
       const currentDate = new Date();
 
       for (let i = 1; i <= months; i++) {
         const nextMonth = new Date(currentDate);
         nextMonth.setMonth(nextMonth.getMonth() + i);
-
-        // تطبيق العوامل الموسمية ومعدلات النمو
-        const seasonalFactor = seasonalFactors[(currentDate.getMonth() + i) % 12];
-        const growthMultiplier = Math.pow(1 + revenueGrowth, i / 12);
         
-        const projectedRevenue = avgRevenue * seasonalFactor * growthMultiplier;
-        const projectedExpenses = avgExpenses * seasonalFactor * (1 + expenseGrowth * i / 12);
+        const monthIndex = (currentDate.getMonth() + i) % 12;
+        const seasonalFactor = seasonalFactors[monthIndex];
+        
+        // في سبتمبر (بداية السنة) نتوقع دفعات أكبر
+        const isStartOfYear = monthIndex === 8; // سبتمبر
+        const startOfYearFactor = isStartOfYear ? 1.5 : 1;
+        
+        // حساب النمو المتوقع (افتراضي 5% سنوياً)
+        const growthRate = 0.05;
+        const growthFactor = Math.pow(1 + growthRate, i / 12);
+        
+        const projectedPayments = avgMonthlyPayment * seasonalFactor * startOfYearFactor * growthFactor;
+        const projectedRefunds = avgMonthlyRefund * seasonalFactor;
+        const projectedExpensesAmount = avgMonthlyExpenses * seasonalFactor * growthFactor;
+        
+        // تحديد مستوى الثقة
+        let confidence: 'high' | 'medium' | 'low' = 'medium';
+        if (dataQuality > 0.8 && i <= 3) confidence = 'high';
+        else if (dataQuality < 0.3 || i > 6) confidence = 'low';
         
         projections.push({
           month: nextMonth.toLocaleDateString("ar-EG", {
             month: "long",
             year: "numeric",
           }),
-          projectedRevenue: Math.max(0, projectedRevenue),
-          projectedExpenses: Math.max(0, projectedExpenses),
-          projectedProfit: Math.max(0, projectedRevenue - projectedExpenses),
-          confidence: confidenceLevels[i - 1],
+          projectedRevenue: Math.max(0, projectedPayments),
+          projectedRefunds: Math.max(0, projectedRefunds),
+          projectedExpenses: Math.max(0, projectedExpensesAmount),
+          projectedProfit: Math.max(0, projectedPayments - projectedRefunds - projectedExpensesAmount),
+          projectedNet: Math.max(0, projectedPayments - projectedRefunds),
+          confidence,
           seasonalFactor,
-          growthRate: revenueGrowth,
+          expectedStudents: activeStudents,
+          expectedPerStudent: TOTAL_REQUIRED_FEES_PER_STUDENT,
         });
       }
 
@@ -410,7 +586,7 @@ export default function FinancialReports() {
 
   // حساب معدل النمو
   const calculateGrowthRate = (data: number[]): number => {
-    if (data.length < 2) return 0.05; // معدل افتراضي
+    if (data.length < 2) return 0.05; // معدل افتراضي 5%
     
     const firstHalf = data.slice(0, Math.floor(data.length / 2));
     const secondHalf = data.slice(Math.floor(data.length / 2));
@@ -432,12 +608,25 @@ export default function FinancialReports() {
     payables: any
   ) => {
     try {
-      const totalRevenue = fees
+      const activeStudents = students.filter(s => s.status === "active").length;
+      
+      // إجمالي الإيرادات المتوقعة
+      const expectedTotalRevenue = activeStudents * TOTAL_REQUIRED_FEES_PER_STUDENT;
+      
+      // صافي الإيرادات الفعلية (مدفوعات - استردادات)
+      const totalPayments = fees
         .filter(f => f.amount > 0)
         .reduce((sum, f) => sum + f.amount, 0);
       
+      const totalRefunds = fees
+        .filter(f => f.amount < 0)
+        .reduce((sum, f) => sum + Math.abs(f.amount), 0);
+      
+      const netRevenue = totalPayments - totalRefunds;
+      
+      // المصروفات
       const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-      const netProfit = totalRevenue - totalExpenses;
+      const netProfit = netRevenue - totalExpenses;
 
       // الأصول المتداولة (نقدية + ذمم مدينة + مخزون)
       const cashInBank = 100000; // يجب جلبها من قاعدة البيانات
@@ -462,16 +651,20 @@ export default function FinancialReports() {
       const cashRatio = currentLiabilities > 0 ? cashInBank / currentLiabilities : 0;
 
       // نسب الربحية
-      const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+      const profitMargin = netRevenue > 0 ? (netProfit / netRevenue) * 100 : 0;
       const returnOnAssets = totalAssets > 0 ? (netProfit / totalAssets) * 100 : 0;
       const returnOnEquity = equity > 0 ? (netProfit / equity) * 100 : 0;
-      const operatingMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
-      const grossMargin = totalRevenue > 0 ? ((totalRevenue - totalExpenses) / totalRevenue) * 100 : 0;
+      const operatingMargin = netRevenue > 0 ? (netProfit / netRevenue) * 100 : 0;
+      const grossMargin = netRevenue > 0 ? ((netRevenue - totalExpenses) / netRevenue) * 100 : 0;
 
-      // نسب النشاط
-      const assetTurnover = totalAssets > 0 ? totalRevenue / totalAssets : 0;
-      const receivableTurnover = accountsReceivable > 0 ? totalRevenue / accountsReceivable : 0;
+      // نسب النشاط والتحصيل
+      const assetTurnover = totalAssets > 0 ? netRevenue / totalAssets : 0;
+      const receivableTurnover = accountsReceivable > 0 ? netRevenue / accountsReceivable : 0;
       const averageCollectionPeriod = receivableTurnover > 0 ? 365 / receivableTurnover : 0;
+      
+      // نسب تحصيل جديدة
+      const collectionRate = expectedTotalRevenue > 0 ? (netRevenue / expectedTotalRevenue) * 100 : 0;
+      const averagePerStudent = activeStudents > 0 ? netRevenue / activeStudents : 0;
 
       // نسب المديونية
       const debtRatio = totalAssets > 0 ? payables.total / totalAssets : 0;
@@ -479,9 +672,9 @@ export default function FinancialReports() {
       const interestCoverage = 5; // يجب حسابها بدقة
 
       // نسب النمو (مقارنة بالفترة السابقة)
-      const revenueGrowth = 10; // يجب حسابها
-      const profitGrowth = 8; // يجب حسابها
-      const expenseGrowth = 5; // يجب حسابها
+      const revenueGrowth = calculateGrowthRate(fees.filter(f => f.amount > 0).map(f => f.amount));
+      const profitGrowth = 8; // يمكن تحسينها
+      const expenseGrowth = 5; // يمكن تحسينها
 
       return {
         // نسب السيولة
@@ -496,10 +689,13 @@ export default function FinancialReports() {
         operatingMargin,
         grossMargin,
         
-        // نسب النشاط
+        // نسب النشاط والتحصيل
         assetTurnover,
         receivableTurnover,
         averageCollectionPeriod,
+        collectionRate,
+        averagePerStudent,
+        expectedPerStudent: TOTAL_REQUIRED_FEES_PER_STUDENT,
         
         // نسب المديونية
         debtRatio,
@@ -507,7 +703,7 @@ export default function FinancialReports() {
         interestCoverage,
         
         // نسب النمو
-        revenueGrowth,
+        revenueGrowth: revenueGrowth * 100,
         profitGrowth,
         expenseGrowth,
       };
@@ -518,96 +714,140 @@ export default function FinancialReports() {
         profitMargin: 0, returnOnAssets: 0, returnOnEquity: 0,
         operatingMargin: 0, grossMargin: 0,
         assetTurnover: 0, receivableTurnover: 0, averageCollectionPeriod: 0,
+        collectionRate: 0, averagePerStudent: 0, expectedPerStudent: TOTAL_REQUIRED_FEES_PER_STUDENT,
         debtRatio: 0, debtToEquity: 0, interestCoverage: 0,
         revenueGrowth: 0, profitGrowth: 0, expenseGrowth: 0,
       };
     }
   };
 
-// ==================== إنشاء تنبيهات ذكية ====================
+  // ==================== إنشاء تنبيهات ذكية ====================
 
-const generateAlerts = (
-  ratios: any,
-  receivables: any,
-  payables: any,
-  projections: any[]
-): { type: 'warning' | 'danger' | 'info' | 'success'; message: string; metric: string; threshold: number; currentValue: number; }[] => {
-  const alerts: { type: 'warning' | 'danger' | 'info' | 'success'; message: string; metric: string; threshold: number; currentValue: number; }[] = [];
+  const generateAlerts = (
+    ratios: any,
+    receivables: any,
+    payables: any,
+    projections: any[],
+    fees: any[]
+  ): { type: 'warning' | 'danger' | 'info' | 'success'; message: string; metric: string; threshold: number; currentValue: number; }[] => {
+    const alerts: { type: 'warning' | 'danger' | 'info' | 'success'; message: string; metric: string; threshold: number; currentValue: number; }[] = [];
 
-  // تنبيهات السيولة
-  if (ratios.currentRatio < 1) {
-    alerts.push({
-      type: 'danger',  // ✅ TypeScript سيتأكد أن هذه القيمة مسموحة
-      message: 'نسبة السيولة الحالية أقل من 1 - خطر عدم القدرة على سداد الالتزامات',
-      metric: 'currentRatio',
-      threshold: 1,
-      currentValue: ratios.currentRatio
-    });
-  } else if (ratios.currentRatio < 1.5) {
-    alerts.push({
-      type: 'warning',  // ✅
-      message: 'نسبة السيولة الحالية أقل من المعدل المثالي (1.5)',
-      metric: 'currentRatio',
-      threshold: 1.5,
-      currentValue: ratios.currentRatio
-    });
-  }
+    // تنبيهات السيولة
+    if (ratios.currentRatio < 1) {
+      alerts.push({
+        type: 'danger',
+        message: 'نسبة السيولة الحالية أقل من 1 - خطر عدم القدرة على سداد الالتزامات',
+        metric: 'currentRatio',
+        threshold: 1,
+        currentValue: ratios.currentRatio
+      });
+    } else if (ratios.currentRatio < 1.5) {
+      alerts.push({
+        type: 'warning',
+        message: 'نسبة السيولة الحالية أقل من المعدل المثالي (1.5)',
+        metric: 'currentRatio',
+        threshold: 1.5,
+        currentValue: ratios.currentRatio
+      });
+    }
 
-  // تنبيهات الذمم المدينة
-  if (receivables.overdue > receivables.total * 0.3) {
-    alerts.push({
-      type: 'warning',  // ✅
-      message: 'نسبة الذمم المتأخرة مرتفعة - تحتاج إلى متابعة التحصيل',
-      metric: 'overdueReceivables',
-      threshold: receivables.total * 0.3,
-      currentValue: receivables.overdue
-    });
-  }
+    // تنبيهات الذمم المدينة
+    if (receivables.total > 0) {
+      const overdueRatio = (receivables.overdue / receivables.total) * 100;
+      if (overdueRatio > 30) {
+        alerts.push({
+          type: 'warning',
+          message: `نسبة المتأخرات مرتفعة (${overdueRatio.toFixed(1)}%) - تحتاج متابعة`,
+          metric: 'overdueRatio',
+          threshold: 30,
+          currentValue: overdueRatio
+        });
+      }
+    }
 
-  // تنبيهات الربحية
-  if (ratios.profitMargin < 10) {
-    alerts.push({
-      type: 'warning',  // ✅
-      message: 'هامش الربح منخفض - أقل من 10%',
-      metric: 'profitMargin',
-      threshold: 10,
-      currentValue: ratios.profitMargin
-    });
-  } else if (ratios.profitMargin < 0) {
-    alerts.push({
-      type: 'danger',  // ✅
-      message: 'الشركة تعمل بخسارة - تحتاج إلى إجراءات فورية',
-      metric: 'profitMargin',
-      threshold: 0,
-      currentValue: ratios.profitMargin
-    });
-  }
+    // تنبيهات الربحية
+    if (ratios.profitMargin < 10 && ratios.profitMargin > 0) {
+      alerts.push({
+        type: 'warning',
+        message: 'هامش الربح منخفض - أقل من 10%',
+        metric: 'profitMargin',
+        threshold: 10,
+        currentValue: ratios.profitMargin
+      });
+    } else if (ratios.profitMargin < 0) {
+      alerts.push({
+        type: 'danger',
+        message: 'الشركة تعمل بخسارة - تحتاج إلى إجراءات فورية',
+        metric: 'profitMargin',
+        threshold: 0,
+        currentValue: ratios.profitMargin
+      });
+    }
 
-  // تنبيهات التوقعات
-  const lastProjection = projections[projections.length - 1];
-  if (lastProjection && lastProjection.confidence === 'low') {
-    alerts.push({
-      type: 'info',  // ✅
-      message: 'دقة التوقعات للأشهر القادمة منخفضة - نقص في البيانات التاريخية',
-      metric: 'forecastConfidence',
-      threshold: 0.5,
-      currentValue: 0.3
-    });
-  }
+    // تنبيهات نسبة التحصيل
+    if (ratios.collectionRate < 50) {
+      alerts.push({
+        type: 'danger',
+        message: `نسبة التحصيل منخفضة جداً (${ratios.collectionRate.toFixed(1)}%) - أقل من 50%`,
+        metric: 'collectionRate',
+        threshold: 50,
+        currentValue: ratios.collectionRate
+      });
+    } else if (ratios.collectionRate < 70) {
+      alerts.push({
+        type: 'warning',
+        message: `نسبة التحصيل أقل من المستهدف (${ratios.collectionRate.toFixed(1)}%)`,
+        metric: 'collectionRate',
+        threshold: 70,
+        currentValue: ratios.collectionRate
+      });
+    }
 
-  // تنبيهات النمو
-  if (ratios.revenueGrowth < 0) {
-    alerts.push({
-      type: 'warning',  // ✅
-      message: 'نمو الإيرادات سلبي - تراجع مقارنة بالفترة السابقة',
-      metric: 'revenueGrowth',
-      threshold: 0,
-      currentValue: ratios.revenueGrowth
-    });
-  }
+    // تنبيهات التوقعات
+    const lastProjection = projections[projections.length - 1];
+    if (lastProjection && lastProjection.confidence === 'low') {
+      alerts.push({
+        type: 'info',
+        message: 'دقة التوقعات للأشهر القادمة منخفضة - نقص في البيانات التاريخية',
+        metric: 'forecastConfidence',
+        threshold: 0.5,
+        currentValue: 0.3
+      });
+    }
 
-  return alerts;
-};
+    // تنبيهات النمو
+    if (ratios.revenueGrowth < 0) {
+      alerts.push({
+        type: 'warning',
+        message: `نمو الإيرادات سلبي (${ratios.revenueGrowth.toFixed(1)}%) - تراجع مقارنة بالفترة السابقة`,
+        metric: 'revenueGrowth',
+        threshold: 0,
+        currentValue: ratios.revenueGrowth
+      });
+    }
+
+    // تنبيهات أنواع المصاريف المفقودة
+    const collectedTypes = new Set();
+    fees.forEach(fee => {
+      if (fee.amount > 0) {
+        collectedTypes.add(fee.payment_type);
+      }
+    });
+
+    const missingTypes = Object.keys(REQUIRED_FEES_MAP).filter(type => !collectedTypes.has(type));
+    if (missingTypes.length > 0) {
+      alerts.push({
+        type: 'info',
+        message: `بعض أنواع المصاريف لم يتم تحصيلها: ${missingTypes.slice(0, 3).join('، ')}${missingTypes.length > 3 ? '...' : ''}`,
+        metric: 'missingFeeTypes',
+        threshold: Object.keys(REQUIRED_FEES_MAP).length,
+        currentValue: collectedTypes.size
+      });
+    }
+
+    return alerts;
+  };
+
   // ==================== تحميل التقرير الرئيسي ====================
 
   const loadReport = async () => {
@@ -653,14 +893,20 @@ const generateAlerts = (
       const payables = calculateAccountsPayable(expenses, teachers, []);
 
       // حساب الإيرادات والمصروفات
-      const totalRevenue = fees
+      const totalPayments = fees
         .filter(f => f.amount > 0)
         .reduce((sum, f) => sum + f.amount, 0);
+      
+      const totalRefunds = fees
+        .filter(f => f.amount < 0)
+        .reduce((sum, f) => sum + Math.abs(f.amount), 0);
+      
+      const totalRevenue = totalPayments - totalRefunds; // صافي الإيرادات
       
       const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
       const netProfit = totalRevenue - totalExpenses;
 
-      // حساب الإيرادات حسب الفئة
+      // حساب الإيرادات حسب الفئة (مع تفريق المدفوعات والاستردادات)
       const revenueByCategory = calculateRevenueByCategory(fees);
       
       // حساب المصروفات حسب الفئة
@@ -670,25 +916,44 @@ const generateAlerts = (
       const dailyTransactions = calculateDailyTransactions(fees, expenses);
 
       // أفضل الطلاب
-      const topStudents = calculateTopStudents(fees);
+      const topStudents = calculateTopStudents(fees, students);
 
       // طرق الدفع
       const paymentMethods = calculatePaymentMethods(fees);
 
       // التوقعات المحسنة
-      const projections = calculateProjections(fees, expenses, 6);
+      const projections = calculateProjections(fees, expenses, students, 6);
 
       // النسب المالية المحسنة
       const ratios = calculateFinancialRatios(fees, expenses, teachers, students, receivables, payables);
 
       // توليد التنبيهات
-      const alerts = generateAlerts(ratios, receivables, payables, projections);
+      const alerts = generateAlerts(ratios, receivables, payables, projections, fees);
 
       // حساب التدفقات النقدية
       const cashInBank = 100000; // يجب جلبها من قاعدة البيانات
       const operatingCashFlow = totalRevenue - totalExpenses;
       const investingCashFlow = -50000; // استثمارات (سلبية)
       const financingCashFlow = 0; // تمويل
+
+      // حساب الإيرادات المتوقعة
+      const activeStudents = students.filter(s => s.status === "active").length;
+      const expectedRevenue = activeStudents * TOTAL_REQUIRED_FEES_PER_STUDENT;
+
+      // تحليل تفصيلي للمصاريف
+      const collectedByType: { [key: string]: number } = {};
+      fees.forEach(fee => {
+        if (fee.amount > 0) {
+          collectedByType[fee.payment_type] = (collectedByType[fee.payment_type] || 0) + fee.amount;
+        }
+      });
+
+      const pendingByType: { [key: string]: number } = {};
+      Object.keys(REQUIRED_FEES_MAP).forEach(type => {
+        const collected = collectedByType[type] || 0;
+        const required = REQUIRED_FEES_MAP[type as keyof typeof REQUIRED_FEES_MAP] * activeStudents;
+        pendingByType[type] = Math.max(0, required - collected);
+      });
 
       setReport({
         period: reportType,
@@ -707,6 +972,8 @@ const generateAlerts = (
           operatingCashFlow,
           investingCashFlow,
           financingCashFlow,
+          collectionRate: expectedRevenue > 0 ? (totalRevenue / expectedRevenue) * 100 : 0,
+          expectedRevenue,
         },
         revenueByCategory,
         expensesByCategory,
@@ -718,6 +985,12 @@ const generateAlerts = (
         alerts,
         receivables,
         payables,
+        feesBreakdown: {
+          requiredFees: REQUIRED_FEES_MAP,
+          totalRequiredPerStudent: TOTAL_REQUIRED_FEES_PER_STUDENT,
+          collectedByType,
+          pendingByType,
+        }
       });
 
     } catch (error: any) {
@@ -731,26 +1004,40 @@ const generateAlerts = (
   // ==================== دوال الحساب المساعدة ====================
 
   const calculateRevenueByCategory = (fees: any[]) => {
-    const categories: { [key: string]: { amount: number; count: number } } = {};
+    const categories: { [key: string]: { amount: number; count: number; positive: number; negative: number } } = {};
     
     fees.forEach((fee) => {
-      if (fee.amount > 0) {
-        if (!categories[fee.payment_type]) {
-          categories[fee.payment_type] = { amount: 0, count: 0 };
-        }
-        categories[fee.payment_type].amount += fee.amount;
-        categories[fee.payment_type].count += 1;
+      if (!categories[fee.payment_type]) {
+        categories[fee.payment_type] = { amount: 0, count: 0, positive: 0, negative: 0 };
       }
+      
+      if (fee.amount > 0) {
+        categories[fee.payment_type].amount += fee.amount;
+        categories[fee.payment_type].positive += fee.amount;
+      } else {
+        categories[fee.payment_type].amount += fee.amount; // سيضيف قيمة سالبة
+        categories[fee.payment_type].negative += Math.abs(fee.amount);
+      }
+      categories[fee.payment_type].count += 1;
     });
 
-    const total = Object.values(categories).reduce((a, b) => a + b.amount, 0);
+    const total = Object.values(categories).reduce((a, b) => a + Math.abs(b.amount), 0);
     
-    return Object.entries(categories).map(([category, data]) => ({
-      category,
-      amount: data.amount,
-      count: data.count,
-      percentage: total > 0 ? (data.amount / total) * 100 : 0,
-    })).sort((a, b) => b.amount - a.amount);
+    return Object.entries(categories).map(([category, data]) => {
+      // تحديد نوع الفئة
+      let type: 'payment' | 'refund' | 'discount' | 'late_fee' = 'payment';
+      if (category.includes('استرداد')) type = 'refund';
+      else if (category.includes('خصم')) type = 'discount';
+      else if (category.includes('غرامة')) type = 'late_fee';
+      
+      return {
+        category,
+        amount: data.amount,
+        count: data.count,
+        percentage: total > 0 ? (Math.abs(data.amount) / total) * 100 : 0,
+        type,
+      };
+    }).sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
   };
 
   const calculateExpensesByCategory = (expenses: any[]) => {
@@ -775,19 +1062,29 @@ const generateAlerts = (
   };
 
   const calculateDailyTransactions = (fees: any[], expenses: any[]) => {
-    const dateMap: { [key: string]: { revenue: number; expenses: number } } = {};
+    const dateMap: { [key: string]: { 
+      revenue: number; 
+      expenses: number; 
+      payments: number;
+      refunds: number;
+    } } = {};
 
     fees.forEach((fee) => {
+      const date = fee.payment_date;
+      if (!dateMap[date]) dateMap[date] = { revenue: 0, expenses: 0, payments: 0, refunds: 0 };
+      
       if (fee.amount > 0) {
-        const date = fee.payment_date;
-        if (!dateMap[date]) dateMap[date] = { revenue: 0, expenses: 0 };
         dateMap[date].revenue += fee.amount;
+        dateMap[date].payments += fee.amount;
+      } else {
+        dateMap[date].revenue += fee.amount; // سيضيف قيمة سالبة
+        dateMap[date].refunds += Math.abs(fee.amount);
       }
     });
 
     expenses.forEach((expense) => {
       const date = expense.expense_date;
-      if (!dateMap[date]) dateMap[date] = { revenue: 0, expenses: 0 };
+      if (!dateMap[date]) dateMap[date] = { revenue: 0, expenses: 0, payments: 0, refunds: 0 };
       dateMap[date].expenses += expense.amount;
     });
 
@@ -802,16 +1099,19 @@ const generateAlerts = (
           expenses: values.expenses,
           profit,
           cumulativeProfit,
+          payments: values.payments,
+          refunds: values.refunds,
         };
       })
       .sort((a, b) => a.date.localeCompare(b.date));
   };
 
-  const calculateTopStudents = (fees: any[]) => {
+  const calculateTopStudents = (fees: any[], students: any[]) => {
     const studentMap: {
       [key: string]: { 
         name: string; 
-        total: number; 
+        total_paid: number; 
+        total_refunded: number;
         count: number;
         lastDate: string;
         payments: number[];
@@ -819,20 +1119,28 @@ const generateAlerts = (
     } = {};
 
     fees.forEach((fee) => {
-      if (fee.amount > 0 && fee.student) {
+      if (fee.student) {
         const studentId = fee.student_id;
         if (!studentMap[studentId]) {
           studentMap[studentId] = {
             name: fee.student.full_name,
-            total: 0,
+            total_paid: 0,
+            total_refunded: 0,
             count: 0,
             lastDate: fee.payment_date,
             payments: [],
           };
         }
-        studentMap[studentId].total += fee.amount;
+        
+        if (fee.amount > 0) {
+          studentMap[studentId].total_paid += fee.amount;
+          studentMap[studentId].payments.push(fee.amount);
+        } else {
+          studentMap[studentId].total_refunded += Math.abs(fee.amount);
+        }
+        
         studentMap[studentId].count += 1;
-        studentMap[studentId].payments.push(fee.amount);
+        
         if (fee.payment_date > studentMap[studentId].lastDate) {
           studentMap[studentId].lastDate = fee.payment_date;
         }
@@ -840,14 +1148,23 @@ const generateAlerts = (
     });
 
     return Object.values(studentMap)
-      .map(s => ({
-        student_name: s.name,
-        total_paid: s.total,
-        last_payment: s.lastDate,
-        payments_count: s.count,
-        average_payment: s.total / s.count,
-      }))
-      .sort((a, b) => b.total_paid - a.total_paid)
+      .map(s => {
+        const net_paid = s.total_paid - s.total_refunded;
+        const status = net_paid >= TOTAL_REQUIRED_FEES_PER_STUDENT ? 'مكتمل' : 
+                      net_paid >= TOTAL_REQUIRED_FEES_PER_STUDENT * 0.7 ? 'مرتفع' : 'منخفض';
+        
+        return {
+          student_name: s.name,
+          total_paid: s.total_paid,
+          total_refunded: s.total_refunded,
+          net_paid,
+          last_payment: s.lastDate,
+          payments_count: s.count,
+          average_payment: s.payments.length > 0 ? s.total_paid / s.payments.length : 0,
+          status,
+        };
+      })
+      .sort((a, b) => b.net_paid - a.net_paid)
       .slice(0, 10);
   };
 
@@ -876,14 +1193,26 @@ const generateAlerts = (
 
     const total = Object.values(methods).reduce((a, b) => a + b.amount, 0);
     
+    const methodLabels: { [key: string]: string } = {
+      cash: "نقدي",
+      card: "بطاقة",
+      bank_transfer: "تحويل بنكي",
+      check: "شيك"
+    };
+
+    const methodIcons: { [key: string]: string } = {
+      cash: "💰",
+      card: "💳",
+      bank_transfer: "🏦",
+      check: "📄"
+    };
+    
     return Object.entries(methods).map(([method, data]) => ({
-      method:
-        method === "cash" ? "نقدي" :
-        method === "card" ? "بطاقة" :
-        method === "bank_transfer" ? "تحويل بنكي" : "شيك",
+      method: methodLabels[method] || method,
       amount: data.amount,
       count: data.count,
       percentage: total > 0 ? (data.amount / total) * 100 : 0,
+      icon: methodIcons[method] || "💰",
     })).sort((a, b) => b.amount - a.amount);
   };
 
@@ -902,6 +1231,8 @@ const generateAlerts = (
         ["إجمالي المصروفات", formatCurrency(report.summary.totalExpenses)],
         ["صافي الربح", formatCurrency(report.summary.netProfit)],
         ["هامش الربح", formatPercentage(report.summary.profitMargin)],
+        ["نسبة التحصيل", formatPercentage(report.summary.collectionRate || 0)],
+        ["الإيرادات المتوقعة", formatCurrency(report.summary.expectedRevenue || 0)],
         ["الذمم المدينة", formatCurrency(report.summary.accountsReceivable)],
         ["الذمم الدائنة", formatCurrency(report.summary.accountsPayable)],
         ["رأس المال العامل", formatCurrency(report.summary.workingCapital)],
@@ -916,8 +1247,9 @@ const generateAlerts = (
         formatCurrency(r.amount),
         formatPercentage(r.percentage),
         r.count,
+        r.type === 'payment' ? 'دفع' : r.type === 'refund' ? 'استرداد' : r.type === 'discount' ? 'خصم' : 'غرامة'
       ]);
-      revenueData.unshift(["الفئة", "المبلغ", "النسبة", "عدد العمليات"]);
+      revenueData.unshift(["الفئة", "المبلغ", "النسبة", "عدد العمليات", "النوع"]);
       const wsRevenue = XLSX.utils.aoa_to_sheet(revenueData);
       XLSX.utils.book_append_sheet(wb, wsRevenue, "الإيرادات");
 
@@ -936,11 +1268,12 @@ const generateAlerts = (
       const projectionsData = report.projections.map(p => [
         p.month,
         formatCurrency(p.projectedRevenue),
+        formatCurrency(p.projectedRefunds || 0),
         formatCurrency(p.projectedExpenses),
-        formatCurrency(p.projectedProfit),
+        formatCurrency(p.projectedNet || p.projectedProfit),
         p.confidence === 'high' ? 'عالية' : p.confidence === 'medium' ? 'متوسطة' : 'منخفضة',
       ]);
-      projectionsData.unshift(["الشهر", "الإيرادات المتوقعة", "المصروفات المتوقعة", "الربح المتوقع", "مستوى الثقة"]);
+      projectionsData.unshift(["الشهر", "الإيرادات", "الاستردادات", "المصروفات", "صافي الربح", "مستوى الثقة"]);
       const wsProjections = XLSX.utils.aoa_to_sheet(projectionsData);
       XLSX.utils.book_append_sheet(wb, wsProjections, "التوقعات");
 
@@ -955,9 +1288,34 @@ const generateAlerts = (
         ["هامش الربح", formatPercentage(report.ratios.profitMargin)],
         ["العائد على الأصول", formatPercentage(report.ratios.returnOnAssets)],
         ["العائد على حقوق الملكية", formatPercentage(report.ratios.returnOnEquity)],
+        ["", ""],
+        ["نسب التحصيل", ""],
+        ["نسبة التحصيل", formatPercentage(report.ratios.collectionRate || 0)],
+        ["متوسط التحصيل لكل طالب", formatCurrency(report.ratios.averagePerStudent || 0)],
+        ["المستحق لكل طالب", formatCurrency(report.ratios.expectedPerStudent || 0)],
       ];
       const wsRatios = XLSX.utils.aoa_to_sheet(ratiosData);
       XLSX.utils.book_append_sheet(wb, wsRatios, "النسب المالية");
+
+      // ورقة تحليل المصاريف
+      const feesBreakdownData = [
+        ["نوع المصاريف", "المطلوب", "المحصل", "المتبقي", "نسبة التحصيل"],
+        ...Object.entries(report.feesBreakdown.requiredFees).map(([type, amount]) => {
+          const collected = report.feesBreakdown.collectedByType[type] || 0;
+          const required = amount * (report.summary.expectedRevenue / report.feesBreakdown.totalRequiredPerStudent);
+          const remaining = Math.max(0, required - collected);
+          const percentage = required > 0 ? (collected / required) * 100 : 0;
+          return [
+            type,
+            formatCurrency(required),
+            formatCurrency(collected),
+            formatCurrency(remaining),
+            formatPercentage(percentage)
+          ];
+        })
+      ];
+      const wsFeesBreakdown = XLSX.utils.aoa_to_sheet(feesBreakdownData);
+      XLSX.utils.book_append_sheet(wb, wsFeesBreakdown, "تحليل المصاريف");
 
       XLSX.writeFile(wb, `تقرير_مالي_${startDate}_الى_${endDate}.xlsx`);
       
@@ -999,6 +1357,7 @@ const generateAlerts = (
         [`إجمالي المصروفات:`, formatCurrency(report.summary.totalExpenses)],
         [`صافي الربح:`, formatCurrency(report.summary.netProfit)],
         [`هامش الربح:`, formatPercentage(report.summary.profitMargin)],
+        [`نسبة التحصيل:`, formatPercentage(report.summary.collectionRate || 0)],
         [`الذمم المدينة:`, formatCurrency(report.summary.accountsReceivable)],
         [`الذمم الدائنة:`, formatCurrency(report.summary.accountsPayable)],
       ];
@@ -1043,11 +1402,12 @@ const generateAlerts = (
         formatCurrency(r.amount),
         formatPercentage(r.percentage),
         r.count.toString(),
+        r.type === 'payment' ? 'دفع' : r.type === 'refund' ? 'استرداد' : r.type === 'discount' ? 'خصم' : 'غرامة'
       ]);
 
       autoTable(doc, {
         startY: 30,
-        head: [['الفئة', 'المبلغ', 'النسبة', 'عدد العمليات']],
+        head: [['الفئة', 'المبلغ', 'النسبة', 'عدد العمليات', 'النوع']],
         body: revenueTableData,
         theme: 'grid',
         headStyles: { 
@@ -1179,7 +1539,7 @@ const generateAlerts = (
                   <div>
                     <p className="font-medium">{alert.message}</p>
                     <p className="text-sm mt-1 opacity-75">
-                      القيمة الحالية: {alert.currentValue.toFixed(2)} | 
+                      القيمة الحالية: {alert.currentValue.toFixed(1)} | 
                       الحد الأدنى: {alert.threshold}
                     </p>
                   </div>
@@ -1193,14 +1553,14 @@ const generateAlerts = (
             <div className="bg-gradient-to-br from-green-600 to-emerald-600 rounded-xl shadow-lg p-6 text-white">
               <div className="flex items-center justify-between mb-2">
                 <DollarSign className="w-6 h-6 opacity-80" />
-                <span className="text-xs opacity-80">إجمالي الإيرادات</span>
+                <span className="text-xs opacity-80">صافي الإيرادات</span>
               </div>
               <p className="text-2xl font-bold">
                 {formatCurrency(report.summary.totalRevenue)}
               </p>
               <div className="mt-2 flex items-center gap-1 text-sm opacity-80">
                 <ArrowUpRight className="w-4 h-4" />
-                <span>{report.revenueByCategory.length} فئة</span>
+                <span>نسبة التحصيل: {report.summary.collectionRate?.toFixed(1)}%</span>
               </div>
             </div>
 
@@ -1235,13 +1595,13 @@ const generateAlerts = (
             <div className="bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl shadow-lg p-6 text-white">
               <div className="flex items-center justify-between mb-2">
                 <Shield className="w-6 h-6 opacity-80" />
-                <span className="text-xs opacity-80">نسبة السيولة</span>
+                <span className="text-xs opacity-80">المستحقات</span>
               </div>
               <p className="text-2xl font-bold">
-                {report.ratios.currentRatio.toFixed(2)}
+                {formatCurrency(report.summary.accountsReceivable)}
               </p>
               <div className="mt-2 text-sm opacity-80">
-                النسبة السريعة: {report.ratios.quickRatio.toFixed(2)}
+                متأخرات: {formatCurrency(report.receivables?.overdue || 0)}
               </div>
             </div>
           </div>
@@ -1301,6 +1661,49 @@ const generateAlerts = (
             </div>
           </div>
 
+          {/* تحليل المصاريف */}
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">تحليل المصاريف الدراسية</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {Object.entries(report.feesBreakdown.requiredFees).map(([type, amount]) => {
+                const collected = report.feesBreakdown.collectedByType[type] || 0;
+                const required = amount * (report.summary.expectedRevenue / report.feesBreakdown.totalRequiredPerStudent);
+                const percentage = required > 0 ? (collected / required) * 100 : 0;
+                
+                return (
+                  <div key={type} className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-sm font-medium text-gray-700 mb-2">{type}</p>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs">
+                        <span>المطلوب:</span>
+                        <span className="font-medium">{formatCurrency(required)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>المحصل:</span>
+                        <span className="font-medium text-green-600">{formatCurrency(collected)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>المتبقي:</span>
+                        <span className={`font-medium ${required - collected > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                          {formatCurrency(Math.max(0, required - collected))}
+                        </span>
+                      </div>
+                      <div className="mt-2">
+                        <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full ${percentage >= 100 ? 'bg-green-600' : percentage >= 50 ? 'bg-yellow-600' : 'bg-red-600'}`}
+                            style={{ width: `${Math.min(100, percentage)}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-center mt-1">{percentage.toFixed(1)}%</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* النسب المالية المحسنة */}
           <div className="bg-white rounded-xl shadow-md p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4">النسب والمؤشرات المالية</h3>
@@ -1329,9 +1732,12 @@ const generateAlerts = (
                 </p>
               </div>
               <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600 mb-1">العائد على الأصول</p>
-                <p className="text-xl font-bold text-purple-600">
-                  {report.ratios.returnOnAssets.toFixed(1)}%
+                <p className="text-sm text-gray-600 mb-1">نسبة التحصيل</p>
+                <p className={`text-xl font-bold ${
+                  (report.ratios.collectionRate || 0) > 80 ? 'text-green-600' :
+                  (report.ratios.collectionRate || 0) > 50 ? 'text-yellow-600' : 'text-red-600'
+                }`}>
+                  {(report.ratios.collectionRate || 0).toFixed(1)}%
                 </p>
               </div>
             </div>
@@ -1413,7 +1819,7 @@ const generateAlerts = (
                     stroke="#059669"
                     fill="#059669"
                     fillOpacity={0.3}
-                    name="الإيرادات"
+                    name="صافي الإيرادات"
                   />
                   <Area
                     type="monotone"
@@ -1425,11 +1831,19 @@ const generateAlerts = (
                   />
                   <Area
                     type="monotone"
-                    dataKey="profit"
+                    dataKey="payments"
                     stroke="#3b82f6"
                     fill="#3b82f6"
                     fillOpacity={0.3}
-                    name="الربح"
+                    name="المدفوعات"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="refunds"
+                    stroke="#f59e0b"
+                    fill="#f59e0b"
+                    fillOpacity={0.3}
+                    name="الاستردادات"
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -1446,9 +1860,12 @@ const generateAlerts = (
                     <th className="px-4 py-2 text-right">#</th>
                     <th className="px-4 py-2 text-right">اسم الطالب</th>
                     <th className="px-4 py-2 text-right">إجمالي المدفوعات</th>
+                    <th className="px-4 py-2 text-right">إجمالي الاستردادات</th>
+                    <th className="px-4 py-2 text-right">صافي المدفوعات</th>
                     <th className="px-4 py-2 text-right">عدد الدفعات</th>
                     <th className="px-4 py-2 text-right">متوسط الدفعة</th>
                     <th className="px-4 py-2 text-right">آخر دفعة</th>
+                    <th className="px-4 py-2 text-right">الحالة</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1459,11 +1876,26 @@ const generateAlerts = (
                       <td className="px-4 py-2 text-green-600">
                         {formatCurrency(student.total_paid)}
                       </td>
+                      <td className="px-4 py-2 text-red-600">
+                        {formatCurrency(student.total_refunded)}
+                      </td>
+                      <td className={`px-4 py-2 font-bold ${student.net_paid >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatCurrency(student.net_paid)}
+                      </td>
                       <td className="px-4 py-2">{student.payments_count}</td>
                       <td className="px-4 py-2">
                         {formatCurrency(student.average_payment)}
                       </td>
                       <td className="px-4 py-2">{student.last_payment}</td>
+                      <td className="px-4 py-2">
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          student.status === 'مكتمل' ? 'bg-green-100 text-green-700' :
+                          student.status === 'مرتفع' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-red-100 text-red-700'
+                        }`}>
+                          {student.status}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1509,9 +1941,10 @@ const generateAlerts = (
                     <YAxis />
                     <Tooltip formatter={tooltipFormatter} />
                     <Legend />
-                    <Bar dataKey="projectedRevenue" name="الإيرادات" fill="#059669" />
-                    <Bar dataKey="projectedExpenses" name="المصروفات" fill="#ef4444" />
-                    <Bar dataKey="projectedProfit" name="الربح" fill="#3b82f6" />
+                    <Bar dataKey="projectedRevenue" name="الإيرادات المتوقعة" fill="#059669" />
+                    <Bar dataKey="projectedRefunds" name="الاستردادات المتوقعة" fill="#f59e0b" />
+                    <Bar dataKey="projectedExpenses" name="المصروفات المتوقعة" fill="#ef4444" />
+                    <Bar dataKey="projectedNet" name="صافي الربح المتوقع" fill="#3b82f6" />
                   </BarChart>
                 </ResponsiveContainer>
 
@@ -1522,8 +1955,9 @@ const generateAlerts = (
                       <tr className="bg-gray-50">
                         <th className="px-4 py-2 text-right">الشهر</th>
                         <th className="px-4 py-2 text-right">الإيرادات المتوقعة</th>
+                        <th className="px-4 py-2 text-right">الاستردادات المتوقعة</th>
                         <th className="px-4 py-2 text-right">المصروفات المتوقعة</th>
-                        <th className="px-4 py-2 text-right">الربح المتوقع</th>
+                        <th className="px-4 py-2 text-right">صافي الربح المتوقع</th>
                         <th className="px-4 py-2 text-right">مستوى الثقة</th>
                         <th className="px-4 py-2 text-right">العامل الموسمي</th>
                       </tr>
@@ -1539,12 +1973,15 @@ const generateAlerts = (
                           <td className="px-4 py-2 text-green-600">
                             {formatCurrency(proj.projectedRevenue)}
                           </td>
+                          <td className="px-4 py-2 text-yellow-600">
+                            {formatCurrency(proj.projectedRefunds || 0)}
+                          </td>
                           <td className="px-4 py-2 text-red-600">
                             {formatCurrency(proj.projectedExpenses)}
                           </td>
-                          <td className={`px-4 py-2 ${proj.projectedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {proj.projectedProfit >= 0 ? '+' : ''}
-                            {formatCurrency(proj.projectedProfit)}
+                          <td className={`px-4 py-2 ${(proj.projectedNet || proj.projectedProfit) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {(proj.projectedNet || proj.projectedProfit) >= 0 ? '+' : ''}
+                            {formatCurrency(proj.projectedNet || proj.projectedProfit)}
                           </td>
                           <td className="px-4 py-2">
                             <span className={`px-2 py-1 rounded-full text-xs ${
