@@ -26,6 +26,12 @@ import {
   Globe,
   Moon,
   Sun,
+  RefreshCw,
+  Landmark,
+  CreditCard,
+  FileText,
+
+  
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -58,6 +64,7 @@ interface StatCardProps {
   prefix?: string;
   suffix?: string;
   delay?: number;
+  subValue?: string;
 }
 
 interface MenuItemProps {
@@ -100,6 +107,23 @@ interface Message {
   time: string;
 }
 
+// إحصائيات محسنة للرسوم
+interface EnhancedStatistics extends Statistics {
+  totalRefunds: number;
+  netRevenue: number;
+  paidStudents: number;
+  partialPaidStudents: number;
+  unpaidStudents: number;
+  collectionRate: number;
+  cashPayments: number;
+  cardPayments: number;
+  bankTransferPayments: number;
+  checkPayments: number;
+  todayCollections: number;
+  thisWeekCollections: number;
+  thisMonthCollections: number;
+}
+
 const ModernStatCard: React.FC<StatCardProps> = ({
   title,
   value,
@@ -110,6 +134,7 @@ const ModernStatCard: React.FC<StatCardProps> = ({
   prefix = "",
   suffix = "",
   delay = 0,
+  subValue,
 }) => {
   const { language } = useLanguage();
   const trendPositive = trend === "up";
@@ -133,6 +158,10 @@ const ModernStatCard: React.FC<StatCardProps> = ({
               {value.toLocaleString(language === "ar" ? "ar-EG" : "en-US")}
               {suffix}
             </p>
+
+            {subValue && (
+              <p className="text-xs text-gray-500 mt-1">{subValue}</p>
+            )}
 
             {trend && trendValue !== undefined && (
               <div className="flex items-center gap-2 mt-2">
@@ -301,27 +330,25 @@ const ModernHeader: React.FC<HeaderProps> = ({
             <div className="h-6 w-px bg-gray-200"></div>
             <nav className="hidden md:flex items-center gap-1">
               <button
-                onClick={() => onViewChange("dashboard")} // أو view مخصصة
+                onClick={() => onViewChange("dashboard")}
                 className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200"
               >
                 {t("overview")}
               </button>
               <button
-                onClick={() => onViewChange("financial")} // مثلاً للتحليلات
+                onClick={() => onViewChange("financial")}
                 className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200"
               >
                 {t("analytics")}
               </button>
               <button
-                onClick={() => onViewChange("reports")} // للتقارير
+                onClick={() => onViewChange("reports")}
                 className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200"
               >
                 {t("reports")}
               </button>
-            </nav>{" "}
+            </nav>
           </div>
-
-
 
           <div className="hidden md:block flex-1 max-w-md mx-8">
             <div className="relative group">
@@ -572,11 +599,10 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose, language, t }) => {
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
-  const { language, toggleLanguage, t } = useLanguage(); 
-
+  const { language, toggleLanguage, t } = useLanguage();
 
   const [currentView, setCurrentView] = useState<View>("dashboard");
-  const [stats, setStats] = useState<Statistics>({
+  const [stats, setStats] = useState<EnhancedStatistics>({
     totalStudents: 0,
     activeStudents: 0,
     totalRevenue: 0,
@@ -585,12 +611,24 @@ export default function Dashboard() {
     totalTeachers: 0,
     activeTeachers: 0,
     totalSalaries: 0,
+    totalRefunds: 0,
+    netRevenue: 0,
+    paidStudents: 0,
+    partialPaidStudents: 0,
+    unpaidStudents: 0,
+    collectionRate: 0,
+    cashPayments: 0,
+    cardPayments: 0,
+    bankTransferPayments: 0,
+    checkPayments: 0,
+    todayCollections: 0,
+    thisWeekCollections: 0,
+    thisMonthCollections: 0,
   });
   const [loading, setLoading] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
-  const [selectedPeriod, setSelectedPeriod] = useState("month"); 
-  
+  const [selectedPeriod, setSelectedPeriod] = useState("month");
 
   useEffect(() => {
     loadStatistics();
@@ -601,42 +639,153 @@ export default function Dashboard() {
 
     setLoading(true);
     try {
+      // جلب جميع البيانات المطلوبة
       const [studentsRes, feesRes, expensesRes, teachersRes] =
         await Promise.all([
           supabase
             .from("students")
-            .select("*", { count: "exact" })
+            .select("*")
             .eq("user_id", user.id),
-          supabase.from("fees").select("amount").eq("user_id", user.id),
-          supabase.from("expenses").select("amount").eq("user_id", user.id),
-          supabase.from("teachers").select("*").eq("user_id", user.id),
+          supabase
+            .from("fees")
+            .select("*, student:students(*)")
+            .eq("user_id", user.id),
+          supabase
+            .from("expenses")
+            .select("amount")
+            .eq("user_id", user.id),
+          supabase
+            .from("teachers")
+            .select("*")
+            .eq("user_id", user.id),
         ]);
 
-      const totalStudents = studentsRes.count ?? 0;
-      const activeStudents =
-        studentsRes.data?.filter((s) => s.status === "active").length ?? 0;
-      const totalRevenue =
-        feesRes.data?.reduce((sum, fee) => sum + Number(fee.amount), 0) ?? 0;
-      const totalExpenses =
-        expensesRes.data?.reduce((sum, exp) => sum + Number(exp.amount), 0) ??
-        0;
+      // الإحصائيات الأساسية
+      const totalStudents = studentsRes.data?.length ?? 0;
+      const activeStudents = studentsRes.data?.filter((s) => s.status === "active").length ?? 0;
+      
+      // حساب المدفوعات والاستردادات
+      const fees = feesRes.data ?? [];
+      const totalPayments = fees
+        .filter(f => f.amount > 0)
+        .reduce((sum, fee) => sum + Number(fee.amount), 0);
+      const totalRefunds = fees
+        .filter(f => f.amount < 0)
+        .reduce((sum, fee) => sum + Math.abs(Number(fee.amount)), 0);
+      const netRevenue = totalPayments - totalRefunds;
+
+      // حساب المصروفات
+      const totalExpenses = expensesRes.data?.reduce((sum, exp) => sum + Number(exp.amount), 0) ?? 0;
+
+      // إحصائيات المعلمين
       const totalTeachers = teachersRes.data?.length ?? 0;
-      const activeTeachers =
-        teachersRes.data?.filter((t) => t.status === "active").length ?? 0;
-      const totalSalaries =
-        teachersRes.data
-          ?.filter((t) => t.status === "active")
-          .reduce((sum, t) => sum + Number(t.salary), 0) ?? 0;
+      const activeTeachers = teachersRes.data?.filter((t) => t.status === "active").length ?? 0;
+      const totalSalaries = teachersRes.data
+        ?.filter((t) => t.status === "active")
+        .reduce((sum, t) => sum + Number(t.salary), 0) ?? 0;
+
+      // حساب حالات سداد الطلاب
+      let paidStudents = 0;
+      let partialPaidStudents = 0;
+      let unpaidStudents = 0;
+
+      studentsRes.data?.forEach(student => {
+        const studentFees = fees.filter(f => f.student_id === student.id);
+        const totalPaid = studentFees
+          .filter(f => f.amount > 0)
+          .reduce((sum, f) => sum + f.amount, 0);
+        const totalRefunded = studentFees
+          .filter(f => f.amount < 0)
+          .reduce((sum, f) => sum + Math.abs(f.amount), 0);
+        const netPaid = totalPaid - totalRefunded;
+        
+        if (netPaid >= 5000) { // افتراض أن إجمالي المصاريف 5000
+          paidStudents++;
+        } else if (netPaid > 0) {
+          partialPaidStudents++;
+        } else {
+          unpaidStudents++;
+        }
+      });
+
+      // حساب طرق الدفع
+      let cashPayments = 0, cardPayments = 0, bankPayments = 0, checkPayments = 0;
+      fees.forEach(fee => {
+        const amount = Math.abs(fee.amount);
+        if (fee.notes) {
+          try {
+            const notes = JSON.parse(fee.notes);
+            const method = notes.payment_method;
+            if (method === 'cash') cashPayments += amount;
+            else if (method === 'card') cardPayments += amount;
+            else if (method === 'bank_transfer') bankPayments += amount;
+            else if (method === 'check') checkPayments += amount;
+          } catch {
+            cashPayments += amount;
+          }
+        } else {
+          cashPayments += amount;
+        }
+      });
+
+      // حساب تحصيلات اليوم
+      const today = new Date().toISOString().split('T')[0];
+      const todayPayments = fees
+        .filter(f => f.payment_date === today && f.amount > 0)
+        .reduce((sum, f) => sum + f.amount, 0);
+      const todayRefunds = fees
+        .filter(f => f.payment_date === today && f.amount < 0)
+        .reduce((sum, f) => sum + Math.abs(f.amount), 0);
+      const todayCollections = todayPayments - todayRefunds;
+
+      // حساب تحصيلات هذا الأسبوع
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      const weekPayments = fees
+        .filter(f => new Date(f.payment_date) >= oneWeekAgo && f.amount > 0)
+        .reduce((sum, f) => sum + f.amount, 0);
+      const weekRefunds = fees
+        .filter(f => new Date(f.payment_date) >= oneWeekAgo && f.amount < 0)
+        .reduce((sum, f) => sum + Math.abs(f.amount), 0);
+      const thisWeekCollections = weekPayments - weekRefunds;
+
+      // حساب تحصيلات هذا الشهر
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+      const monthPayments = fees
+        .filter(f => new Date(f.payment_date) >= oneMonthAgo && f.amount > 0)
+        .reduce((sum, f) => sum + f.amount, 0);
+      const monthRefunds = fees
+        .filter(f => new Date(f.payment_date) >= oneMonthAgo && f.amount < 0)
+        .reduce((sum, f) => sum + Math.abs(f.amount), 0);
+      const thisMonthCollections = monthPayments - monthRefunds;
+
+      // نسبة التحصيل
+      const expectedRevenue = activeStudents * 5000; // افتراض أن كل طالب عليه 5000
+      const collectionRate = expectedRevenue > 0 ? (netRevenue / expectedRevenue) * 100 : 0;
 
       setStats({
         totalStudents,
         activeStudents,
-        totalRevenue,
+        totalRevenue: totalPayments,
         totalExpenses,
-        netProfit: totalRevenue - totalExpenses,
+        netProfit: netRevenue - totalExpenses,
         totalTeachers,
         activeTeachers,
         totalSalaries,
+        totalRefunds,
+        netRevenue,
+        paidStudents,
+        partialPaidStudents,
+        unpaidStudents,
+        collectionRate,
+        cashPayments,
+        cardPayments,
+        bankTransferPayments: bankPayments,
+        checkPayments,
+        todayCollections,
+        thisWeekCollections,
+        thisMonthCollections,
       });
     } catch (error) {
       console.error("Error loading statistics:", error);
@@ -684,7 +833,7 @@ export default function Dashboard() {
           onSignOut={signOut}
           onViewChange={handleViewChange}
           language={language}
-          toggleLanguage={toggleLanguage} 
+          toggleLanguage={toggleLanguage}
           t={t}
         />
 
@@ -802,25 +951,34 @@ export default function Dashboard() {
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xl rounded-lg p-1 border border-gray-100/50">
-                      {[t("day"), t("week"), t("month"), t("year")].map(
-                        (period, index) => {
-                          const periods = ["day", "week", "month", "year"];
-                          return (
-                            <button
-                              key={periods[index]}
-                              onClick={() => setSelectedPeriod(periods[index])}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
-                                selectedPeriod === periods[index]
-                                  ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm"
-                                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80"
-                              }`}
-                            >
-                              {period}
-                            </button>
-                          );
-                        },
-                      )}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={loadStatistics}
+                        className="p-2 hover:bg-gray-100/80 rounded-lg transition-all duration-200"
+                        title={t("refresh")}
+                      >
+                        <RefreshCw className="w-4 h-4 text-gray-600" />
+                      </button>
+                      <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xl rounded-lg p-1 border border-gray-100/50">
+                        {[t("day"), t("week"), t("month"), t("year")].map(
+                          (period, index) => {
+                            const periods = ["day", "week", "month", "year"];
+                            return (
+                              <button
+                                key={periods[index]}
+                                onClick={() => setSelectedPeriod(periods[index])}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                                  selectedPeriod === periods[index]
+                                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm"
+                                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80"
+                                }`}
+                              >
+                                {period}
+                              </button>
+                            );
+                          },
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -831,65 +989,122 @@ export default function Dashboard() {
                       </div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <ModernStatCard
-                        title={t("totalStudents")}
-                        value={stats.totalStudents ?? 0}
-                        icon={Users}
-                        trend={studentsTrend.trend}
-                        trendValue={studentsTrend.value}
-                        color="from-blue-600 to-indigo-600"
-                        delay={0}
-                      />
-                      <ModernStatCard
-                        title={t("activeStudents")}
-                        value={stats.activeStudents ?? 0}
-                        icon={Activity}
-                        trend={activeStudentsTrend.trend}
-                        trendValue={activeStudentsTrend.value}
-                        color="from-emerald-600 to-teal-600"
-                        delay={50}
-                      />
-                      <ModernStatCard
-                        title={t("totalTeachers")}
-                        value={stats.totalTeachers ?? 0}
-                        icon={Briefcase}
-                        trend={teachersTrend.trend}
-                        trendValue={teachersTrend.value}
-                        color="from-amber-500 to-orange-600"
-                        delay={100}
-                      />
-                      <ModernStatCard
-                        title={t("revenue")}
-                        value={stats.totalRevenue ?? 0}
-                        icon={DollarSign}
-                        prefix="$"
-                        trend={revenueTrend.trend}
-                        trendValue={revenueTrend.value}
-                        color="from-green-600 to-emerald-600"
-                        delay={150}
-                      />
-                      <ModernStatCard
-                        title={t("expenses")}
-                        value={stats.totalExpenses ?? 0}
-                        icon={TrendingDown}
-                        prefix="$"
-                        trend={expensesTrend.trend}
-                        trendValue={expensesTrend.value}
-                        color="from-red-600 to-rose-600"
-                        delay={200}
-                      />
-                      <ModernStatCard
-                        title={t("netProfit")}
-                        value={stats.netProfit ?? 0}
-                        icon={TrendingUp}
-                        prefix="$"
-                        trend={profitTrend.trend}
-                        trendValue={profitTrend.value}
-                        color="from-purple-600 to-pink-600"
-                        delay={250}
-                      />
-                    </div>
+                    <>
+                      {/* البطاقات الرئيسية */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <ModernStatCard
+                          title={t("totalStudents")}
+                          value={stats.totalStudents}
+                          icon={Users}
+                          trend={studentsTrend.trend}
+                          trendValue={studentsTrend.value}
+                          color="from-blue-600 to-indigo-600"
+                          delay={0}
+                          subValue={`${stats.activeStudents} ${t("active")}`}
+                        />
+                        <ModernStatCard
+                          title={t("netRevenue")}
+                          value={stats.netRevenue}
+                          icon={DollarSign}
+                          prefix="$"
+                          trend={revenueTrend.trend}
+                          trendValue={revenueTrend.value}
+                          color="from-emerald-600 to-teal-600"
+                          delay={50}
+                          subValue={t("afterRefunds")}
+                        />
+                        <ModernStatCard
+                          title={t("totalExpenses")}
+                          value={stats.totalExpenses}
+                          icon={TrendingDown}
+                          prefix="$"
+                          trend={expensesTrend.trend}
+                          trendValue={expensesTrend.value}
+                          color="from-red-600 to-rose-600"
+                          delay={100}
+                        />
+                        <ModernStatCard
+                          title={t("netProfit")}
+                          value={stats.netProfit}
+                          icon={TrendingUp}
+                          prefix="$"
+                          trend={profitTrend.trend}
+                          trendValue={profitTrend.value}
+                          color="from-purple-600 to-pink-600"
+                          delay={150}
+                        />
+                      </div>
+
+                      {/* بطاقات إضافية للرسوم */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <ModernStatCard
+                          title={t("collectionRate")}
+                          value={stats.collectionRate}
+                          icon={Activity}
+                          suffix="%"
+                          color="from-blue-600 to-indigo-600"
+                          delay={200}
+                        />
+                        <ModernStatCard
+                          title={t("todayCollections")}
+                          value={stats.todayCollections}
+                          icon={Wallet}
+                          prefix="$"
+                          color="from-amber-500 to-orange-600"
+                          delay={250}
+                        />
+                        <ModernStatCard
+                          title={t("paidStudents")}
+                          value={stats.paidStudents}
+                          icon={Users}
+                          color="from-green-600 to-emerald-600"
+                          delay={300}
+                        />
+                        <ModernStatCard
+                          title={t("unpaidStudents")}
+                          value={stats.unpaidStudents}
+                          icon={Users}
+                          color="from-red-600 to-rose-600"
+                          delay={350}
+                        />
+                      </div>
+
+                      {/* بطاقات طرق الدفع */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <ModernStatCard
+                          title={t("cashPayments")}
+                          value={stats.cashPayments}
+                          icon={Wallet}
+                          prefix="$"
+                          color="from-green-600 to-emerald-600"
+                          delay={400}
+                        />
+                        <ModernStatCard
+                          title={t("cardPayments")}
+                          value={stats.cardPayments}
+                          icon={CreditCard}
+                          prefix="$"
+                          color="from-blue-600 to-indigo-600"
+                          delay={450}
+                        />
+                        <ModernStatCard
+                          title={t("bankTransferPayments")}
+                          value={stats.bankTransferPayments}
+                          icon={Landmark}
+                          prefix="$"
+                          color="from-purple-600 to-pink-600"
+                          delay={500}
+                        />
+                        <ModernStatCard
+                          title={t("checkPayments")}
+                          value={stats.checkPayments}
+                          icon={FileText}
+                          prefix="$"
+                          color="from-amber-500 to-orange-600"
+                          delay={550}
+                        />
+                      </div>
+                    </>
                   )}
 
                   <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-6 border border-gray-100/50">
@@ -957,6 +1172,13 @@ export default function Dashboard() {
                         icon={BarChart3}
                         color="from-purple-600 to-pink-600"
                         onClick={() => handleViewChange("reports")}
+                      />
+                      <QuickActionCard
+                        title={t("processRefund")}
+                        description={t("processRefundDesc")}
+                        icon={X}
+                        color="from-orange-600 to-red-600"
+                        onClick={() => handleViewChange("fees")}
                       />
                     </div>
                   </div>
