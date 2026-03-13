@@ -1,1249 +1,1011 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
-  Users,
-  TrendingDown,
   TrendingUp,
-  BarChart3,
-  Briefcase,
-  Crown,
-  MessageCircle,
-  Headphones,
-  Send,
-  X,
-  GraduationCap,
-  Bell,
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  LineChart,
-  Wallet,
-  Activity,
+  TrendingDown,
   DollarSign,
-  Settings,
-  Home,
-  Maximize2,
-  UserPlus,
-  Globe,
-  Moon,
-  Sun,
+  Download,
+  FileText,
   RefreshCw,
+  Eye,
+  EyeOff,
+  Banknote,
+  AlertCircle,
+  ArrowUpRight,
+  ArrowDownRight,
+  Percent,
   CreditCard,
   Landmark,
-  FileText,
 } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
-import { useLanguage } from "../context/LanguageContext";
 import { supabase } from "../lib/supabase";
-import type { Statistics } from "../types/database";
-import StudentsManager from "./StudentsManager";
-import FeesManager from "./FeesManager";
-import ExpensesManager from "./ExpensesManager";
-import TeachersManager from "./TeachersManager";
-import ProfitReport from "./ProfitReport";
-import FinancialReports from "./FinancialReports";
-import logo from "../assets/logo.png";
+import { useAuth } from "../context/AuthContext";
+import {
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  TooltipProps,
+} from "recharts";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from 'jspdf-autotable';
 
-type View =
-  | "dashboard"
-  | "students"
-  | "teachers"
-  | "fees"
-  | "expenses"
-  | "reports"
-  | "financial";
-
-interface StatCardProps {
-  title: string;
-  value: number;
-  icon: React.ElementType;
-  trend?: "up" | "down";
-  trendValue?: number;
-  color: string;
-  isCurrency?: boolean;
-  isPercentage?: boolean;
-  delay?: number;
-  subValue?: string;
-}
-
-interface MenuItemProps {
-  label: string;
-  icon: React.ElementType;
-  view: View;
-  count?: number;
-  currentView: View;
-  onClick: () => void;
-}
-
-interface QuickActionProps {
-  title: string;
-  description: string;
-  icon: React.ElementType;
-  color: string;
-  onClick: () => void;
-}
-
-interface HeaderProps {
-  user: any;
-  onSignOut: () => void;
-  onViewChange: (view: View) => void;
-  language: "ar" | "en";
-  toggleLanguage: () => void;
-  t: (key: string) => string;
-}
-
-interface ChatProps {
-  isOpen: boolean;
-  onClose: () => void;
-  language: "ar" | "en";
-  t: (key: string) => string;
-}
-
-interface Message {
-  id: number;
-  type: "user" | "bot";
-  text: string;
-  time: string;
-}
-
-// إحصائيات محسنة للرسوم
-interface EnhancedStatistics extends Statistics {
-  totalRefunds: number;
-  netRevenue: number;
-  paidStudents: number;
-  partialPaidStudents: number;
-  unpaidStudents: number;
-  collectionRate: number;
-  cashPayments: number;
-  cardPayments: number;
-  bankTransferPayments: number;
-  checkPayments: number;
-  todayCollections: number;
-  thisWeekCollections: number;
-  thisMonthCollections: number;
-}
-
-// دوال التنسيق المحسنة
-const formatCurrency = (num: number, language: string): string => {
-  const formattedNumber = num.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-  
-  // جعل "ج.م" بنفس حجم الخط باستخدام span منفصل
-  return language === 'ar' 
-    ? `${formattedNumber} ج.م` 
-    : `EGP ${formattedNumber}`;
-};
-
-const formatPercentage = (num: number, language: string): string => {
-  const formattedNumber = num.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  });
-  
-  return `${formattedNumber}%`;
-};
-
-const formatNumber = (num: number, language: string): string => {
-  return num.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
-};
-const ModernStatCard: React.FC<StatCardProps> = ({
-  title,
-  value,
-  icon: Icon,
-  trend,
-  trendValue,
-  color,
-  isCurrency = false,
-  isPercentage = false,
-  delay = 0,
-  subValue,
-}) => {
-  const { language } = useLanguage();
-  const trendPositive = trend === "up";
-
-  // تحديد طريقة التنسيق حسب نوع القيمة
-  const getDisplayValue = () => {
-    if (isCurrency) {
-      return formatCurrency(value, language);
-    } else if (isPercentage) {
-      return formatPercentage(value, language);
-    } else {
-      return formatNumber(value, language);
-    }
+interface FinancialReport {
+  period: string;
+  startDate: string;
+  endDate: string;
+  summary: {
+    totalRevenue: number;
+    totalExpenses: number;
+    netProfit: number;
+    profitMargin: number;
+    cashFlow: number;
+    accountsReceivable: number;
+    accountsPayable: number;
+    workingCapital: number;
   };
-
-  return (
-    <div
-      className="group relative bg-white/90 backdrop-blur-xl rounded-2xl shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden border border-gray-100/50 hover:border-gray-200/80"
-      style={{ 
-        animationDelay: `${delay}ms`, 
-        animationFillMode: "both",
-        fontFamily: language === 'ar' ? 'Cairo, sans-serif' : 'inherit'
-      }}
-    >
-      <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-      <div className="absolute -inset-px bg-gradient-to-r from-blue-500/5 via-indigo-500/5 to-purple-500/5 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-
-      <div className="relative p-6">
-        <div className="flex items-start justify-between">
-          <div className="space-y-2 flex-1">
-            <p className="text-sm font-medium text-gray-500 tracking-wide">
-              {title}
-            </p>
-            
-            {/* سطر القيمة الرئيسية - تعديل هنا */}
-            <div className="flex items-baseline gap-1 flex-wrap">
-              <span className="text-2xl font-bold text-gray-900 tracking-tight">
-                {getDisplayValue()}
-              </span>
-              {subValue && (
-                <span className="text-xs text-gray-500 mr-1">({subValue})</span>
-              )}
-            </div>
-
-            {trend && trendValue !== undefined && (
-              <div className="flex items-center gap-2 mt-2">
-                <div
-                  className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                    trendPositive
-                      ? "bg-emerald-50 text-emerald-700"
-                      : "bg-rose-50 text-rose-700"
-                  }`}
-                >
-                  {trendPositive ? (
-                    <TrendingUp className="w-3 h-3" />
-                  ) : (
-                    <TrendingDown className="w-3 h-3" />
-                  )}
-                  <span>{trendValue}%</span>
-                </div>
-                <span className="text-xs text-gray-400">
-                  {language === "ar" ? "مقارنة بالشهر الماضي" : "vs last month"}
-                </span>
-              </div>
-            )}
-          </div>
-
-          <div className="relative mr-3">
-            <div
-              className={`absolute inset-0 bg-gradient-to-br ${color} rounded-xl blur-xl opacity-30 group-hover:opacity-40 transition-opacity duration-500`}
-            ></div>
-            <div
-              className={`relative p-3 bg-gradient-to-br ${color} rounded-xl shadow-lg transform group-hover:scale-110 group-hover:-rotate-3 transition-all duration-500`}
-            >
-              <Icon className="w-5 h-5 text-white" />
-            </div>
-          </div>
-        </div>
-
-        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-gray-200/50 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-700 origin-left"></div>
-      </div>
-    </div>
-  );
-};
-const ModernMenuItem: React.FC<MenuItemProps> = ({
-  label,
-  icon: Icon,
-  view,
-  count,
-  currentView,
-  onClick,
-}) => {
-  const isActive = currentView === view;
-
-  return (
-    <button
-      onClick={onClick}
-      className={`relative w-full group rounded-xl transition-all duration-300 ${
-        isActive ? "scale-[1.02]" : "hover:scale-[1.01]"
-      }`}
-    >
-      <div
-        className={`absolute inset-0 rounded-xl transition-all duration-300 ${
-          isActive
-            ? "bg-gradient-to-r from-blue-600/90 to-indigo-600/90 shadow-lg shadow-blue-600/20"
-            : "bg-gray-100/50 opacity-0 group-hover:opacity-100"
-        }`}
-      ></div>
-
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-xl opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500"></div>
-
-      <div className="relative flex items-center gap-3 px-4 py-2.5">
-        <div
-          className={`p-2 rounded-lg transition-all duration-300 ${
-            isActive
-              ? "bg-white/20 text-white"
-              : "bg-white/80 text-gray-600 group-hover:bg-white group-hover:text-blue-600"
-          }`}
-        >
-          <Icon className="w-4 h-4" />
-        </div>
-
-        <span
-          className={`flex-1 text-right font-medium transition-colors duration-300 ${
-            isActive ? "text-white" : "text-gray-700"
-          }`}
-        >
-          {label}
-        </span>
-
-        {count !== undefined && (
-          <span
-            className={`text-xs px-2 py-1 rounded-full transition-all duration-300 ${
-              isActive
-                ? "bg-white/20 text-white"
-                : "bg-gray-200/80 text-gray-600"
-            }`}
-          >
-            {formatNumber(count, 'ar')}
-          </span>
-        )}
-      </div>
-
-      {isActive && (
-        <div className="absolute right-0 top-2 bottom-2 w-1 bg-white rounded-full shadow-lg shadow-white/50"></div>
-      )}
-    </button>
-  );
-};
-
-const QuickActionCard: React.FC<QuickActionProps> = ({
-  title,
-  description,
-  icon: Icon,
-  color,
-  onClick,
-}) => (
-  <button
-    onClick={onClick}
-    className="group relative bg-white/90 backdrop-blur-xl rounded-xl shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden border border-gray-100/50 hover:border-gray-200/80"
-  >
-    <div
-      className={`absolute inset-0 bg-gradient-to-br ${color} opacity-0 group-hover:opacity-5 transition-opacity duration-700`}
-    ></div>
-    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-
-    <div className="relative p-5 text-right">
-      <div
-        className={`inline-flex p-2.5 bg-gradient-to-br ${color} rounded-xl shadow-lg mb-3 transform group-hover:scale-110 group-hover:-rotate-3 transition-all duration-500`}
-      >
-        <Icon className="w-5 h-5 text-white" />
-      </div>
-
-      <h4 className="font-semibold text-gray-900 mb-1">{title}</h4>
-      <p className="text-xs text-gray-500 leading-relaxed">{description}</p>
-    </div>
-  </button>
-);
-
-const ModernHeader: React.FC<HeaderProps> = ({
-  user,
-  onSignOut,
-  onViewChange,
-  language,
-  toggleLanguage,
-  t,
-}) => {
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
-
-  return (
-    <header className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-4">
-            <div
-              className="relative group cursor-pointer"
-              onClick={() => onViewChange("dashboard")}
-            >
-              <div className="absolute -inset-2 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              <img
-                src={logo}
-                alt="إدارتي"
-                className="h-8 w-auto relative z-10"
-              />
-            </div>
-            <div className="h-6 w-px bg-gray-200"></div>
-            <nav className="hidden md:flex items-center gap-1">
-              <button
-                onClick={() => onViewChange("dashboard")}
-                className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200"
-              >
-                {t("overview")}
-              </button>
-              <button
-                onClick={() => onViewChange("financial")}
-                className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200"
-              >
-                {t("analytics")}
-              </button>
-              <button
-                onClick={() => onViewChange("reports")}
-                className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200"
-              >
-                {t("reports")}
-              </button>
-            </nav>
-          </div>
-
-          <div className="hidden md:block flex-1 max-w-md mx-8">
-            <div className="relative group">
-              <input
-                type="text"
-                placeholder={t("search")}
-                className="w-full px-4 py-2 pr-10 bg-gray-100/50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all duration-300 text-sm placeholder:text-gray-400"
-              />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors duration-300" />
-
-              <kbd className="absolute left-10 top-1/2 transform -translate-y-1/2 hidden group-focus-within:inline-flex items-center gap-1 px-1.5 py-0.5 bg-gray-200/80 rounded text-xs text-gray-500">
-                ⌘K
-              </kbd>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={toggleLanguage}
-              className="p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-200 flex items-center gap-1"
-            >
-              <Globe className="w-4 h-4 text-gray-600" />
-              <span className="text-xs font-medium text-gray-600">
-                {language === "ar" ? "English" : "العربية"}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className="p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-200"
-            >
-              {isDarkMode ? (
-                <Sun className="w-4 h-4 text-gray-600" />
-              ) : (
-                <Moon className="w-4 h-4 text-gray-600" />
-              )}
-            </button>
-
-            <div className="relative">
-              <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-200 relative"
-              >
-                <Bell className="w-4 h-4 text-gray-600" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-600 rounded-full ring-2 ring-white"></span>
-              </button>
-
-              {showNotifications && (
-                <div className="absolute left-0 mt-2 w-80 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200/50 overflow-hidden">
-                  <div className="p-3 border-b border-gray-100">
-                    <h3 className="font-semibold text-gray-900">
-                      {t("notifications")}
-                    </h3>
-                  </div>
-                  <div className="max-h-96 overflow-y-auto">
-                    {[1, 2, 3].map((i) => (
-                      <div
-                        key={i}
-                        className="p-3 hover:bg-gray-50/80 transition-colors duration-200 border-b border-gray-100 last:border-0"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="p-1.5 bg-blue-100 rounded-lg">
-                            <Activity className="w-3 h-3 text-blue-600" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm text-gray-900">
-                              {t("newUpdate")}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-0.5">
-                              {t("minAgo")}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <button className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-amber-500/25 transition-all duration-300">
-              <Crown className="w-4 h-4" />
-              <span>{t("upgrade")}</span>
-            </button>
-
-            <div className="relative">
-              <button
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center text-white font-medium text-sm shadow-sm hover:shadow-md transition-all duration-200"
-              >
-                {user?.email?.charAt(0).toUpperCase() || "U"}
-              </button>
-
-              {showUserMenu && (
-                <div className="absolute left-0 mt-2 w-48 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200/50 overflow-hidden">
-                  <div className="p-3 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-900">
-                      {user?.email}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {t("freePlan")}
-                    </p>
-                  </div>
-                  <button
-                    onClick={onSignOut}
-                    className="w-full text-right p-3 text-sm text-red-600 hover:bg-red-50/80 transition-colors duration-200"
-                  >
-                    {t("signOut")}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </header>
-  );
-};
-
-const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose, language, t }) => {
-  const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      type: "bot",
-      text: t("aiAssistant"),
-      time: new Date().toLocaleTimeString(
-        language === "ar" ? "ar-EG" : "en-US",
-        {
-          hour: "2-digit",
-          minute: "2-digit",
-        },
-      ),
-    },
-  ]);
-
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!message.trim()) return;
-
-    const userMessage: Message = {
-      id: messages.length + 1,
-      type: "user",
-      text: message,
-      time: new Date().toLocaleTimeString(
-        language === "ar" ? "ar-EG" : "en-US",
-        {
-          hour: "2-digit",
-          minute: "2-digit",
-        },
-      ),
-    };
-    setMessages([...messages, userMessage]);
-    setMessage("");
-
-    setTimeout(() => {
-      const botMessage: Message = {
-        id: messages.length + 2,
-        type: "bot",
-        text: t("supportReply"),
-        time: new Date().toLocaleTimeString(
-          language === "ar" ? "ar-EG" : "en-US",
-          {
-            hour: "2-digit",
-            minute: "2-digit",
-          },
-        ),
-      };
-      setMessages((prev) => [...prev, botMessage]);
-    }, 1000);
+  revenueByCategory: {
+    category: string;
+    amount: number;
+    percentage: number;
+  }[];
+  expensesByCategory: {
+    category: string;
+    amount: number;
+    percentage: number;
+  }[];
+  dailyTransactions: {
+    date: string;
+    revenue: number;
+    expenses: number;
+    profit: number;
+  }[];
+  topStudents: {
+    student_name: string;
+    total_paid: number;
+    last_payment: string;
+  }[];
+  paymentMethods: {
+    method: string;
+    amount: number;
+    count: number;
+  }[];
+  projections: {
+    month: string;
+    projectedRevenue: number;
+    projectedExpenses: number;
+    projectedProfit: number;
+  }[];
+  ratios: {
+    currentRatio: number;
+    quickRatio: number;
+    debtRatio: number;
+    profitMargin: number;
+    returnOnAssets: number;
+    operatingMargin: number;
   };
+}
 
-  if (!isOpen) return null;
+// نوع مخصص لـ Tooltip
+type TooltipFormatter = (value: number | string | undefined) => [string, string];
 
-  return (
-    <div className="fixed bottom-6 left-6 z-50 w-96 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-200/50 overflow-hidden">
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Headphones className="w-5 h-5 text-white" />
-              <span className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-green-400 rounded-full ring-2 ring-white"></span>
-            </div>
-            <div>
-              <h3 className="font-semibold text-white">{t("support")}</h3>
-              <p className="text-xs text-white/80">{t("supportDesc")}</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-white/20 rounded-lg transition-all duration-200"
-          >
-            <X className="w-4 h-4 text-white" />
-          </button>
-        </div>
-      </div>
-
-      <div className="h-96 overflow-y-auto p-4 space-y-3 bg-gray-50/50">
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex ${msg.type === "user" ? "justify-start" : "justify-end"}`}
-          >
-            <div
-              className={`relative max-w-[80%] rounded-lg p-3 ${
-                msg.type === "user"
-                  ? "bg-gray-200 text-gray-900"
-                  : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
-              }`}
-            >
-              <p className="text-sm">{msg.text}</p>
-              <p
-                className={`text-xs mt-1 ${
-                  msg.type === "user" ? "text-gray-500" : "text-white/70"
-                }`}
-              >
-                {msg.time}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <form
-        onSubmit={handleSendMessage}
-        className="p-4 border-t border-gray-100 bg-white"
-      >
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder={t("typeMessage")}
-            className="flex-1 px-3 py-2 bg-gray-100/50 border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
-          />
-          <button
-            type="submit"
-            className="p-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:shadow-lg transition-all duration-300 disabled:opacity-50"
-            disabled={!message.trim()}
-          >
-            <Send className="w-4 h-4" />
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-};
-
-export default function Dashboard() {
-  const { user, signOut } = useAuth();
-  const { language, toggleLanguage, t } = useLanguage();
-
-  const [currentView, setCurrentView] = useState<View>("dashboard");
-  const [stats, setStats] = useState<EnhancedStatistics>({
-    totalStudents: 0,
-    activeStudents: 0,
-    totalRevenue: 0,
-    totalExpenses: 0,
-    netProfit: 0,
-    totalTeachers: 0,
-    activeTeachers: 0,
-    totalSalaries: 0,
-    totalRefunds: 0,
-    netRevenue: 0,
-    paidStudents: 0,
-    partialPaidStudents: 0,
-    unpaidStudents: 0,
-    collectionRate: 0,
-    cashPayments: 0,
-    cardPayments: 0,
-    bankTransferPayments: 0,
-    checkPayments: 0,
-    todayCollections: 0,
-    thisWeekCollections: 0,
-    thisMonthCollections: 0,
-  });
+export default function FinancialReports() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(true);
-  const [selectedPeriod, setSelectedPeriod] = useState("month");
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const [reportType, setReportType] = useState<
+    "daily" | "weekly" | "monthly" | "yearly" | "custom"
+  >("monthly");
+  const [startDate, setStartDate] = useState(
+    new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+      .toISOString()
+      .split("T")[0],
+  );
+  const [endDate, setEndDate] = useState(
+    new Date().toISOString().split("T")[0],
+  );
+  const [report, setReport] = useState<FinancialReport | null>(null);
+  const [showProjections, setShowProjections] = useState(false);
+  const [currency] = useState("ج.م");
+
+  const COLORS = [
+    "#059669",
+    "#3b82f6",
+    "#f59e0b",
+    "#ef4444",
+    "#8b5cf6",
+    "#ec4899",
+  ];
 
   useEffect(() => {
-    loadStatistics();
-  }, []);
+    loadReport();
+  }, [reportType, startDate, endDate]);
 
-  const loadStatistics = async () => {
+  const loadReport = async () => {
     if (!user) return;
-
     setLoading(true);
+    setPdfError(null);
+
     try {
-      // جلب جميع البيانات المطلوبة
-      const [studentsRes, feesRes, expensesRes, teachersRes] =
-        await Promise.all([
-          supabase
-            .from("students")
-            .select("*")
-            .eq("user_id", user.id),
-          supabase
-            .from("fees")
-            .select("*, student:students(*)")
-            .eq("user_id", user.id),
-          supabase
-            .from("expenses")
-            .select("amount")
-            .eq("user_id", user.id),
-          supabase
-            .from("teachers")
-            .select("*")
-            .eq("user_id", user.id),
-        ]);
+      // جلب المصاريف (الإيرادات)
+      const { data: feesData, error: feesError } = await supabase
+        .from("fees")
+        .select("*, student:students(*)")
+        .eq("user_id", user.id)
+        .gte("payment_date", startDate)
+        .lte("payment_date", endDate);
 
-      // الإحصائيات الأساسية
-      const totalStudents = studentsRes.data?.length ?? 0;
-      const activeStudents = studentsRes.data?.filter((s) => s.status === "active").length ?? 0;
-      
-      // حساب المدفوعات والاستردادات
-      const fees = feesRes.data ?? [];
-      const totalPayments = fees
-        .filter(f => f.amount > 0)
-        .reduce((sum, fee) => sum + Number(fee.amount), 0);
-      const totalRefunds = fees
-        .filter(f => f.amount < 0)
-        .reduce((sum, fee) => sum + Math.abs(Number(fee.amount)), 0);
-      const netRevenue = totalPayments - totalRefunds;
+      if (feesError) throw feesError;
 
-      // حساب المصروفات
-      const totalExpenses = expensesRes.data?.reduce((sum, exp) => sum + Number(exp.amount), 0) ?? 0;
+      // جلب التكاليف (المصروفات)
+      const { data: expensesData, error: expensesError } = await supabase
+        .from("expenses")
+        .select("*")
+        .eq("user_id", user.id)
+        .gte("expense_date", startDate)
+        .lte("expense_date", endDate);
 
-      // إحصائيات المعلمين
-      const totalTeachers = teachersRes.data?.length ?? 0;
-      const activeTeachers = teachersRes.data?.filter((t) => t.status === "active").length ?? 0;
-      const totalSalaries = teachersRes.data
-        ?.filter((t) => t.status === "active")
-        .reduce((sum, t) => sum + Number(t.salary), 0) ?? 0;
+      if (expensesError) throw expensesError;
 
-      // حساب حالات سداد الطلاب
-      let paidStudents = 0;
-      let partialPaidStudents = 0;
-      let unpaidStudents = 0;
+      // جلب بيانات المعلمين للرواتب
+      const { data: teachersData, error: teachersError } = await supabase
+        .from("teachers")
+        .select("*")
+        .eq("user_id", user.id);
 
-      studentsRes.data?.forEach(student => {
-        const studentFees = fees.filter(f => f.student_id === student.id);
-        const totalPaid = studentFees
-          .filter(f => f.amount > 0)
-          .reduce((sum, f) => sum + f.amount, 0);
-        const totalRefunded = studentFees
-          .filter(f => f.amount < 0)
-          .reduce((sum, f) => sum + Math.abs(f.amount), 0);
-        const netPaid = totalPaid - totalRefunded;
-        
-        if (netPaid >= 5000) { // افتراض أن إجمالي المصاريف 5000
-          paidStudents++;
-        } else if (netPaid > 0) {
-          partialPaidStudents++;
-        } else {
-          unpaidStudents++;
-        }
-      });
+      if (teachersError) throw teachersError;
 
-      // حساب طرق الدفع
-      let cashPayments = 0, cardPayments = 0, bankPayments = 0, checkPayments = 0;
-      fees.forEach(fee => {
-        const amount = Math.abs(fee.amount);
-        if (fee.notes) {
-          try {
-            const notes = JSON.parse(fee.notes);
-            const method = notes.payment_method;
-            if (method === 'cash') cashPayments += amount;
-            else if (method === 'card') cardPayments += amount;
-            else if (method === 'bank_transfer') bankPayments += amount;
-            else if (method === 'check') checkPayments += amount;
-          } catch {
-            cashPayments += amount;
-          }
-        } else {
-          cashPayments += amount;
-        }
-      });
+      // حساب الإيرادات حسب الفئة
+      const revenueByCategory = calculateRevenueByCategory(feesData || []);
 
-      // حساب تحصيلات اليوم
-      const today = new Date().toISOString().split('T')[0];
-      const todayPayments = fees
-        .filter(f => f.payment_date === today && f.amount > 0)
-        .reduce((sum, f) => sum + f.amount, 0);
-      const todayRefunds = fees
-        .filter(f => f.payment_date === today && f.amount < 0)
-        .reduce((sum, f) => sum + Math.abs(f.amount), 0);
-      const todayCollections = todayPayments - todayRefunds;
+      // حساب المصروفات حسب الفئة
+      const expensesByCategory = calculateExpensesByCategory(
+        expensesData || [],
+      );
 
-      // حساب تحصيلات هذا الأسبوع
-      const oneWeekAgo = new Date();
-      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-      const weekPayments = fees
-        .filter(f => new Date(f.payment_date) >= oneWeekAgo && f.amount > 0)
-        .reduce((sum, f) => sum + f.amount, 0);
-      const weekRefunds = fees
-        .filter(f => new Date(f.payment_date) >= oneWeekAgo && f.amount < 0)
-        .reduce((sum, f) => sum + Math.abs(f.amount), 0);
-      const thisWeekCollections = weekPayments - weekRefunds;
+      // حساب المعاملات اليومية
+      const dailyTransactions = calculateDailyTransactions(
+        feesData || [],
+        expensesData || [],
+      );
 
-      // حساب تحصيلات هذا الشهر
-      const oneMonthAgo = new Date();
-      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-      const monthPayments = fees
-        .filter(f => new Date(f.payment_date) >= oneMonthAgo && f.amount > 0)
-        .reduce((sum, f) => sum + f.amount, 0);
-      const monthRefunds = fees
-        .filter(f => new Date(f.payment_date) >= oneMonthAgo && f.amount < 0)
-        .reduce((sum, f) => sum + Math.abs(f.amount), 0);
-      const thisMonthCollections = monthPayments - monthRefunds;
+      // أفضل الطلاب
+      const topStudents = calculateTopStudents(feesData || []);
 
-      // نسبة التحصيل
-      const expectedRevenue = activeStudents * 5000; // افتراض أن كل طالب عليه 5000
-      const collectionRate = expectedRevenue > 0 ? (netRevenue / expectedRevenue) * 100 : 0;
+      // طرق الدفع
+      const paymentMethods = calculatePaymentMethods(feesData || []);
 
-      setStats({
-        totalStudents,
-        activeStudents,
-        totalRevenue: totalPayments,
-        totalExpenses,
-        netProfit: netRevenue - totalExpenses,
-        totalTeachers,
-        activeTeachers,
-        totalSalaries,
-        totalRefunds,
-        netRevenue,
-        paidStudents,
-        partialPaidStudents,
-        unpaidStudents,
-        collectionRate,
-        cashPayments,
-        cardPayments,
-        bankTransferPayments: bankPayments,
-        checkPayments,
-        todayCollections,
-        thisWeekCollections,
-        thisMonthCollections,
+      // التوقعات
+      const projections = calculateProjections(
+        feesData || [],
+        expensesData || [],
+      );
+
+      // النسب المالية
+      const ratios = calculateFinancialRatios(
+        feesData || [],
+        expensesData || [],
+        teachersData || [],
+      );
+
+      // حساب الملخص
+      const totalRevenue =
+        feesData?.reduce((sum, f) => sum + (f.amount > 0 ? f.amount : 0), 0) ||
+        0;
+      const totalExpenses =
+        expensesData?.reduce((sum, e) => sum + e.amount, 0) || 0;
+      const netProfit = totalRevenue - totalExpenses;
+      const profitMargin =
+        totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+      // حساب الذمم
+      const accountsReceivable = calculateAccountsReceivable();
+      const accountsPayable = calculateAccountsPayable(teachersData || []);
+
+      setReport({
+        period: reportType,
+        startDate,
+        endDate,
+        summary: {
+          totalRevenue,
+          totalExpenses,
+          netProfit,
+          profitMargin,
+          cashFlow: totalRevenue - totalExpenses,
+          accountsReceivable,
+          accountsPayable,
+          workingCapital: totalRevenue - totalExpenses - accountsPayable,
+        },
+        revenueByCategory,
+        expensesByCategory,
+        dailyTransactions,
+        topStudents,
+        paymentMethods,
+        projections,
+        ratios,
       });
     } catch (error) {
-      console.error("Error loading statistics:", error);
+      console.error("Error loading report:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleViewChange = (view: View) => {
-    setCurrentView(view);
-    if (view === "dashboard") {
-      loadStatistics();
-    }
+  const calculateRevenueByCategory = (fees: any[]) => {
+    const categories: { [key: string]: number } = {};
+    fees.forEach((fee) => {
+      if (fee.amount > 0) {
+        categories[fee.payment_type] =
+          (categories[fee.payment_type] || 0) + fee.amount;
+      }
+    });
+
+    const total = Object.values(categories).reduce((a, b) => a + b, 0);
+    return Object.entries(categories).map(([category, amount]) => ({
+      category,
+      amount,
+      percentage: total > 0 ? (amount / total) * 100 : 0,
+    }));
   };
 
-  const revenueData = [65, 45, 75, 55, 85, 95, 70];
-  const days =
-    language === "ar"
-      ? [t("mon"), t("tue"), t("wed"), t("thu"), t("fri"), t("sat"), t("sun")]
-      : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const calculateExpensesByCategory = (expenses: any[]) => {
+    const categories: { [key: string]: number } = {};
+    expenses.forEach((expense) => {
+      categories[expense.category] =
+        (categories[expense.category] || 0) + expense.amount;
+    });
 
-  const calculateTrend = (): { trend: "up" | "down"; value: number } => {
-    const mockChange = Math.random() * 20 - 10;
+    const total = Object.values(categories).reduce((a, b) => a + b, 0);
+    return Object.entries(categories).map(([category, amount]) => ({
+      category,
+      amount,
+      percentage: total > 0 ? (amount / total) * 100 : 0,
+    }));
+  };
+
+  const calculateDailyTransactions = (fees: any[], expenses: any[]) => {
+    const dateMap: { [key: string]: { revenue: number; expenses: number } } =
+      {};
+
+    fees.forEach((fee) => {
+      if (fee.amount > 0) {
+        const date = fee.payment_date;
+        if (!dateMap[date]) dateMap[date] = { revenue: 0, expenses: 0 };
+        dateMap[date].revenue += fee.amount;
+      }
+    });
+
+    expenses.forEach((expense) => {
+      const date = expense.expense_date;
+      if (!dateMap[date]) dateMap[date] = { revenue: 0, expenses: 0 };
+      dateMap[date].expenses += expense.amount;
+    });
+
+    return Object.entries(dateMap)
+      .map(([date, values]) => ({
+        date,
+        revenue: values.revenue,
+        expenses: values.expenses,
+        profit: values.revenue - values.expenses,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  };
+
+  const calculateTopStudents = (fees: any[]) => {
+    const studentMap: {
+      [key: string]: { name: string; total: number; lastDate: string };
+    } = {};
+
+    fees.forEach((fee) => {
+      if (fee.amount > 0 && fee.student) {
+        const studentId = fee.student_id;
+        if (!studentMap[studentId]) {
+          studentMap[studentId] = {
+            name: fee.student.full_name,
+            total: 0,
+            lastDate: fee.payment_date,
+          };
+        }
+        studentMap[studentId].total += fee.amount;
+        if (fee.payment_date > studentMap[studentId].lastDate) {
+          studentMap[studentId].lastDate = fee.payment_date;
+        }
+      }
+    });
+
+    return Object.values(studentMap)
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10)
+      .map((s) => ({
+        student_name: s.name,
+        total_paid: s.total,
+        last_payment: s.lastDate,
+      }));
+  };
+
+  const calculatePaymentMethods = (fees: any[]) => {
+    const methods: { [key: string]: { amount: number; count: number } } = {};
+
+    fees.forEach((fee) => {
+      if (fee.amount > 0 && fee.notes) {
+        try {
+          const notes = JSON.parse(fee.notes);
+          const method = notes.payment_method || "cash";
+          if (!methods[method]) {
+            methods[method] = { amount: 0, count: 0 };
+          }
+          methods[method].amount += fee.amount;
+          methods[method].count += 1;
+        } catch {
+          if (!methods["cash"]) {
+            methods["cash"] = { amount: 0, count: 0 };
+          }
+          methods["cash"].amount += fee.amount;
+          methods["cash"].count += 1;
+        }
+      }
+    });
+
+    return Object.entries(methods).map(([method, data]) => ({
+      method:
+        method === "cash"
+          ? "نقدي"
+          : method === "card"
+            ? "بطاقة"
+            : method === "bank_transfer"
+              ? "تحويل بنكي"
+              : "شيك",
+      amount: data.amount,
+      count: data.count,
+    }));
+  };
+
+  const calculateAccountsReceivable = () => {
+    return 0;
+  };
+
+  const calculateAccountsPayable = (teachers: any[]) => {
+    return teachers
+      .filter((t) => t.status === "active")
+      .reduce((sum, t) => sum + (t.salary || 0), 0);
+  };
+
+  const calculateProjections = (fees: any[], expenses: any[]) => {
+    const projections = [];
+    const currentDate = new Date();
+
+    const monthlyAvgRevenue =
+      fees.length > 0
+        ? fees
+            .filter((f) => f.amount > 0)
+            .reduce((sum, f) => sum + f.amount, 0) / 3
+        : 0;
+    const monthlyAvgExpenses =
+      expenses.length > 0
+        ? expenses.reduce((sum, e) => sum + e.amount, 0) / 3
+        : 0;
+
+    for (let i = 1; i <= 6; i++) {
+      const nextMonth = new Date(currentDate);
+      nextMonth.setMonth(nextMonth.getMonth() + i);
+
+      projections.push({
+        month: nextMonth.toLocaleDateString("ar-EG", {
+          month: "long",
+          year: "numeric",
+        }),
+        projectedRevenue: monthlyAvgRevenue * (1 + 0.05 * i),
+        projectedExpenses: monthlyAvgExpenses * (1 + 0.03 * i),
+        projectedProfit:
+          monthlyAvgRevenue * (1 + 0.05 * i) -
+          monthlyAvgExpenses * (1 + 0.03 * i),
+      });
+    }
+
+    return projections;
+  };
+
+  const calculateFinancialRatios = (
+    fees: any[],
+    expenses: any[],
+    teachers: any[],
+  ) => {
+    const totalRevenue = fees.reduce(
+      (sum, f) => sum + (f.amount > 0 ? f.amount : 0),
+      0,
+    );
+    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const currentAssets = totalRevenue;
+    const currentLiabilities = teachers
+      .filter((t) => t.status === "active")
+      .reduce((sum, t) => sum + (t.salary || 0), 0);
+    const totalAssets = currentAssets + 100000;
+    const netProfit = totalRevenue - totalExpenses;
+
     return {
-      trend: mockChange >= 0 ? "up" : "down",
-      value: Math.abs(Math.round(mockChange * 10) / 10),
+      currentRatio:
+        currentLiabilities > 0 ? currentAssets / currentLiabilities : 0,
+      quickRatio:
+        currentLiabilities > 0 ? (currentAssets * 0.8) / currentLiabilities : 0,
+      debtRatio: totalAssets > 0 ? currentLiabilities / totalAssets : 0,
+      profitMargin: totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0,
+      returnOnAssets: totalAssets > 0 ? (netProfit / totalAssets) * 100 : 0,
+      operatingMargin: totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0,
     };
   };
 
-  const studentsTrend = calculateTrend();
-  const activeStudentsTrend = calculateTrend();
-  const teachersTrend = calculateTrend();
-  const revenueTrend = calculateTrend();
-  const expensesTrend = calculateTrend();
-  const profitTrend = calculateTrend();
+  const exportToExcel = () => {
+    if (!report) return;
+
+    try {
+      const wb = XLSX.utils.book_new();
+
+      // ورقة الملخص
+      const summaryData = [
+        ["البيان", "القيمة"],
+        [
+          "إجمالي الإيرادات",
+          `${report.summary.totalRevenue.toFixed(2)} ${currency}`,
+        ],
+        [
+          "إجمالي المصروفات",
+          `${report.summary.totalExpenses.toFixed(2)} ${currency}`,
+        ],
+        ["صافي الربح", `${report.summary.netProfit.toFixed(2)} ${currency}`],
+        ["هامش الربح", `${report.summary.profitMargin.toFixed(2)}%`],
+        ["التدفق النقدي", `${report.summary.cashFlow.toFixed(2)} ${currency}`],
+      ];
+      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, wsSummary, "ملخص");
+
+      // ورقة الإيرادات حسب الفئة
+      const revenueData = report.revenueByCategory.map((r) => [
+        r.category,
+        r.amount.toFixed(2),
+        `${r.percentage.toFixed(2)}%`,
+      ]);
+      revenueData.unshift(["الفئة", "المبلغ", "النسبة"]);
+      const wsRevenue = XLSX.utils.aoa_to_sheet(revenueData);
+      XLSX.utils.book_append_sheet(wb, wsRevenue, "الإيرادات");
+
+      XLSX.writeFile(wb, `تقرير_مالي_${startDate}_الى_${endDate}.xlsx`);
+    } catch (error) {
+      console.error("Error exporting to Excel:", error);
+      alert("حدث خطأ أثناء تصدير ملف Excel");
+    }
+  };
+
+  const exportToPDF = () => {
+    if (!report) return;
+    
+    setPdfError(null);
+    
+    try {
+      // إنشاء مستند PDF جديد
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      // إضافة الخط العربي (استخدام الخط الافتراضي)
+      doc.setFont('helvetica');
+      
+      // العنوان
+      doc.setFontSize(20);
+      doc.setTextColor(5, 150, 105);
+      doc.text("تقرير مالي", 105, 20, { align: "center" });
+
+      // الفترة
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`الفترة: ${startDate} إلى ${endDate}`, 105, 30, {
+        align: "center",
+      });
+
+      // الملخص
+      doc.setFillColor(240, 253, 244);
+      doc.rect(20, 40, 170, 40, "F");
+      doc.setFontSize(14);
+      doc.setTextColor(5, 150, 105);
+      doc.text("ملخص", 105, 50, { align: "center" });
+
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      
+      // نص الملخص مع التأكد من وجود القيم
+      const summaryLines = [
+        `إجمالي الإيرادات: ${report.summary.totalRevenue.toFixed(2)} ${currency}`,
+        `إجمالي المصروفات: ${report.summary.totalExpenses.toFixed(2)} ${currency}`,
+        `صافي الربح: ${report.summary.netProfit.toFixed(2)} ${currency}`,
+        `هامش الربح: ${report.summary.profitMargin.toFixed(2)}%`,
+      ];
+
+      doc.text(summaryLines[0], 30, 60);
+      doc.text(summaryLines[1], 30, 67);
+      doc.text(summaryLines[2], 30, 74);
+      doc.text(summaryLines[3], 30, 81);
+
+      // جدول الإيرادات
+      const revenueTableData = report.revenueByCategory.map((r) => [
+        r.category,
+        `${r.amount.toFixed(2)} ${currency}`,
+        `${r.percentage.toFixed(1)}%`,
+      ]);
+
+      // إضافة الجدول باستخدام autoTable
+      autoTable(doc, {
+        startY: 90,
+        head: [['الفئة', 'المبلغ', 'النسبة']],
+        body: revenueTableData,
+        theme: 'grid',
+        headStyles: { 
+          fillColor: [5, 150, 105],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'center',
+        },
+        styles: { 
+          fontSize: 8,
+          halign: 'right',
+          font: 'helvetica',
+        },
+        columnStyles: {
+          0: { cellWidth: 70 },
+          1: { cellWidth: 50 },
+          2: { cellWidth: 30 },
+        },
+        margin: { top: 20 },
+      });
+
+      // حفظ الملف
+      const fileName = `تقرير_مالي_${startDate}.pdf`;
+      doc.save(fileName);
+      
+    } catch (error) {
+      console.error("Error exporting to PDF:", error);
+      setPdfError("حدث خطأ أثناء إنشاء ملف PDF. يرجى المحاولة مرة أخرى.");
+      alert("حدث خطأ أثناء تصدير ملف PDF. يرجى المحاولة مرة أخرى.");
+    }
+  };
+
+  // دالة لتنسيق الأرقام مع العملة
+  const formatCurrency = (value: number) => {
+    return (
+      <span className="flex items-center gap-1 flex-wrap">
+        <span className="font-bold">
+          {value.toLocaleString("ar-EG", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}
+        </span>
+        <span className="text-sm text-gray-600 font-normal">{currency}</span>
+      </span>
+    );
+  };
+
+  // دالة لتنسيق Tooltip
+  const formatTooltipValue = (value: number | string | undefined): [string, string] => {
+    if (typeof value === 'number') {
+      return [`${value.toFixed(2)} ${currency}`, 'القيمة'];
+    }
+    return [`${value || 0}`, 'القيمة'];
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="inline-block w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
-    <div
-      className="min-h-screen bg-gray-50/50"
-      dir={language === "ar" ? "rtl" : "ltr"}
-    >
-      <div className="relative">
-        <ModernHeader
-          user={user}
-          onSignOut={signOut}
-          onViewChange={handleViewChange}
-          language={language}
-          toggleLanguage={toggleLanguage}
-          t={t}
-        />
-
-        <div className="fixed bottom-6 left-6 z-50">
-          <button
-            onClick={() => setIsChatOpen(!isChatOpen)}
-            className="group relative w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow-lg hover:shadow-xl hover:shadow-blue-600/25 transition-all duration-300 hover:scale-110"
+    <div className="space-y-6" dir="rtl">
+      {/* العنوان وأدوات التحكم */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">التقارير المالية</h2>
+          <p className="text-sm text-gray-600">
+            تحليل مالي متقدم ونسب ومؤشرات أداء
+          </p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <select
+            value={reportType}
+            onChange={(e) => setReportType(e.target.value as any)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
           >
-            <MessageCircle className="w-5 h-5 mx-auto transition-transform duration-300 group-hover:rotate-12" />
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full"></span>
+            <option value="daily">يومي</option>
+            <option value="weekly">أسبوعي</option>
+            <option value="monthly">شهري</option>
+            <option value="yearly">سنوي</option>
+            <option value="custom">مخصص</option>
+          </select>
+          {reportType === "custom" && (
+            <>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+              />
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+              />
+            </>
+          )}
+          <button
+            onClick={loadReport}
+            className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all"
+            title="تحديث"
+          >
+            <RefreshCw className="w-5 h-5" />
+          </button>
+          <button
+            onClick={exportToExcel}
+            className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
+            title="تصدير Excel"
+          >
+            <Download className="w-5 h-5" />
+          </button>
+          <button
+            onClick={exportToPDF}
+            className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all"
+            title="تصدير PDF"
+            disabled={!!pdfError}
+          >
+            <FileText className="w-5 h-5" />
           </button>
         </div>
-
-        <ModernChat
-          isOpen={isChatOpen}
-          onClose={() => setIsChatOpen(false)}
-          language={language}
-          t={t}
-        />
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex gap-6">
-            {showSidebar && (
-              <aside className="w-64 flex-shrink-0">
-                <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-2 sticky top-20 border border-gray-100/50">
-                  <ModernMenuItem
-                    label={t("dashboard")}
-                    icon={Home}
-                    view="dashboard"
-                    currentView={currentView}
-                    onClick={() => handleViewChange("dashboard")}
-                  />
-                  <ModernMenuItem
-                    label={t("students")}
-                    icon={GraduationCap}
-                    view="students"
-                    count={stats.activeStudents}
-                    currentView={currentView}
-                    onClick={() => handleViewChange("students")}
-                  />
-                  <ModernMenuItem
-                    label={t("teachers")}
-                    icon={Briefcase}
-                    view="teachers"
-                    currentView={currentView}
-                    onClick={() => handleViewChange("teachers")}
-                  />
-                  <ModernMenuItem
-                    label={t("fees")}
-                    icon={Wallet}
-                    view="fees"
-                    currentView={currentView}
-                    onClick={() => handleViewChange("fees")}
-                  />
-                  <ModernMenuItem
-                    label={t("expenses")}
-                    icon={TrendingDown}
-                    view="expenses"
-                    currentView={currentView}
-                    onClick={() => handleViewChange("expenses")}
-                  />
-                  <ModernMenuItem
-                    label={t("profit")}
-                    icon={TrendingUp}
-                    view="reports"
-                    currentView={currentView}
-                    onClick={() => handleViewChange("reports")}
-                  />
-                  <ModernMenuItem
-                    label={t("financial")}
-                    icon={LineChart}
-                    view="financial"
-                    currentView={currentView}
-                    onClick={() => handleViewChange("financial")}
-                  />
-
-                  <div className="h-px bg-gray-200 my-2"></div>
-
-                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200">
-                    <Settings className="w-4 h-4" />
-                    <span className="flex-1 text-right font-medium">
-                      {t("settings")}
-                    </span>
-                  </button>
-
-                  <button
-                    onClick={() => setShowSidebar(false)}
-                    className="w-full mt-2 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100/80 rounded-lg transition-colors duration-200"
-                  >
-                    <ChevronRight className="w-4 h-4 mx-auto" />
-                  </button>
-                </div>
-              </aside>
-            )}
-
-            {!showSidebar && (
-              <button
-                onClick={() => setShowSidebar(true)}
-                className="fixed right-4 top-20 z-40 p-2 bg-white/90 backdrop-blur-xl rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100/50"
-              >
-                <ChevronLeft className="w-4 h-4 text-gray-600" />
-              </button>
-            )}
-
-            <main className="flex-1 min-w-0">
-              {currentView === "dashboard" && (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h1 className="text-2xl font-semibold text-gray-900">
-                        {t("dashboard")}
-                      </h1>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {t("welcome")}, {user?.email?.split("@")[0]}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={loadStatistics}
-                        className="p-2 hover:bg-gray-100/80 rounded-lg transition-all duration-200"
-                        title={t("refresh")}
-                      >
-                        <RefreshCw className="w-4 h-4 text-gray-600" />
-                      </button>
-                      <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xl rounded-lg p-1 border border-gray-100/50">
-                        {[t("day"), t("week"), t("month"), t("year")].map(
-                          (period, index) => {
-                            const periods = ["day", "week", "month", "year"];
-                            return (
-                              <button
-                                key={periods[index]}
-                                onClick={() => setSelectedPeriod(periods[index])}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
-                                  selectedPeriod === periods[index]
-                                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm"
-                                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80"
-                                }`}
-                              >
-                                {period}
-                              </button>
-                            );
-                          },
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {loading ? (
-                    <div className="flex items-center justify-center py-20">
-                      <div className="relative">
-                        <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      {/* البطاقات الرئيسية */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <ModernStatCard
-                          title={t("totalStudents")}
-                          value={stats.totalStudents}
-                          icon={Users}
-                          trend={studentsTrend.trend}
-                          trendValue={studentsTrend.value}
-                          color="from-blue-600 to-indigo-600"
-                          delay={0}
-                          subValue={`${formatNumber(stats.activeStudents, language)} ${t("active")}`}
-                        />
-                        <ModernStatCard
-                          title={t("netRevenue")}
-                          value={stats.netRevenue}
-                          icon={DollarSign}
-                          isCurrency={true}
-                          trend={revenueTrend.trend}
-                          trendValue={revenueTrend.value}
-                          color="from-emerald-600 to-teal-600"
-                          delay={50}
-                          subValue={t("afterRefunds")}
-                        />
-                        <ModernStatCard
-                          title={t("totalExpenses")}
-                          value={stats.totalExpenses}
-                          icon={TrendingDown}
-                          isCurrency={true}
-                          trend={expensesTrend.trend}
-                          trendValue={expensesTrend.value}
-                          color="from-red-600 to-rose-600"
-                          delay={100}
-                        />
-                        <ModernStatCard
-                          title={t("netProfit")}
-                          value={stats.netProfit}
-                          icon={TrendingUp}
-                          isCurrency={true}
-                          trend={profitTrend.trend}
-                          trendValue={profitTrend.value}
-                          color="from-purple-600 to-pink-600"
-                          delay={150}
-                        />
-                      </div>
-
-                      {/* بطاقات إضافية للرسوم */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <ModernStatCard
-                          title={t("collectionRate")}
-                          value={stats.collectionRate}
-                          icon={Activity}
-                          isPercentage={true}
-                          color="from-blue-600 to-indigo-600"
-                          delay={200}
-                        />
-                        <ModernStatCard
-                          title={t("todayCollections")}
-                          value={stats.todayCollections}
-                          icon={Wallet}
-                          isCurrency={true}
-                          color="from-amber-500 to-orange-600"
-                          delay={250}
-                        />
-                        <ModernStatCard
-                          title={t("paidStudents")}
-                          value={stats.paidStudents}
-                          icon={Users}
-                          color="from-green-600 to-emerald-600"
-                          delay={300}
-                        />
-                        <ModernStatCard
-                          title={t("unpaidStudents")}
-                          value={stats.unpaidStudents}
-                          icon={Users}
-                          color="from-red-600 to-rose-600"
-                          delay={350}
-                        />
-                      </div>
-
-                      {/* بطاقات طرق الدفع */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <ModernStatCard
-                          title={t("cashPayments")}
-                          value={stats.cashPayments}
-                          icon={Wallet}
-                          isCurrency={true}
-                          color="from-green-600 to-emerald-600"
-                          delay={400}
-                        />
-                        <ModernStatCard
-                          title={t("cardPayments")}
-                          value={stats.cardPayments}
-                          icon={CreditCard}
-                          isCurrency={true}
-                          color="from-blue-600 to-indigo-600"
-                          delay={450}
-                        />
-                        <ModernStatCard
-                          title={t("bankTransferPayments")}
-                          value={stats.bankTransferPayments}
-                          icon={Landmark}
-                          isCurrency={true}
-                          color="from-purple-600 to-pink-600"
-                          delay={500}
-                        />
-                        <ModernStatCard
-                          title={t("checkPayments")}
-                          value={stats.checkPayments}
-                          icon={FileText}
-                          isCurrency={true}
-                          color="from-amber-500 to-orange-600"
-                          delay={550}
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-6 border border-gray-100/50">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h3 className="font-semibold text-gray-900">
-                          {t("revenueOverview")}
-                        </h3>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {t("last7Days")}
-                        </p>
-                      </div>
-                      <button className="p-2 hover:bg-gray-100/80 rounded-lg transition-colors duration-200">
-                        <Maximize2 className="w-4 h-4 text-gray-500" />
-                      </button>
-                    </div>
-
-                    <div className="h-32 flex items-end gap-2">
-                      {revenueData.map((value, i) => (
-                        <div
-                          key={i}
-                          className="flex-1 flex flex-col items-center gap-1"
-                        >
-                          <div
-                            className="w-full bg-gradient-to-t from-blue-600 to-indigo-600 rounded-t-lg transition-all duration-500 hover:from-blue-500 hover:to-indigo-500"
-                            style={{ height: `${value}%` }}
-                          ></div>
-                          <span className="text-xs text-gray-500">
-                            {days[i]}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-3">
-                      {t("quickActions")}
-                    </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                      <QuickActionCard
-                        title={t("addStudent")}
-                        description={t("addStudentDesc")}
-                        icon={UserPlus}
-                        color="from-blue-600 to-indigo-600"
-                        onClick={() => handleViewChange("students")}
-                      />
-                      <QuickActionCard
-                        title={t("recordFee")}
-                        description={t("recordFeeDesc")}
-                        icon={Wallet}
-                        color="from-emerald-600 to-teal-600"
-                        onClick={() => handleViewChange("fees")}
-                      />
-                      <QuickActionCard
-                        title={t("addExpense")}
-                        description={t("addExpenseDesc")}
-                        icon={TrendingDown}
-                        color="from-red-600 to-rose-600"
-                        onClick={() => handleViewChange("expenses")}
-                      />
-                      <QuickActionCard
-                        title={t("viewReports")}
-                        description={t("viewReportsDesc")}
-                        icon={BarChart3}
-                        color="from-purple-600 to-pink-600"
-                        onClick={() => handleViewChange("reports")}
-                      />
-                      <QuickActionCard
-                        title={t("processRefund")}
-                        description={t("processRefundDesc")}
-                        icon={X}
-                        color="from-orange-600 to-red-600"
-                        onClick={() => handleViewChange("fees")}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {currentView === "students" && (
-                <StudentsManager onUpdate={loadStatistics} />
-              )}
-              {currentView === "teachers" && (
-                <TeachersManager onUpdate={loadStatistics} />
-              )}
-              {currentView === "fees" && (
-                <FeesManager onUpdate={loadStatistics} />
-              )}
-              {currentView === "expenses" && (
-                <ExpensesManager onUpdate={loadStatistics} />
-              )}
-              {currentView === "reports" && <ProfitReport />}
-              {currentView === "financial" && <FinancialReports />}
-            </main>
-          </div>
-        </div>
       </div>
+
+      {pdfError && (
+        <div className="bg-red-50 border-r-4 border-red-600 p-4 rounded-lg flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600" />
+          <p className="text-red-800">{pdfError}</p>
+        </div>
+      )}
+
+      {report && (
+        <>
+          {/* بطاقات المؤشرات الرئيسية - تم زيادة العرض وتحسين التنسيق */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+            <div className="bg-white rounded-xl shadow-md p-6 border-r-4 border-green-600 hover:shadow-lg transition-shadow">
+              <div className="flex items-center justify-between mb-3">
+                <div className="p-2 bg-green-50 rounded-lg">
+                  <DollarSign className="w-6 h-6 text-green-600" />
+                </div>
+                <span className="text-sm font-medium text-gray-500">إجمالي الإيرادات</span>
+              </div>
+              <div className="text-2xl font-bold text-gray-900 mb-2 flex items-center gap-2 flex-wrap">
+                {formatCurrency(report.summary.totalRevenue)}
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-1 text-green-600">
+                  <ArrowUpRight className="w-4 h-4" />
+                  <span>+{report.revenueByCategory.length} فئة</span>
+                </div>
+                <span className="text-gray-400">آخر 30 يوم</span>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-md p-6 border-r-4 border-red-600 hover:shadow-lg transition-shadow">
+              <div className="flex items-center justify-between mb-3">
+                <div className="p-2 bg-red-50 rounded-lg">
+                  <TrendingDown className="w-6 h-6 text-red-600" />
+                </div>
+                <span className="text-sm font-medium text-gray-500">إجمالي المصروفات</span>
+              </div>
+              <div className="text-2xl font-bold text-gray-900 mb-2 flex items-center gap-2 flex-wrap">
+                {formatCurrency(report.summary.totalExpenses)}
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-1 text-red-600">
+                  <ArrowDownRight className="w-4 h-4" />
+                  <span>{report.expensesByCategory.length} فئة</span>
+                </div>
+                <span className="text-gray-400">آخر 30 يوم</span>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-md p-6 border-r-4 border-blue-600 hover:shadow-lg transition-shadow">
+              <div className="flex items-center justify-between mb-3">
+                <div className="p-2 bg-blue-50 rounded-lg">
+                  <TrendingUp className="w-6 h-6 text-blue-600" />
+                </div>
+                <span className="text-sm font-medium text-gray-500">صافي الربح</span>
+              </div>
+              <div className={`text-2xl font-bold mb-2 flex items-center gap-2 flex-wrap ${report.summary.netProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
+                <span>{report.summary.netProfit >= 0 ? "+" : ""}</span>
+                {formatCurrency(Math.abs(report.summary.netProfit))}
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">هامش الربح:</span>
+                <span className={`font-medium ${report.summary.profitMargin >= 0 ? "text-green-600" : "text-red-600"}`}>
+                  {report.summary.profitMargin.toFixed(1)}%
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-md p-6 border-r-4 border-purple-600 hover:shadow-lg transition-shadow">
+              <div className="flex items-center justify-between mb-3">
+                <div className="p-2 bg-purple-50 rounded-lg">
+                  <Percent className="w-6 h-6 text-purple-600" />
+                </div>
+                <span className="text-sm font-medium text-gray-500">النسب المالية</span>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">نسبة السيولة:</span>
+                  <span className="font-medium text-gray-900 bg-gray-100 px-2 py-1 rounded">
+                    {report.ratios.currentRatio.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">العائد على الأصول:</span>
+                  <span className="font-medium text-green-600 bg-green-50 px-2 py-1 rounded">
+                    {report.ratios.returnOnAssets.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                  <span className="text-gray-600">التدفق النقدي:</span>
+                  <span className={`font-medium ${report.summary.cashFlow >= 0 ? "text-green-600" : "text-red-600"}`}>
+                    {formatCurrency(report.summary.cashFlow)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* الرسوم البيانية */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* الإيرادات حسب الفئة */}
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">
+                توزيع الإيرادات
+              </h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <RechartsPieChart>
+                  <Pie
+                    data={report.revenueByCategory}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent = 0 }) => 
+                      `${name} (${(percent * 100).toFixed(0)}%)`
+                    }
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="amount"
+                    nameKey="category"
+                  >
+                    {report.revenueByCategory.map((_, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+  formatter={formatTooltipValue as any}
+                  />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* المصروفات حسب الفئة */}
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">
+                توزيع المصروفات
+              </h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <RechartsPieChart>
+                  <Pie
+                    data={report.expensesByCategory}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent = 0 }) => 
+                      `${name} (${(percent * 100).toFixed(0)}%)`
+                    }
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="amount"
+                    nameKey="category"
+                  >
+                    {report.expensesByCategory.map((_, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+  formatter={formatTooltipValue as any}
+                  />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* المعاملات اليومية */}
+            <div className="lg:col-span-2 bg-white rounded-xl shadow-md p-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">
+                المعاملات اليومية
+              </h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={report.dailyTransactions}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip 
+  formatter={formatTooltipValue as any}
+                  />
+                  <Legend />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#059669"
+                    fill="#059669"
+                    fillOpacity={0.3}
+                    name="الإيرادات"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="expenses"
+                    stroke="#ef4444"
+                    fill="#ef4444"
+                    fillOpacity={0.3}
+                    name="المصروفات"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="profit"
+                    stroke="#3b82f6"
+                    fill="#3b82f6"
+                    fillOpacity={0.3}
+                    name="الربح"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* جدول أفضل الطلاب */}
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">
+              أفضل 10 طلاب من حيث السداد
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="px-4 py-2 text-right">#</th>
+                    <th className="px-4 py-2 text-right">اسم الطالب</th>
+                    <th className="px-4 py-2 text-right">إجمالي المدفوعات</th>
+                    <th className="px-4 py-2 text-right">آخر دفعة</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.topStudents.map((student, index) => (
+                    <tr key={index} className="border-b hover:bg-gray-50">
+                      <td className="px-4 py-2">{index + 1}</td>
+                      <td className="px-4 py-2 font-medium">
+                        {student.student_name}
+                      </td>
+                      <td className="px-4 py-2">
+                        <span className="text-green-600 font-medium">
+                          {formatCurrency(student.total_paid)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2">{student.last_payment}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* طرق الدفع */}
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">طرق الدفع</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {report.paymentMethods.map((method, index) => (
+                <div key={index} className="bg-gray-50 rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-white rounded-lg">
+                      {method.method === "نقدي" && (
+                        <Banknote className="w-5 h-5 text-green-600" />
+                      )}
+                      {method.method === "بطاقة" && (
+                        <CreditCard className="w-5 h-5 text-blue-600" />
+                      )}
+                      {method.method === "تحويل بنكي" && (
+                        <Landmark className="w-5 h-5 text-purple-600" />
+                      )}
+                    </div>
+                    <span className="font-medium text-gray-900">{method.method}</span>
+                  </div>
+                  <p className="text-xl font-bold text-gray-900 mb-1">
+                    {formatCurrency(method.amount)}
+                  </p>
+                  <p className="text-sm text-gray-600">{method.count} عملية</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* التوقعات المستقبلية */}
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">
+                التوقعات المالية للأشهر القادمة
+              </h3>
+              <button
+                onClick={() => setShowProjections(!showProjections)}
+                className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-900 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                {showProjections ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+                <span>{showProjections ? "إخفاء" : "عرض"}</span>
+              </button>
+            </div>
+            {showProjections && (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="px-4 py-2 text-right">الشهر</th>
+                      <th className="px-4 py-2 text-right">
+                        الإيرادات المتوقعة
+                      </th>
+                      <th className="px-4 py-2 text-right">
+                        المصروفات المتوقعة
+                      </th>
+                      <th className="px-4 py-2 text-right">الربح المتوقع</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.projections.map((proj, index) => (
+                      <tr key={index} className="border-b hover:bg-gray-50">
+                        <td className="px-4 py-2 font-medium">{proj.month}</td>
+                        <td className="px-4 py-2">
+                          <span className="text-green-600">
+                            {formatCurrency(proj.projectedRevenue)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2">
+                          <span className="text-red-600">
+                            {formatCurrency(proj.projectedExpenses)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2">
+                          <span className={proj.projectedProfit >= 0 ? "text-green-600" : "text-red-600"}>
+                            {proj.projectedProfit >= 0 ? "+" : ""}
+                            {formatCurrency(Math.abs(proj.projectedProfit))}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
