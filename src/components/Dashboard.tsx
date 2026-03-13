@@ -188,17 +188,20 @@ const ModernStatCard: React.FC<StatCardProps> = ({
 
       <div className="relative p-6">
         <div className="flex items-start justify-between">
-          <div className="space-y-2">
+          <div className="space-y-2 flex-1">
             <p className="text-sm font-medium text-gray-500 tracking-wide">
               {title}
             </p>
-            <p className="text-3xl font-bold text-gray-900 tracking-tight">
-              {getDisplayValue()}
-            </p>
-
-            {subValue && (
-              <p className="text-xs text-gray-500 mt-1">{subValue}</p>
-            )}
+            
+            {/* سطر القيمة الرئيسية - تعديل هنا */}
+            <div className="flex items-baseline gap-1 flex-wrap">
+              <span className="text-2xl font-bold text-gray-900 tracking-tight">
+                {getDisplayValue()}
+              </span>
+              {subValue && (
+                <span className="text-xs text-gray-500 mr-1">({subValue})</span>
+              )}
+            </div>
 
             {trend && trendValue !== undefined && (
               <div className="flex items-center gap-2 mt-2">
@@ -223,12 +226,12 @@ const ModernStatCard: React.FC<StatCardProps> = ({
             )}
           </div>
 
-          <div className="relative">
+          <div className="relative mr-3">
             <div
               className={`absolute inset-0 bg-gradient-to-br ${color} rounded-xl blur-xl opacity-30 group-hover:opacity-40 transition-opacity duration-500`}
             ></div>
             <div
-              className={`relative p-3.5 bg-gradient-to-br ${color} rounded-xl shadow-lg transform group-hover:scale-110 group-hover:-rotate-3 transition-all duration-500`}
+              className={`relative p-3 bg-gradient-to-br ${color} rounded-xl shadow-lg transform group-hover:scale-110 group-hover:-rotate-3 transition-all duration-500`}
             >
               <Icon className="w-5 h-5 text-white" />
             </div>
@@ -240,7 +243,6 @@ const ModernStatCard: React.FC<StatCardProps> = ({
     </div>
   );
 };
-
 const ModernMenuItem: React.FC<MenuItemProps> = ({
   label,
   icon: Icon,
