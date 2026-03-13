@@ -129,7 +129,10 @@ const formatCurrency = (num: number, language: string): string => {
     maximumFractionDigits: 2,
   });
   
-  return language === 'ar' ? `${formattedNumber} ج.م` : `EGP ${formattedNumber}`;
+  // جعل "ج.م" بنفس حجم الخط باستخدام span منفصل
+  return language === 'ar' 
+    ? `${formattedNumber} ج.م` 
+    : `EGP ${formattedNumber}`;
 };
 
 const formatPercentage = (num: number, language: string): string => {
@@ -147,7 +150,6 @@ const formatNumber = (num: number, language: string): string => {
     maximumFractionDigits: 0,
   });
 };
-
 const ModernStatCard: React.FC<StatCardProps> = ({
   title,
   value,
