@@ -1035,13 +1035,13 @@ export default function Dashboard() {
                   {loading ? (
                     <div className="flex items-center justify-center py-20">
                       <div className="relative">
-                        <div className="w-12 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                        <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                       </div>
                     </div>
                   ) : (
                     <>
                       {/* البطاقات الرئيسية */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 xlg:grid-cols-4 gap-4">
                         <ModernStatCard
                           title={t("totalStudents")}
                           value={stats.totalStudents}
