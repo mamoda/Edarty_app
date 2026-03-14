@@ -1,121 +1,85 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { LanguageProvider } from './context/LanguageContext'; // استيراد LanguageProvider
+import { LanguageProvider } from './context/LanguageContext';
+import { useEffect, useState } from 'react';
 import LandingPage from './components/LandingPage';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 
-// مكون لحماية المسارات الخاصة (يحتاج تسجيل دخول)
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+        </div>
+        <p className="text-gray-600 text-lg">جارٍ تحميل التطبيق...</p>
+      </div>
+    </div>
+  );
+}
+
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="text-gray-600">جارٍ التحميل...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
-  return user ? <>{children}</> : <Navigate to="/login" />;
+  return user ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
-// مكون للمسارات العامة (يمنع الوصول لها بعد تسجيل الدخول)
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="text-gray-600">جارٍ التحميل...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
-  return !user ? <>{children}</> : <Navigate to="/dashboard" />;
+  return !user ? <>{children}</> : <Navigate to="/dashboard" replace />;
 }
 
-// المكون الرئيسي للتطبيق مع المسارات
 function AppRoutes() {
   return (
     <Routes>
-      {/* الصفحة الرئيسية - اللاندينج بيدج (عامة) */}
-      <Route path="/" element={
-        <PublicRoute>
-          <LandingPage />
-        </PublicRoute>
-      } />
-      
-      {/* صفحة تسجيل الدخول (عامة) */}
-      <Route path="/login" element={
-        <PublicRoute>
-          <Login />
-        </PublicRoute>
-      } />
-      
-      {/* صفحة التسجيل (عامة) - استخدام useSearchParams داخل Login بدلاً من props */}
-      <Route path="/signup" element={
-        <PublicRoute>
-          <Login />
-        </PublicRoute>
-      } />
-      
-      {/* مسار التجربة المجانية - يعيد التوجيه للتسجيل مع باراميتر */}
-      <Route path="/free-trial" element={<Navigate to="/signup?trial=true" />} />
-      
-      {/* مسار خطط الأسعار - يمكن إضافته لاحقاً */}
-      <Route path="/pricing" element={<Navigate to="/#pricing" />} />
-      
-      {/* لوحة التحكم (خاصة - تحتاج تسجيل دخول) */}
-      <Route path="/dashboard" element={
-        <PrivateRoute>
-          <Dashboard />
-        </PrivateRoute>
-      } />
-      
-      {/* مسارات إضافية للوحة التحكم */}
-      <Route path="/dashboard/:section" element={
-        <PrivateRoute>
-          <Dashboard />
-        </PrivateRoute>
-      } />
-      
-      {/* مسار غير موجود - إعادة توجيه للصفحة الرئيسية */}
-      <Route path="*" element={<Navigate to="/" />} />
+      <Route path="/" element={<PublicRoute><LandingPage /></PublicRoute>} />
+      <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+      <Route path="/signup" element={<PublicRoute><Login /></PublicRoute>} />
+      <Route path="/free-trial" element={<Navigate to="/signup?trial=true" replace />} />
+      <Route path="/pricing" element={<Navigate to="/#pricing" replace />} />
+      <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+      <Route path="/dashboard/:section" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
 
-// مكون التطبيق الرئيسي
 function AppContent() {
   const { loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="text-gray-600">جارٍ التحميل...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return <AppRoutes />;
 }
 
-// التطبيق الرئيسي مع BrowserRouter - هنا نضيف LanguageProvider
 function App() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  if (!mounted) {
+    return <LoadingScreen />;
+  }
+
   return (
     <BrowserRouter>
       <AuthProvider>
-        <LanguageProvider> 
+        <LanguageProvider>
           <AppContent />
         </LanguageProvider>
       </AuthProvider>
