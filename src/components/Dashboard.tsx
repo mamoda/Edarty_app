@@ -1357,7 +1357,6 @@ export default function Dashboard() {
 
           <p className="flex items-center gap-2">
             <span className="text-base">🏫</span>
-            {t("schoolIdentifier") || "معرف المدرسة"}:
             <span className="font-semibold text-white">
               {schoolIdentifier}
             </span>
