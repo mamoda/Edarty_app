@@ -31,6 +31,8 @@ import {
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { Fee, Student } from "../types/database";
+import { useSchoolData } from "../hooks/useSchoolData";
+
 
 interface FeesManagerProps {
   onUpdate: () => void;
@@ -69,6 +71,7 @@ interface Transaction {
 
 export default function FeesManager({ onUpdate }: FeesManagerProps) {
   const { user } = useAuth();
+  const { schoolName, schoolEmail, schoolAddress, schoolPhone, schoolTaxNumber } = useSchoolData();
 
   // الحالة الأساسية
   const [loading, setLoading] = useState(true);
@@ -595,151 +598,357 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
   };
 
   // دالة عرض إيصال الدفع
-  const showPaymentReceipt = (data: typeof formData, finalAmount: number, receiptNumber: string) => {
-    const student = students.find(s => s.id === data.student_id);
-    if (!student) return;
+const showPaymentReceipt = (data: typeof formData, finalAmount: number, receiptNumber: string) => {
+  const student = students.find(s => s.id === data.student_id);
+  if (!student) return;
 
-    const receipt = {
-      receipt_number: receiptNumber,
-      student_name: student.full_name,
-      grade: student.grade,
-      amount: finalAmount,
-      payment_date: data.payment_date,
-      payment_method: data.payment_method,
-      payment_type: data.payment_type,
-    };
-
-    setCurrentReceipt(receipt);
-    setShowReceiptModal(true);
+  const receipt = {
+    receipt_number: receiptNumber,
+    student_name: student.full_name,
+    grade: student.grade,
+    amount: finalAmount,
+    payment_date: data.payment_date,
+    payment_method: data.payment_method,
+    payment_type: data.payment_type,
+    school_name: schoolName,
+    school_email: schoolEmail,
+    school_address: schoolAddress,
+    school_phone: schoolPhone,
+    school_tax: schoolTaxNumber,
   };
 
-  // دالة عرض إيصال الاسترداد
-  const showRefundReceipt = (data: typeof formData, finalAmount: number, receiptNumber: string) => {
-    const student = students.find(s => s.id === data.student_id);
-    if (!student) return;
+  setCurrentReceipt(receipt);
+  setShowReceiptModal(true);
+};
 
-    const receipt = {
-      receipt_number: receiptNumber,
-      student_name: student.full_name,
-      grade: student.grade,
-      amount: Math.abs(finalAmount),
-      refund_amount: Math.abs(finalAmount),
-      payment_date: data.payment_date,
-      payment_method: data.payment_method,
-      refund_reason: data.notes || "استرداد مبلغ",
-      original_payment_type: data.payment_type,
-      is_refund: true,
-    };
 
-    setCurrentReceipt(receipt);
-    setShowReceiptModal(true);
+
+// دالة عرض إيصال الاسترداد
+const showRefundReceipt = (data: typeof formData, finalAmount: number, receiptNumber: string) => {
+  const student = students.find(s => s.id === data.student_id);
+  if (!student) return;
+
+  const receipt = {
+    receipt_number: receiptNumber,
+    student_name: student.full_name,
+    grade: student.grade,
+    amount: Math.abs(finalAmount),
+    refund_amount: Math.abs(finalAmount),
+    payment_date: data.payment_date,
+    payment_method: data.payment_method,
+    refund_reason: data.notes || "استرداد مبلغ",
+    original_payment_type: data.payment_type,
+    is_refund: true,
+    school_name: schoolName,
+    school_email: schoolEmail,
+    school_address: schoolAddress,
+    school_phone: schoolPhone,
+    school_tax: schoolTaxNumber,
   };
 
+  setCurrentReceipt(receipt);
+  setShowReceiptModal(true);
+};
   // دالة طباعة الإيصال المحسنة
-  const printReceipt = () => {
-    if (!currentReceipt) return;
+const printReceipt = () => {
+  if (!currentReceipt) return;
 
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) return;
 
-    const formatDate = (date: string) =>
-      new Date(date).toLocaleDateString("ar-EG");
+  const formatDate = (date: string) =>
+    new Date(date).toLocaleDateString("ar-EG");
 
-    const paymentMethodLabel = 
-      currentReceipt.payment_method === 'cash' ? 'نقدي' :
-      currentReceipt.payment_method === 'card' ? 'بطاقة ائتمان' :
-      currentReceipt.payment_method === 'bank_transfer' ? 'تحويل بنكي' : 'شيك';
+  const paymentMethodLabel = 
+    currentReceipt.payment_method === 'cash' ? 'نقدي' :
+    currentReceipt.payment_method === 'card' ? 'بطاقة ائتمان' :
+    currentReceipt.payment_method === 'bank_transfer' ? 'تحويل بنكي' : 'شيك';
 
-    // تحديد إذا كان هذا إيصال استرداد
-    const isRefund = currentReceipt.is_refund === true;
+  const isRefund = currentReceipt.is_refund === true;
 
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html dir="rtl">
-      <head>
-        <meta charset="UTF-8">
-        <title>${isRefund ? 'إيصال استرداد' : 'إيصال دفع'} - ${currentReceipt.student_name}</title>
-        <style>
-          body { font-family: 'Arial', sans-serif; background: #f3f4f6; padding: 20px; }
-          .receipt { max-width: 400px; margin: 0 auto; background: white; border-radius: 20px; padding: 30px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-          .header { text-align: center; margin-bottom: 20px; border-bottom: 2px dashed #e5e7eb; padding-bottom: 20px; }
-          .school-name { font-size: 24px; font-weight: bold; ${isRefund ? 'color: #dc2626;' : 'color: #059669;'} }
-          .receipt-title { font-size: 18px; color: #6b7280; margin-top: 5px; }
-          .receipt-number { background: ${isRefund ? '#fef2f2' : '#f0fdf4'}; padding: 10px; border-radius: 10px; text-align: center; margin-bottom: 20px; }
-          .receipt-number .label { font-size: 12px; color: #6b7280; }
-          .receipt-number .value { font-size: 18px; font-weight: bold; ${isRefund ? 'color: #dc2626;' : 'color: #059669;'} }
-          .details { margin-bottom: 20px; }
-          .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
-          .detail-label { color: #6b7280; }
-          .detail-value { font-weight: bold; color: #1f2937; }
-          .amount { background: ${isRefund ? 'linear-gradient(135deg, #fef2f2, #fee2e2)' : 'linear-gradient(135deg, #f0fdf4, #dcfce7)'}; padding: 15px; border-radius: 10px; text-align: center; margin: 20px 0; }
-          .amount .label { font-size: 14px; ${isRefund ? 'color: #991b1b;' : 'color: #166534;'} }
-          .amount .value { font-size: 32px; font-weight: bold; ${isRefund ? 'color: #dc2626;' : 'color: #059669;'} }
-          .refund-reason { background: #f3f4f6; padding: 10px; border-radius: 8px; margin: 15px 0; font-size: 14px; text-align: center; }
-          .footer { text-align: center; margin-top: 20px; padding-top: 20px; border-top: 2px dashed #e5e7eb; font-size: 12px; color: #9ca3af; }
-        </style>
-      </head>
-      <body>
-        <div class="receipt">
-          <div class="header">
-            <div class="school-name">${isRefund ? '🏦 بنك إدارتي - استرداد' : 'مدارس الإدارة التعليمية'}</div>
-            <div class="receipt-title">${isRefund ? 'إيصال استرداد مبلغ' : 'إيصال دفع المصاريف الدراسية'}</div>
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html dir="rtl">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${isRefund ? 'إيصال استرداد' : 'إيصال دفع'} - ${currentReceipt.student_name}</title>
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+        
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        
+        body { 
+          font-family: 'Cairo', sans-serif; 
+          background: #f3f4f6; 
+          padding: 20px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 100vh;
+        }
+        
+        .receipt { 
+          max-width: 400px; 
+          width: 100%;
+          margin: 0 auto; 
+          background: white; 
+          border-radius: 20px; 
+          padding: 30px; 
+          box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+          border: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        .header { 
+          text-align: center; 
+          margin-bottom: 20px; 
+          border-bottom: 2px dashed #e5e7eb; 
+          padding-bottom: 20px; 
+        }
+        
+        .school-name { 
+          font-size: 28px; 
+          font-weight: 800; 
+          background: ${isRefund ? 'linear-gradient(135deg, #dc2626, #b91c1c)' : 'linear-gradient(135deg, #059669, #047857)'};
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          margin-bottom: 5px;
+        }
+        
+        .school-info {
+          font-size: 12px;
+          color: #6b7280;
+          margin-top: 5px;
+          line-height: 1.6;
+        }
+        
+        .school-info div {
+          margin: 2px 0;
+        }
+        
+        .receipt-title { 
+          font-size: 18px; 
+          color: #6b7280; 
+          margin-top: 5px;
+          font-weight: 600;
+        }
+        
+        .receipt-number { 
+          background: ${isRefund ? '#fef2f2' : '#f0fdf4'}; 
+          padding: 15px; 
+          border-radius: 12px; 
+          text-align: center; 
+          margin-bottom: 20px;
+          border: 1px solid ${isRefund ? '#fee2e2' : '#dcfce7'};
+        }
+        
+        .receipt-number .label { 
+          font-size: 12px; 
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+        
+        .receipt-number .value { 
+          font-size: 20px; 
+          font-weight: 800; 
+          ${isRefund ? 'color: #dc2626;' : 'color: #059669;'}
+          font-family: monospace;
+          letter-spacing: 1px;
+        }
+        
+        .details { 
+          margin-bottom: 20px; 
+          background: #f9fafb;
+          padding: 15px;
+          border-radius: 12px;
+        }
+        
+        .detail-row { 
+          display: flex; 
+          justify-content: space-between; 
+          padding: 10px 0; 
+          border-bottom: 1px solid #f3f4f6; 
+        }
+        
+        .detail-row:last-child {
+          border-bottom: none;
+        }
+        
+        .detail-label { 
+          color: #6b7280; 
+          font-weight: 500;
+        }
+        
+        .detail-value { 
+          font-weight: 700; 
+          color: #1f2937; 
+        }
+        
+        .amount-section { 
+          background: ${isRefund ? 'linear-gradient(135deg, #fef2f2, #fee2e2)' : 'linear-gradient(135deg, #f0fdf4, #dcfce7)'}; 
+          padding: 20px; 
+          border-radius: 12px; 
+          text-align: center; 
+          margin: 20px 0;
+          border: 1px solid ${isRefund ? '#fecaca' : '#bbf7d0'};
+        }
+        
+        .amount-section .label { 
+          font-size: 14px; 
+          ${isRefund ? 'color: #991b1b;' : 'color: #166534;'}
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+        
+        .amount-section .value { 
+          font-size: 42px; 
+          font-weight: 800; 
+          ${isRefund ? 'color: #dc2626;' : 'color: #059669;'}
+          line-height: 1.2;
+        }
+        
+        .amount-section .currency {
+          font-size: 16px;
+          ${isRefund ? 'color: #991b1b;' : 'color: #166534;'}
+          margin-right: 5px;
+        }
+        
+        .refund-reason { 
+          background: #f3f4f6; 
+          padding: 15px; 
+          border-radius: 8px; 
+          margin: 15px 0; 
+          font-size: 14px; 
+          text-align: center;
+          border-right: 4px solid #dc2626;
+        }
+        
+        .footer { 
+          text-align: center; 
+          margin-top: 20px; 
+          padding-top: 20px; 
+          border-top: 2px dashed #e5e7eb; 
+          font-size: 11px; 
+          color: #9ca3af;
+        }
+        
+        .footer .school-signature {
+          margin-top: 10px;
+          padding-top: 10px;
+          border-top: 1px solid #e5e7eb;
+          font-weight: 600;
+          color: ${isRefund ? '#dc2626' : '#059669'};
+        }
+        
+        .watermark {
+          position: relative;
+          opacity: 0.1;
+          font-size: 80px;
+          font-weight: 900;
+          color: ${isRefund ? '#dc2626' : '#059669'};
+          text-align: center;
+          margin-top: -30px;
+          margin-bottom: -40px;
+          pointer-events: none;
+          user-select: none;
+        }
+        
+        @media print {
+          body { background: white; padding: 0; }
+          .receipt { box-shadow: none; border: 1px solid #e5e7eb; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="receipt">
+        <div class="watermark">
+          ${isRefund ? 'REFUND' : 'PAID'}
+        </div>
+        
+        <div class="header">
+          <div class="school-name">${currentReceipt.school_name || schoolName}</div>
+          <div class="school-info">
+            <div>📧 ${currentReceipt.school_email || schoolEmail}</div>
+            ${currentReceipt.school_phone ? `<div>📞 ${currentReceipt.school_phone}</div>` : ''}
+            ${currentReceipt.school_address ? `<div>📍 ${currentReceipt.school_address}</div>` : ''}
+            ${currentReceipt.school_tax ? `<div>🧾 الرقم الضريبي: ${currentReceipt.school_tax}</div>` : ''}
           </div>
-          
-          <div class="receipt-number">
-            <div class="label">رقم الإيصال</div>
-            <div class="value">${currentReceipt.receipt_number}</div>
-          </div>
+          <div class="receipt-title">${isRefund ? '📄 إيصال استرداد مبلغ' : '💰 إيصال دفع المصاريف الدراسية'}</div>
+        </div>
+        
+        <div class="receipt-number">
+          <div class="label">رقم الإيصال</div>
+          <div class="value">${currentReceipt.receipt_number}</div>
+        </div>
 
-          <div class="details">
-            <div class="detail-row">
-              <span class="detail-label">اسم الطالب:</span>
-              <span class="detail-value">${currentReceipt.student_name}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">الصف الدراسي:</span>
-              <span class="detail-value">${currentReceipt.grade}</span>
-            </div>
-            ${!isRefund ? `
-            <div class="detail-row">
-              <span class="detail-label">نوع الدفعة:</span>
-              <span class="detail-value">${currentReceipt.payment_type}</span>
-            </div>
-            ` : ''}
-            <div class="detail-row">
-              <span class="detail-label">تاريخ ${isRefund ? 'الاسترداد' : 'الدفع'}:</span>
-              <span class="detail-value">${formatDate(currentReceipt.payment_date)}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">طريقة ${isRefund ? 'الاسترداد' : 'الدفع'}:</span>
-              <span class="detail-value">${paymentMethodLabel}</span>
-            </div>
+        <div class="details">
+          <div class="detail-row">
+            <span class="detail-label">👤 اسم الطالب:</span>
+            <span class="detail-value">${currentReceipt.student_name}</span>
           </div>
-
-          ${isRefund && currentReceipt.refund_reason ? `
-          <div class="refund-reason">
-            <strong>سبب الاسترداد:</strong> ${currentReceipt.refund_reason}
+          <div class="detail-row">
+            <span class="detail-label">📚 الصف الدراسي:</span>
+            <span class="detail-value">${currentReceipt.grade}</span>
+          </div>
+          ${!isRefund ? `
+          <div class="detail-row">
+            <span class="detail-label">🏷️ نوع الدفعة:</span>
+            <span class="detail-value">${currentReceipt.payment_type}</span>
           </div>
           ` : ''}
-
-          <div class="amount">
-            <div class="label">${isRefund ? 'المبلغ المسترد' : 'المبلغ المدفوع'}</div>
-            <div class="value">${currentReceipt.amount.toFixed(2)} ج.م</div>
+          <div class="detail-row">
+            <span class="detail-label">📅 تاريخ ${isRefund ? 'الاسترداد' : 'الدفع'}:</span>
+            <span class="detail-value">${formatDate(currentReceipt.payment_date)}</span>
           </div>
-
-          <div class="footer">
-            <p>${isRefund ? 'هذا الإيصال يثبت عملية استرداد مبلغ للطالب' : 'هذا الإيصال معتمد إلكترونياً ويعتبر بمثابة سداد رسمي'}</p>
-            <p style="margin-top: 5px;">نظام إدارتي - إدارة المصاريف الدراسية</p>
+          <div class="detail-row">
+            <span class="detail-label">💳 طريقة ${isRefund ? 'الاسترداد' : 'الدفع'}:</span>
+            <span class="detail-value">${paymentMethodLabel}</span>
           </div>
         </div>
-      </body>
-      </html>
-    `);
 
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => printWindow.print(), 500);
-  };
+        ${isRefund && currentReceipt.refund_reason ? `
+        <div class="refund-reason">
+          <strong>سبب الاسترداد:</strong><br>
+          ${currentReceipt.refund_reason}
+        </div>
+        ` : ''}
+
+        <div class="amount-section">
+          <div class="label">${isRefund ? 'المبلغ المسترد' : 'المبلغ المدفوع'}</div>
+          <div>
+            <span class="value">${currentReceipt.amount.toFixed(2)}</span>
+            <span class="currency">ج.م</span>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p>${isRefund ? 'هذا الإيصال يثبت عملية استرداد مبلغ للطالب' : 'هذا الإيصال معتمد إلكترونياً ويعتبر بمثابة سداد رسمي'}</p>
+          <p style="margin-top: 5px;">نظام إدارتي - إدارة المصاريف الدراسية</p>
+          <div class="school-signature">
+            ${currentReceipt.school_name || schoolName}
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => {
+    printWindow.print();
+    // اختياري: إغلاق نافذة الطباعة بعد الطباعة
+    // printWindow.onafterprint = () => printWindow.close();
+  }, 500);
+};
+
 
   const handleDelete = async (id: string) => {
     if (!confirm("هل أنت متأكد من حذف هذه الدفعة؟")) return;
@@ -836,6 +1045,8 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
   const handlePrintStatement = (student: Student) => {
     const balances = studentBalances.find((b) => b.student_id === student.id);
     const transactions = studentTransactions;
+    const { schoolName, schoolEmail, schoolPhone } = useSchoolData();
+
 
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
@@ -885,12 +1096,14 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
       </head>
       <body>
         <div class="statement">
-          <div class="header">
-            <div class="bank-name">🏦 بنك إدارتي التعليمي</div>
-            <div class="branch-name">فرع المصاريف الدراسية</div>
-          </div>
-          
-          <div class="account-info">
+       <div class="header">
+       <div class="bank-name">${schoolName}</div>
+       <div class="branch-name">نظام إدارة المصاريف الدراسية</div>
+       <div style="font-size: 12px; color: #6b7280; margin-top: 5px;">
+          📧 ${schoolEmail} | 📞 ${schoolPhone || 'رقم الهاتف غير محدد'}
+       </div>
+       </div>          
+       <div class="account-info">
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
               <div><strong>اسم صاحب الحساب:</strong> ${student.full_name}</div>
               <div><strong>رقم الحساب:</strong> STU-${student.id.slice(0, 8).toUpperCase()}</div>
