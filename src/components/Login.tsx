@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { School, Lock, MapPin, Phone, CreditCard, User, Mail, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../lib/supabase'; // 👈 أضف هذا السطر
+import { School, Lock, MapPin, Phone, CreditCard, User, Mail, Eye, EyeOff } from 'lucide-react';
 import logo from '../assets/logo.png';
 
 export default function Login() {
@@ -34,11 +34,13 @@ export default function Login() {
 
     try {
       if (isLogin) {
+        // تسجيل الدخول
         const { error } = await signIn(email, password);
         if (error) {
           setError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
         }
       } else {
+        // إنشاء حساب جديد
         if (!schoolData.fullName || !schoolData.schoolName) {
           setError('يرجى إكمال جميع البيانات المطلوبة');
           setLoading(false);
@@ -65,11 +67,14 @@ export default function Login() {
 
             if (profileError) {
               console.error('Error updating school data:', profileError);
+            } else {
+              console.log('✅ School data saved successfully');
             }
           } catch (err) {
             console.error('Error saving school data:', err);
           }
 
+          // إعادة تعيين النموذج
           setCurrentStep(1);
           setEmail('');
           setPassword('');
@@ -80,12 +85,14 @@ export default function Login() {
             schoolPhone: '',
             taxNumber: '',
           });
-          alert('تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول');
+          
+          alert('✅ تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول');
           setIsLogin(true);
         }
       }
     } catch (err) {
       setError('حدث خطأ. يرجى المحاولة مرة أخرى');
+      console.error('Submit error:', err);
     } finally {
       setLoading(false);
     }
@@ -98,7 +105,7 @@ export default function Login() {
       setCurrentStep(1);
       setAdminCode('');
     } else {
-      alert('الكود السري غير صحيح');
+      alert('❌ الكود السري غير صحيح');
     }
   };
 
