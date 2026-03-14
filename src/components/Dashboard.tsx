@@ -30,9 +30,11 @@ import {
   CreditCard,
   Landmark,
   FileText,
+  School,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
+import { useSchoolData } from "../hooks/useSchoolData";
 import { supabase } from "../lib/supabase";
 import type { Statistics } from "../types/database";
 import StudentsManager from "./StudentsManager";
@@ -92,6 +94,8 @@ interface HeaderProps {
   language: "ar" | "en";
   toggleLanguage: () => void;
   t: (key: string) => string;
+  schoolName: string;
+  schoolIdentifier: string;
 }
 
 interface ChatProps {
@@ -355,6 +359,8 @@ const ModernHeader: React.FC<HeaderProps> = ({
   language,
   toggleLanguage,
   t,
+  schoolName,
+  schoolIdentifier,
 }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -376,6 +382,13 @@ const ModernHeader: React.FC<HeaderProps> = ({
                 className="h-8 w-auto relative z-10"
               />
             </div>
+            
+            {/* اسم المدرسة بجانب الشعار */}
+            <div className="hidden md:block">
+              <p className="text-sm font-medium text-gray-900">{schoolName}</p>
+              <p className="text-xs text-gray-500">{schoolIdentifier}</p>
+            </div>
+            
             <div className="h-6 w-px bg-gray-200"></div>
             <nav className="hidden md:flex items-center gap-1">
               <button
@@ -648,6 +661,7 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose, language, t }) => {
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
+  const { schoolName, schoolEmail, schoolIdentifier } = useSchoolData();
   const { language, toggleLanguage, t } = useLanguage();
 
   const [currentView, setCurrentView] = useState<View>("dashboard");
@@ -713,6 +727,8 @@ export default function Dashboard() {
 
     setLoading(true);
     try {
+      console.log(`Loading statistics for ${schoolName}`);
+      
       // جلب جميع البيانات المطلوبة
       const [studentsRes, feesRes, expensesRes, teachersRes] =
         await Promise.all([
@@ -862,7 +878,7 @@ export default function Dashboard() {
         thisMonthCollections,
       });
     } catch (error) {
-      console.error("Error loading statistics:", error);
+      console.error(`Error loading statistics for ${schoolName}:`, error);
     } finally {
       setLoading(false);
     }
@@ -890,8 +906,6 @@ export default function Dashboard() {
   };
 
   const studentsTrend = calculateTrend();
-  // const activeStudentsTrend = calculateTrend();
-  // const teachersTrend = calculateTrend();
   const revenueTrend = calculateTrend();
   const expensesTrend = calculateTrend();
   const profitTrend = calculateTrend();
@@ -903,7 +917,6 @@ export default function Dashboard() {
     >
       {/* خلفية متحركة مع صورة */}
       <div className="fixed inset-0 z-0">
-        {/* الصورة الأساسية */}
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000"
           style={{
@@ -912,16 +925,13 @@ export default function Dashboard() {
           }}
         />
         
-        {/* طبقة التدرج اللوني */}
         <div
           className={`absolute inset-0 bg-gradient-to-br ${backgrounds[currentBackground].overlay} transition-all duration-1000`}
         />
         
-        {/* تأثير النقاط المتحركة (اختياري) */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.03),transparent_50%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(139,92,246,0.03),transparent_50%)]" />
         
-        {/* مؤشر تغيير الخلفية (اختياري) */}
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
           {backgrounds.map((_, index) => (
             <button
@@ -945,7 +955,28 @@ export default function Dashboard() {
           language={language}
           toggleLanguage={toggleLanguage}
           t={t}
+          schoolName={schoolName}
+          schoolIdentifier={schoolIdentifier}
         />
+
+        {/* شريط حالة المدرسة */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100/50 py-2">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-4">
+                <span className="text-blue-800 font-medium">{schoolName}</span>
+                <span className="text-gray-500">|</span>
+                <span className="text-gray-600">{t("active")}: {formatNumber(stats.activeStudents, language)}</span>
+                <span className="text-gray-300">•</span>
+                <span className="text-gray-600">{schoolEmail}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-600">{t("collectionRate")}:</span>
+                <span className="text-green-600 font-medium">{stats.collectionRate.toFixed(1)}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div className="fixed bottom-6 left-6 z-50">
           <button
@@ -1029,6 +1060,13 @@ export default function Dashboard() {
                     </span>
                   </button>
 
+                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200">
+                    <School className="w-4 h-4" />
+                    <span className="flex-1 text-right font-medium">
+                      {t("schoolSettings") || "إعدادات المدرسة"}
+                    </span>
+                  </button>
+
                   <button
                     onClick={() => setShowSidebar(false)}
                     className="w-full mt-2 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100/80 rounded-lg transition-colors duration-200"
@@ -1057,7 +1095,8 @@ export default function Dashboard() {
                         {t("dashboard")}
                       </h1>
                       <p className="text-sm text-gray-500 mt-1">
-                        {t("welcome")}, {user?.email?.split("@")[0]}
+                        {t("welcome")}, {user?.email?.split("@")[0]} |{" "}
+                        <span className="text-blue-600 font-medium">{schoolName}</span>
                       </p>
                     </div>
 
@@ -1144,6 +1183,22 @@ export default function Dashboard() {
                           color="from-purple-600 to-pink-600"
                           delay={150}
                         />
+                      </div>
+
+                      {/* بطاقة معلومات المدرسة */}
+                      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg p-6 text-white">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="text-lg font-semibold mb-2">{schoolName}</h3>
+                            <div className="space-y-1 text-sm text-blue-100">
+                              <p>📧 {schoolEmail}</p>
+                              <p>🏫 {t("schoolIdentifier") || "معرف المدرسة"}: {schoolIdentifier}</p>
+                            </div>
+                          </div>
+                          <div className="p-3 bg-white/20 rounded-lg">
+                            <School className="w-8 h-8" />
+                          </div>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 xlg:grid-cols-4 gap-4">

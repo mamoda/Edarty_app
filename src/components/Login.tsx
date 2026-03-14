@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { School, Lock, Building, MapPin, Phone, CreditCard, User, Mail, Eye, EyeOff } from 'lucide-react';
+import { School, Lock, MapPin, Phone, CreditCard, User, Mail, Eye, EyeOff } from 'lucide-react';
 import logo from '../assets/logo.png';
 
 export default function Login() {
