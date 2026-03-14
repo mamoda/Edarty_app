@@ -91,6 +91,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email);
+        if (session?.user) {
+  console.log('🆔 User ID:', session.user.id);
+  
+  // جرب جلب البيانات مباشرة من Supabase
+  supabase
+    .from('users')
+    .select('*')
+    .eq('id', session.user.id)
+    .then(({ data, error }) => {
+      console.log('📊 Profile query result:', { data, error });
+      
+      if (error) {
+        console.error('❌ Profile error:', error);
+      } else if (!data || data.length === 0) {
+        console.log('⚠️ No profile found for user:', session.user.email);
+      } else {
+        console.log('✅ Profile found:', data[0]);
+      }
+    });
+}
         
         if (!mounted) return;
 
