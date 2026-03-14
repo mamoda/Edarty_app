@@ -1055,10 +1055,10 @@ export default function Dashboard() {
                     <span className="text-sm font-semibold text-gray-900">
                       {schoolName}
                     </span>
-                    <span className="text-[10px] text-gray-400 mr-2">
+                    {/* <span className="text-[10px] text-gray-400 mr-2">
                       {" "}
                       {schoolIdentifier}
-                    </span>
+                    </span> */}
                   </div>
                 </div>
 
