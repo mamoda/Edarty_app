@@ -1,3 +1,4 @@
+// context/AuthContext.tsx
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
@@ -13,9 +14,11 @@ interface CustomUser extends SupabaseUser {
 interface AuthContextType {
   user: CustomUser | null;
   loading: boolean;
+  error: string | null;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>; // ✅ موجود
   signOut: () => Promise<void>;
+  refreshUserData: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,6 +26,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CustomUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<CustomUser> => {
     try {
@@ -34,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return {
         ...supabaseUser,
-        schoolName: profile?.school_name || 'مدرستي',
+        schoolName: profile?.school_name,
         schoolAddress: profile?.school_address,
         schoolPhone: profile?.school_phone,
         taxNumber: profile?.tax_number,
@@ -42,19 +46,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } as CustomUser;
     } catch {
       return supabaseUser as CustomUser;
-    }
-  };
-
-  const clearInvalidSession = () => {
-    try {
-      const keys = Object.keys(localStorage);
-      keys.forEach(key => {
-        if (key.includes('sb-') || key.includes('supabase')) {
-          localStorage.removeItem(key);
-        }
-      });
-    } catch (error) {
-      console.error('Error clearing session:', error);
     }
   };
 
@@ -73,10 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setUser(null);
         }
-      } catch (error) {
-        console.error('Auth error:', error);
-        clearInvalidSession();
-        setUser(null);
+      } catch (err: any) {
+        setError(err?.message);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -86,16 +75,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth event:', event);
-        
         if (!mounted) return;
 
-        if (event === 'SIGNED_OUT') {
-          setUser(null);
-          clearInvalidSession();
-        } else if (session?.user) {
+        if (session?.user) {
           const enhancedUser = await fetchUserProfile(session.user);
           setUser(enhancedUser);
+        } else {
+          setUser(null);
         }
         setLoading(false);
       }
@@ -123,6 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // ✅ دالة signUp موجودة
   const signUp = async (email: string, password: string, fullName?: string) => {
     try {
       const { data, error } = await supabase.auth.signUp({ 
@@ -156,11 +143,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
-    clearInvalidSession();
+  };
+
+  const refreshUserData = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const enhancedUser = await fetchUserProfile(session.user);
+      setUser(enhancedUser);
+    }
+  };
+
+  const value = {
+    user,
+    loading,
+    error,
+    signIn,
+    signUp, // ✅ موجود في الـ value
+    signOut,
+    refreshUserData,
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

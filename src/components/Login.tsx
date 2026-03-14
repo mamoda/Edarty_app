@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { School, Lock, MapPin, Phone, CreditCard, User, Mail, Eye, EyeOff } from 'lucide-react';
+import { supabase } from '../lib/supabase'; // 👈 أضف هذا السطر
 import logo from '../assets/logo.png';
 
 export default function Login() {
@@ -24,7 +25,7 @@ export default function Login() {
   });
 
   const { signIn, signUp } = useAuth();
-  const ADMIN_SECRET_CODE = 'Mahmoud17237ESD@'; // غير هذا الرقم السري
+  const ADMIN_SECRET_CODE = 'Mahmoud17237ESD@';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,25 +34,42 @@ export default function Login() {
 
     try {
       if (isLogin) {
-        // تسجيل الدخول
         const { error } = await signIn(email, password);
         if (error) {
           setError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
         }
       } else {
-        // إنشاء حساب جديد - التحقق من اكتمال البيانات
         if (!schoolData.fullName || !schoolData.schoolName) {
           setError('يرجى إكمال جميع البيانات المطلوبة');
           setLoading(false);
           return;
         }
 
-        const { error } = await signUp(email, password);
+        const { error } = await signUp(email, password, schoolData.fullName);
+        
         if (error) {
           setError('فشل في إنشاء الحساب. البريد الإلكتروني قد يكون مستخدماً بالفعل');
         } else {
-          // هنا يمكن إضافة منطق لحفظ بيانات المدرسة بعد إنشاء الحساب
-          // سيتم حفظها تلقائياً عن طريق trigger في Supabase
+          // حفظ بيانات المدرسة في جدول users
+          try {
+            const { error: profileError } = await supabase
+              .from('users')
+              .update({
+                school_name: schoolData.schoolName,
+                school_address: schoolData.schoolAddress,
+                school_phone: schoolData.schoolPhone,
+                tax_number: schoolData.taxNumber,
+                full_name: schoolData.fullName,
+              })
+              .eq('email', email);
+
+            if (profileError) {
+              console.error('Error updating school data:', profileError);
+            }
+          } catch (err) {
+            console.error('Error saving school data:', err);
+          }
+
           setCurrentStep(1);
           setEmail('');
           setPassword('');
@@ -76,7 +94,7 @@ export default function Login() {
   const handleAdminAccess = () => {
     if (adminCode === ADMIN_SECRET_CODE) {
       setShowAdminPanel(true);
-      setIsLogin(false); // التبديل إلى وضع إنشاء الحساب
+      setIsLogin(false);
       setCurrentStep(1);
       setAdminCode('');
     } else {
@@ -133,7 +151,6 @@ export default function Login() {
               >
                 تسجيل الدخول
               </button>
-              {/* زر إنشاء حساب غير متاح للمستخدمين العاديين */}
             </div>
           )}
 
