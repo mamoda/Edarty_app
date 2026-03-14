@@ -1338,58 +1338,6 @@ export default function Dashboard() {
                       </div>
 
                       {/* بطاقة معلومات المدرسة */}
-                      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 p-[1px] shadow-xl">
-                        <div className="rounded-2xl bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 p-6 text-white">
-                          <div className="flex items-center justify-between">
-                            {/* School Info */}
-                            <div className="space-y-3">
-                              <h3 className="text-xl font-bold tracking-wide">
-                                {schoolName}
-                              </h3>
-
-                              {/* <div className="space-y-1 text-sm text-blue-100">
-                                <p className="flex items-center gap-2">
-                                  <span className="text-base">📧</span>
-                                  {schoolEmail}
-                                </p>
-
-                                <p className="flex items-center gap-2">
-                                  <span className="text-base">🏫</span>
-                                  <span className="font-semibold text-white">
-                                    {schoolIdentifier}
-                                  </span>
-                                </p>
-                              </div> */}
-                            </div>
-
-                            {/* Icon */}
-                            <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-white/20 backdrop-blur-md shadow-inner">
-                              <School className="w-8 h-8 text-white" />
-                            </div>
-                          </div>
-
-                          {/* Divider */}
-                          <div className="my-5 border-t border-white/20"></div>
-
-                          {/* Quick Stats */}
-                          {/* <div className="grid grid-cols-3 gap-4 text-center">
-                            <div className="rounded-lg bg-white/10 p-3 hover:bg-white/20 transition">
-                              <p className="text-lg font-bold">320</p>
-                              <p className="text-xs text-blue-100">الطلاب</p>
-                            </div>
-
-                            <div className="rounded-lg bg-white/10 p-3 hover:bg-white/20 transition">
-                              <p className="text-lg font-bold">24</p>
-                              <p className="text-xs text-blue-100">الفصول</p>
-                            </div>
-
-                            <div className="rounded-lg bg-white/10 p-3 hover:bg-white/20 transition">
-                              <p className="text-lg font-bold">18</p>
-                              <p className="text-xs text-blue-100">المعلمين</p>
-                            </div>
-                          </div> */}
-                        </div>
-                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 xlg:grid-cols-4 gap-4">
                         <ModernStatCard
                           title={t("collectionRate")}
