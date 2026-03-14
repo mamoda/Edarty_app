@@ -7,7 +7,7 @@ import { CustomUser } from '../types/user';
 interface AuthContextType {
   user: CustomUser | null;
   loading: boolean;
-  error: string | null; // أضفنا error للتشخيص
+  error: string | null;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -21,7 +21,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // دالة لجلب بيانات المستخدم الإضافية
   const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<CustomUser> => {
     try {
       console.log('🔍 Fetching profile for user:', supabaseUser.id);
@@ -53,8 +52,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const refreshSession = async () => {
+    try {
+      const { data: { session }, error } = await supabase.auth.refreshSession();
+      if (error) {
+        console.error('❌ Session refresh error:', error);
+        return null;
+      }
+      return session;
+    } catch (error) {
+      console.error('❌ Error refreshing session:', error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
 
     const initializeAuth = async () => {
       try {
@@ -62,14 +77,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(true);
         setError(null);
 
-        // 1. التحقق من الجلسة الحالية
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        // 1. Try to get existing session
+        let { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
           console.error('❌ Session error:', sessionError);
-          setError(sessionError.message);
-          setLoading(false);
-          return;
+          
+          // 2. If error, try to refresh token from localStorage
+          const storedSession = localStorage.getItem('supabase.auth.token');
+          if (storedSession && retryCount < MAX_RETRIES) {
+            retryCount++;
+            console.log(`🔄 Retry ${retryCount}: Attempting to restore session...`);
+            
+            session = await refreshSession();
+          }
+          
+          if (!session) {
+            setError(sessionError.message);
+            setLoading(false);
+            return;
+          }
         }
 
         console.log('📦 Session:', session);
@@ -77,6 +104,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user && mounted) {
           const enhancedUser = await fetchUserProfile(session.user);
           setUser(enhancedUser);
+          
+          // Save session to localStorage manually
+          localStorage.setItem('supabase.auth.token', JSON.stringify({
+            access_token: session.access_token,
+            refresh_token: session.refresh_token,
+            expires_at: session.expires_at
+          }));
         } else {
           setUser(null);
         }
@@ -93,19 +127,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initializeAuth();
 
-    // الاستماع لتغييرات المصادقة
+    // Listen to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('🔄 Auth state changed:', event, session?.user?.email);
         
         if (!mounted) return;
 
-        if (session?.user) {
-          const enhancedUser = await fetchUserProfile(session.user);
-          setUser(enhancedUser);
-        } else {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          if (session?.user) {
+            const enhancedUser = await fetchUserProfile(session.user);
+            setUser(enhancedUser);
+            
+            // Save session to localStorage
+            localStorage.setItem('supabase.auth.token', JSON.stringify({
+              access_token: session.access_token,
+              refresh_token: session.refresh_token,
+              expires_at: session.expires_at
+            }));
+          }
+        } else if (event === 'SIGNED_OUT') {
           setUser(null);
+          localStorage.removeItem('supabase.auth.token');
         }
+        
         setLoading(false);
       }
     );
@@ -136,6 +181,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.user) {
         const enhancedUser = await fetchUserProfile(data.user);
         setUser(enhancedUser);
+        
+        // Save session to localStorage
+        if (data.session) {
+          localStorage.setItem('supabase.auth.token', JSON.stringify({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+            expires_at: data.session.expires_at
+          }));
+        }
       }
       
       return { error: null };
@@ -166,7 +220,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('✅ Sign up successful:', data.user?.email);
       
       if (data.user) {
-        // إنشاء حساب في جدول users
         const { error: profileError } = await supabase
           .from('users')
           .upsert([{ 
@@ -182,6 +235,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         const enhancedUser = await fetchUserProfile(data.user);
         setUser(enhancedUser);
+        
+        // Save session to localStorage
+        if (data.session) {
+          localStorage.setItem('supabase.auth.token', JSON.stringify({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+            expires_at: data.session.expires_at
+          }));
+        }
       }
       
       return { error: null };
@@ -196,6 +258,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('🚪 Signing out...');
       await supabase.auth.signOut();
       setUser(null);
+      localStorage.removeItem('supabase.auth.token');
       console.log('✅ Signed out');
     } catch (error) {
       console.error('❌ Sign out error:', error);
