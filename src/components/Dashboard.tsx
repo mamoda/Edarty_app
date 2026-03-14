@@ -31,6 +31,7 @@ import {
   Landmark,
   FileText,
   School,
+  Mail,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -960,24 +961,66 @@ export default function Dashboard() {
         />
 
         {/* شريط حالة المدرسة */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100/50 py-2">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-4">
-                <span className="text-blue-800 font-medium">{schoolName}</span>
-                <span className="text-gray-500">|</span>
-                <span className="text-gray-600">{t("active")}: {formatNumber(stats.activeStudents, language)}</span>
-                <span className="text-gray-300">•</span>
-                <span className="text-gray-600">{schoolEmail}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-gray-600">{t("collectionRate")}:</span>
-                <span className="text-green-600 font-medium">{stats.collectionRate.toFixed(1)}%</span>
-              </div>
+<div className="relative border-b border-gray-200/50 bg-white/40 backdrop-blur-xl">
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="flex items-center justify-between py-2.5">
+      {/* الجهة اليمنى */}
+      <div className="flex items-center gap-4">
+        {/* شارة المدرسة */}
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-gradient-to-br from-blue-600/10 to-indigo-600/10 rounded-lg">
+            <School className="w-4 h-4 text-blue-600" />
+          </div>
+          <div>
+            <span className="text-sm font-semibold text-gray-900">{schoolName}</span>
+            <span className="text-[10px] text-gray-400 mr-2">• معرف {schoolIdentifier}</span>
+          </div>
+        </div>
+
+        {/* فواصل نقطية */}
+        <span className="text-gray-300 text-lg leading-none">•</span>
+
+        {/* الطلاب النشطين */}
+        <div className="flex items-center gap-1.5">
+          <Users className="w-3.5 h-3.5 text-gray-500" />
+          <span className="text-xs text-gray-600">
+            <span className="font-medium text-gray-900">{formatNumber(stats.activeStudents, language)}</span> طالب نشط
+          </span>
+        </div>
+
+        <span className="text-gray-300 text-lg leading-none">•</span>
+
+        {/* البريد الإلكتروني */}
+        <div className="flex items-center gap-1.5">
+          <Mail className="w-3.5 h-3.5 text-gray-500" />
+          <span className="text-xs text-gray-600 truncate max-w-[180px]">{schoolEmail}</span>
+        </div>
+      </div>
+
+      {/* الجهة اليسرى - نسبة التحصيل */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500">نسبة التحصيل</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-bold text-green-600">{stats.collectionRate.toFixed(1)}%</span>
+            <div className="w-12 h-1 bg-gray-200 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-green-500 rounded-full"
+                style={{ width: `${stats.collectionRate}%` }}
+              ></div>
             </div>
           </div>
         </div>
 
+        {/* حالة الاتصال */}
+        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 rounded-full border border-green-100">
+          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+          <span className="text-[10px] font-medium text-green-700">مباشر</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
         <div className="fixed bottom-6 left-6 z-50">
           <button
             onClick={() => setIsChatOpen(!isChatOpen)}
