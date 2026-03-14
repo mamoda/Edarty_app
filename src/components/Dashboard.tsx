@@ -1347,7 +1347,7 @@ export default function Dashboard() {
                                 {schoolName}
                               </h3>
 
-                              <div className="space-y-1 text-sm text-blue-100">
+                              {/* <div className="space-y-1 text-sm text-blue-100">
                                 <p className="flex items-center gap-2">
                                   <span className="text-base">📧</span>
                                   {schoolEmail}
@@ -1359,7 +1359,7 @@ export default function Dashboard() {
                                     {schoolIdentifier}
                                   </span>
                                 </p>
-                              </div>
+                              </div> */}
                             </div>
 
                             {/* Icon */}
