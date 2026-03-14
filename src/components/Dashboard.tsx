@@ -890,8 +890,8 @@ export default function Dashboard() {
   };
 
   const studentsTrend = calculateTrend();
-  const activeStudentsTrend = calculateTrend();
-  const teachersTrend = calculateTrend();
+  // const activeStudentsTrend = calculateTrend();
+  // const teachersTrend = calculateTrend();
   const revenueTrend = calculateTrend();
   const expensesTrend = calculateTrend();
   const profitTrend = calculateTrend();
