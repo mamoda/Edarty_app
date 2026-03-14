@@ -190,7 +190,7 @@ const ModernStatCard: React.FC<StatCardProps> = ({
       style={{
         animationDelay: `${delay}ms`,
         animationFillMode: "both",
-        fontFamily: language === "ar" ? "Neo Sans Arabic" : "inherit",
+        fontFamily: language === "ar" ? "Cairo, sans-serif" : "inherit",
       }}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
