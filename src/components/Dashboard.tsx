@@ -973,7 +973,7 @@ export default function Dashboard() {
           </div>
           <div>
             <span className="text-sm font-semibold text-gray-900">{schoolName}</span>
-            <span className="text-[10px] text-gray-400 mr-2">• معرف {schoolIdentifier}</span>
+            <span className="text-[10px] text-gray-400 mr-2"> {schoolIdentifier}</span>
           </div>
         </div>
 
@@ -1138,7 +1138,6 @@ export default function Dashboard() {
                         {t("dashboard")}
                       </h1>
                       <p className="text-sm text-gray-500 mt-1">
-                        {t("welcome")}, {user?.email?.split("@")[0]} |{" "}
                         <span className="text-blue-600 font-medium">{schoolName}</span>
                       </p>
                     </div>
