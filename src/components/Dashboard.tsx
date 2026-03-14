@@ -384,13 +384,13 @@ const ModernHeader: React.FC<HeaderProps> = ({
                 className="h-8 w-auto relative z-10"
               />
             </div>
-            
+
             {/* اسم المدرسة بجانب الشعار */}
             <div className="hidden md:block">
               <p className="text-sm font-medium text-gray-900">{schoolName}</p>
               <p className="text-xs text-gray-500">{schoolIdentifier}</p>
             </div>
-            
+
             <div className="h-6 w-px bg-gray-200"></div>
             <nav className="hidden md:flex items-center gap-1">
               <button
@@ -773,27 +773,36 @@ export default function Dashboard() {
 
     setLoading(true);
     setDataError(null);
-    
+
     try {
       console.log(`📊 Loading statistics for ${schoolName} (user: ${user.id})`);
-      
+
       // جلب جميع البيانات المطلوبة مع معالجة الأخطاء
       const results = await Promise.allSettled([
         supabase.from("students").select("*").eq("user_id", user.id),
-        supabase.from("fees").select("*, student:students(*)").eq("user_id", user.id),
+        supabase
+          .from("fees")
+          .select("*, student:students(*)")
+          .eq("user_id", user.id),
         supabase.from("expenses").select("amount").eq("user_id", user.id),
         supabase.from("teachers").select("*").eq("user_id", user.id),
       ]);
 
       // معالجة النتائج
       const [studentsRes, feesRes, expensesRes, teachersRes] = results.map(
-        (result) => (result.status === "fulfilled" ? result.value : { data: [], error: result.reason })
+        (result) =>
+          result.status === "fulfilled"
+            ? result.value
+            : { data: [], error: result.reason },
       );
 
-      if (studentsRes.error) console.error("Students error:", studentsRes.error);
+      if (studentsRes.error)
+        console.error("Students error:", studentsRes.error);
       if (feesRes.error) console.error("Fees error:", feesRes.error);
-      if (expensesRes.error) console.error("Expenses error:", expensesRes.error);
-      if (teachersRes.error) console.error("Teachers error:", teachersRes.error);
+      if (expensesRes.error)
+        console.error("Expenses error:", expensesRes.error);
+      if (teachersRes.error)
+        console.error("Teachers error:", teachersRes.error);
 
       // الإحصائيات الأساسية
       const totalStudents = studentsRes.data?.length ?? 0;
@@ -807,13 +816,18 @@ export default function Dashboard() {
         .reduce((sum: number, fee: any) => sum + Number(fee.amount), 0);
       const totalRefunds = fees
         .filter((f: any) => f.amount < 0)
-        .reduce((sum: number, fee: any) => sum + Math.abs(Number(fee.amount)), 0);
+        .reduce(
+          (sum: number, fee: any) => sum + Math.abs(Number(fee.amount)),
+          0,
+        );
       const netRevenue = totalPayments - totalRefunds;
 
       // حساب المصروفات
       const totalExpenses =
-        expensesRes.data?.reduce((sum: number, exp: any) => sum + Number(exp.amount), 0) ??
-        0;
+        expensesRes.data?.reduce(
+          (sum: number, exp: any) => sum + Number(exp.amount),
+          0,
+        ) ?? 0;
 
       // إحصائيات المعلمين
       const totalTeachers = teachersRes.data?.length ?? 0;
@@ -830,7 +844,9 @@ export default function Dashboard() {
       let unpaidStudents = 0;
 
       studentsRes.data?.forEach((student: any) => {
-        const studentFees = fees.filter((f: any) => f.student_id === student.id);
+        const studentFees = fees.filter(
+          (f: any) => f.student_id === student.id,
+        );
         const totalPaid = studentFees
           .filter((f: any) => f.amount > 0)
           .reduce((sum: number, f: any) => sum + f.amount, 0);
@@ -885,10 +901,14 @@ export default function Dashboard() {
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
       const weekPayments = fees
-        .filter((f: any) => new Date(f.payment_date) >= oneWeekAgo && f.amount > 0)
+        .filter(
+          (f: any) => new Date(f.payment_date) >= oneWeekAgo && f.amount > 0,
+        )
         .reduce((sum: number, f: any) => sum + f.amount, 0);
       const weekRefunds = fees
-        .filter((f: any) => new Date(f.payment_date) >= oneWeekAgo && f.amount < 0)
+        .filter(
+          (f: any) => new Date(f.payment_date) >= oneWeekAgo && f.amount < 0,
+        )
         .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
       const thisWeekCollections = weekPayments - weekRefunds;
 
@@ -896,10 +916,14 @@ export default function Dashboard() {
       const oneMonthAgo = new Date();
       oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
       const monthPayments = fees
-        .filter((f: any) => new Date(f.payment_date) >= oneMonthAgo && f.amount > 0)
+        .filter(
+          (f: any) => new Date(f.payment_date) >= oneMonthAgo && f.amount > 0,
+        )
         .reduce((sum: number, f: any) => sum + f.amount, 0);
       const monthRefunds = fees
-        .filter((f: any) => new Date(f.payment_date) >= oneMonthAgo && f.amount < 0)
+        .filter(
+          (f: any) => new Date(f.payment_date) >= oneMonthAgo && f.amount < 0,
+        )
         .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
       const thisMonthCollections = monthPayments - monthRefunds;
 
@@ -931,7 +955,7 @@ export default function Dashboard() {
         thisWeekCollections,
         thisMonthCollections,
       });
-      
+
       console.log("✅ Statistics loaded successfully");
     } catch (error: any) {
       console.error(`❌ Error loading statistics:`, error);
@@ -981,14 +1005,14 @@ export default function Dashboard() {
             opacity: 0.15,
           }}
         />
-        
+
         <div
           className={`absolute inset-0 bg-gradient-to-br ${backgrounds[currentBackground].overlay} transition-all duration-1000`}
         />
-        
+
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.03),transparent_50%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(139,92,246,0.03),transparent_50%)]" />
-        
+
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
           {backgrounds.map((_, index) => (
             <button
@@ -1028,8 +1052,13 @@ export default function Dashboard() {
                     <School className="w-4 h-4 text-blue-600" />
                   </div>
                   <div>
-                    <span className="text-sm font-semibold text-gray-900">{schoolName}</span>
-                    <span className="text-[10px] text-gray-400 mr-2"> {schoolIdentifier}</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {schoolName}
+                    </span>
+                    <span className="text-[10px] text-gray-400 mr-2">
+                      {" "}
+                      {schoolIdentifier}
+                    </span>
                   </div>
                 </div>
 
@@ -1040,7 +1069,10 @@ export default function Dashboard() {
                 <div className="flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-gray-500" />
                   <span className="text-xs text-gray-600">
-                    <span className="font-medium text-gray-900">{formatNumber(stats.activeStudents, language)}</span> طالب نشط
+                    <span className="font-medium text-gray-900">
+                      {formatNumber(stats.activeStudents, language)}
+                    </span>{" "}
+                    طالب نشط
                   </span>
                 </div>
 
@@ -1049,7 +1081,9 @@ export default function Dashboard() {
                 {/* البريد الإلكتروني */}
                 <div className="flex items-center gap-1.5">
                   <Mail className="w-3.5 h-3.5 text-gray-500" />
-                  <span className="text-xs text-gray-600 truncate max-w-[180px]">{schoolEmail}</span>
+                  <span className="text-xs text-gray-600 truncate max-w-[180px]">
+                    {schoolEmail}
+                  </span>
                 </div>
               </div>
 
@@ -1058,9 +1092,11 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500">نسبة التحصيل</span>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-bold text-green-600">{stats.collectionRate.toFixed(1)}%</span>
+                    <span className="text-sm font-bold text-green-600">
+                      {stats.collectionRate.toFixed(1)}%
+                    </span>
                     <div className="w-12 h-1 bg-gray-200 rounded-full overflow-hidden">
-                      <div 
+                      <div
                         className="h-full bg-green-500 rounded-full"
                         style={{ width: `${stats.collectionRate}%` }}
                       ></div>
@@ -1071,13 +1107,15 @@ export default function Dashboard() {
                 {/* حالة الاتصال */}
                 <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 rounded-full border border-green-100">
                   <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-[10px] font-medium text-green-700">مباشر</span>
+                  <span className="text-[10px] font-medium text-green-700">
+                    مباشر
+                  </span>
                 </div>
               </div>
             </div>
           </div>
         </div>
-        
+
         <div className="fixed bottom-6 left-6 z-50">
           <button
             onClick={() => setIsChatOpen(!isChatOpen)}
@@ -1195,7 +1233,9 @@ export default function Dashboard() {
                         {t("dashboard")}
                       </h1>
                       <p className="text-sm text-gray-500 mt-1">
-                        <span className="text-blue-600 font-medium">{schoolName}</span>
+                        <span className="text-blue-600 font-medium">
+                          {schoolName}
+                        </span>
                       </p>
                     </div>
 
@@ -1298,21 +1338,65 @@ export default function Dashboard() {
                       </div>
 
                       {/* بطاقة معلومات المدرسة */}
-                      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg p-6 text-white">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h3 className="text-lg font-semibold mb-2">{schoolName}</h3>
-                            <div className="space-y-1 text-sm text-blue-100">
-                              <p>📧 {schoolEmail}</p>
-                              <p>🏫 {t("schoolIdentifier") || "معرف المدرسة"}: {schoolIdentifier}</p>
-                            </div>
-                          </div>
-                          <div className="p-3 bg-white/20 rounded-lg">
-                            <School className="w-8 h-8" />
-                          </div>
-                        </div>
-                      </div>
+<div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 p-[1px] shadow-xl">
+  <div className="rounded-2xl bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 p-6 text-white">
+    
+    <div className="flex items-center justify-between">
+      
+      {/* School Info */}
+      <div className="space-y-3">
+        <h3 className="text-xl font-bold tracking-wide">
+          {schoolName}
+        </h3>
 
+        <div className="space-y-1 text-sm text-blue-100">
+          <p className="flex items-center gap-2">
+            <span className="text-base">📧</span>
+            {schoolEmail}
+          </p>
+
+          <p className="flex items-center gap-2">
+            <span className="text-base">🏫</span>
+            {t("schoolIdentifier") || "معرف المدرسة"}:
+            <span className="font-semibold text-white">
+              {schoolIdentifier}
+            </span>
+          </p>
+        </div>
+      </div>
+
+      {/* Icon */}
+      <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-white/20 backdrop-blur-md shadow-inner">
+        <School className="w-8 h-8 text-white" />
+      </div>
+
+    </div>
+
+    {/* Divider */}
+    <div className="my-5 border-t border-white/20"></div>
+
+    {/* Quick Stats */}
+    <div className="grid grid-cols-3 gap-4 text-center">
+
+      <div className="rounded-lg bg-white/10 p-3 hover:bg-white/20 transition">
+        <p className="text-lg font-bold">320</p>
+        <p className="text-xs text-blue-100">الطلاب</p>
+      </div>
+
+      <div className="rounded-lg bg-white/10 p-3 hover:bg-white/20 transition">
+        <p className="text-lg font-bold">24</p>
+        <p className="text-xs text-blue-100">الفصول</p>
+      </div>
+
+      <div className="rounded-lg bg-white/10 p-3 hover:bg-white/20 transition">
+        <p className="text-lg font-bold">18</p>
+        <p className="text-xs text-blue-100">المعلمين</p>
+      </div>
+
+    </div>
+
+  </div>
+</div>
                       <div className="grid grid-cols-1 md:grid-cols-2 xlg:grid-cols-4 gap-4">
                         <ModernStatCard
                           title={t("collectionRate")}
@@ -1460,9 +1544,9 @@ export default function Dashboard() {
                   </div>
                 </div>
               ) : (
-                <ViewRenderer 
-                  view={currentView} 
-                  onUpdate={loadStatistics} 
+                <ViewRenderer
+                  view={currentView}
+                  onUpdate={loadStatistics}
                   loading={loading}
                 />
               )}
