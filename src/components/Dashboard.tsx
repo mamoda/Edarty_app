@@ -381,7 +381,7 @@ const ModernHeader: React.FC<HeaderProps> = ({
               <img
                 src={logo}
                 alt="إدارتي"
-                className="h-8 w-auto relative z-10"
+                className="h-16 w-auto relative z-10"
               />
             </div>
 
