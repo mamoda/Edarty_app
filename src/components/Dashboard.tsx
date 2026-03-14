@@ -387,7 +387,7 @@ const ModernHeader: React.FC<HeaderProps> = ({
 
             {/* اسم المدرسة بجانب الشعار */}
             <div className="hidden md:block">
-              <p className="text-sm font-medium text-gray-900">{schoolName}</p>
+              {/* <p className="text-sm font-medium text-gray-900">{schoolName}</p> */}
               {/* <p className="text-xs text-gray-500">{schoolIdentifier}</p> */}
             </div>
 
