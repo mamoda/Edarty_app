@@ -1,3 +1,4 @@
+// context/AuthContext.tsx
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
@@ -19,6 +20,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CustomUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // دالة لاستخراج المستخدم من localStorage مباشرة
+  const getUserFromStorage = (): SupabaseUser | null => {
+    try {
+      // البحث عن مفتاح الجلسة في localStorage
+      const storageKey = Object.keys(localStorage).find(key => 
+        key.startsWith('sb-') && key.includes('-auth-token')
+      );
+      
+      if (!storageKey) return null;
+      
+      const sessionStr = localStorage.getItem(storageKey);
+      if (!sessionStr) return null;
+      
+      const sessionData = JSON.parse(sessionStr);
+      return sessionData?.user || null;
+    } catch (e) {
+      console.error('Error reading from localStorage:', e);
+      return null;
+    }
+  };
 
   const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<CustomUser> => {
     try {
@@ -48,7 +70,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         setLoading(true);
         
-        // 1. حاول استرجاع الجلسة من Supabase
+        // 1. أولاً: حاول استرجاع المستخدم من localStorage مباشرة
+        const storedUser = getUserFromStorage();
+        
+        if (storedUser && mounted) {
+          console.log('📦 User found in localStorage:', storedUser.email);
+          const enhancedUser = await fetchUserProfile(storedUser);
+          setUser(enhancedUser);
+          setLoading(false);
+          return;
+        }
+        
+        // 2. إذا لم نجد في localStorage، حاول من Supabase
+        console.log('🔍 No user in localStorage, checking Supabase session...');
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user && mounted) {
@@ -58,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null);
         }
       } catch (err: any) {
+        console.error('❌ Auth error:', err);
         setError(err?.message);
       } finally {
         if (mounted) setLoading(false);
@@ -69,6 +104,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // استمع لتغييرات المصادقة
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('🔄 Auth state changed:', event);
+        
         if (!mounted) return;
 
         if (session?.user) {
@@ -138,12 +175,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    // تنظيف localStorage
+    const storageKey = Object.keys(localStorage).find(key => 
+      key.startsWith('sb-') && key.includes('-auth-token')
+    );
+    if (storageKey) localStorage.removeItem(storageKey);
   };
 
   const refreshUserData = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      const enhancedUser = await fetchUserProfile(session.user);
+    const storedUser = getUserFromStorage();
+    if (storedUser) {
+      const enhancedUser = await fetchUserProfile(storedUser);
       setUser(enhancedUser);
     }
   };
