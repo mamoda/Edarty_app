@@ -32,6 +32,7 @@ import {
   FileText,
   School,
   Mail,
+  AlertCircle,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -660,6 +661,40 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose, language, t }) => {
   );
 };
 
+// مكون عرض المكونات الفرعية مع التحميل
+const ViewRenderer: React.FC<{
+  view: View;
+  onUpdate: () => void;
+  loading?: boolean;
+}> = ({ view, onUpdate, loading = false }) => {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="relative">
+          <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      </div>
+    );
+  }
+
+  switch (view) {
+    case "students":
+      return <StudentsManager onUpdate={onUpdate} />;
+    case "teachers":
+      return <TeachersManager onUpdate={onUpdate} />;
+    case "fees":
+      return <FeesManager onUpdate={onUpdate} />;
+    case "expenses":
+      return <ExpensesManager onUpdate={onUpdate} />;
+    case "reports":
+      return <ProfitReport />;
+    case "financial":
+      return <FinancialReports />;
+    default:
+      return null;
+  }
+};
+
 export default function Dashboard() {
   const { user, signOut } = useAuth();
   const { schoolName, schoolEmail, schoolIdentifier } = useSchoolData();
@@ -694,6 +729,7 @@ export default function Dashboard() {
   const [showSidebar, setShowSidebar] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState("month");
   const [currentBackground, setCurrentBackground] = useState(0);
+  const [dataError, setDataError] = useState<string | null>(null);
 
   // مجموعة الخلفيات المتاحة
   const backgrounds = [
@@ -719,71 +755,88 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
+  // تحميل البيانات فقط عندما يكون المستخدم موجوداً
   useEffect(() => {
-    loadStatistics();
-  }, []);
+    if (user) {
+      console.log("👤 User authenticated, loading statistics...");
+      loadStatistics();
+    } else {
+      console.log("⏳ Waiting for user...");
+    }
+  }, [user]); // يعتمد على user
 
   const loadStatistics = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log("⏳ No user yet, skipping data load");
+      return;
+    }
 
     setLoading(true);
+    setDataError(null);
+    
     try {
-      console.log(`Loading statistics for ${schoolName}`);
+      console.log(`📊 Loading statistics for ${schoolName} (user: ${user.id})`);
       
-      // جلب جميع البيانات المطلوبة
-      const [studentsRes, feesRes, expensesRes, teachersRes] =
-        await Promise.all([
-          supabase.from("students").select("*").eq("user_id", user.id),
-          supabase
-            .from("fees")
-            .select("*, student:students(*)")
-            .eq("user_id", user.id),
-          supabase.from("expenses").select("amount").eq("user_id", user.id),
-          supabase.from("teachers").select("*").eq("user_id", user.id),
-        ]);
+      // جلب جميع البيانات المطلوبة مع معالجة الأخطاء
+      const results = await Promise.allSettled([
+        supabase.from("students").select("*").eq("user_id", user.id),
+        supabase.from("fees").select("*, student:students(*)").eq("user_id", user.id),
+        supabase.from("expenses").select("amount").eq("user_id", user.id),
+        supabase.from("teachers").select("*").eq("user_id", user.id),
+      ]);
+
+      // معالجة النتائج
+      const [studentsRes, feesRes, expensesRes, teachersRes] = results.map(
+        (result) => (result.status === "fulfilled" ? result.value : { data: [], error: result.reason })
+      );
+
+      if (studentsRes.error) console.error("Students error:", studentsRes.error);
+      if (feesRes.error) console.error("Fees error:", feesRes.error);
+      if (expensesRes.error) console.error("Expenses error:", expensesRes.error);
+      if (teachersRes.error) console.error("Teachers error:", teachersRes.error);
 
       // الإحصائيات الأساسية
       const totalStudents = studentsRes.data?.length ?? 0;
       const activeStudents =
-        studentsRes.data?.filter((s) => s.status === "active").length ?? 0;
+        studentsRes.data?.filter((s: any) => s.status === "active").length ?? 0;
 
       // حساب المدفوعات والاستردادات
       const fees = feesRes.data ?? [];
       const totalPayments = fees
-        .filter((f) => f.amount > 0)
-        .reduce((sum, fee) => sum + Number(fee.amount), 0);
+        .filter((f: any) => f.amount > 0)
+        .reduce((sum: number, fee: any) => sum + Number(fee.amount), 0);
       const totalRefunds = fees
-        .filter((f) => f.amount < 0)
-        .reduce((sum, fee) => sum + Math.abs(Number(fee.amount)), 0);
+        .filter((f: any) => f.amount < 0)
+        .reduce((sum: number, fee: any) => sum + Math.abs(Number(fee.amount)), 0);
       const netRevenue = totalPayments - totalRefunds;
 
       // حساب المصروفات
       const totalExpenses =
-        expensesRes.data?.reduce((sum, exp) => sum + Number(exp.amount), 0) ??
+        expensesRes.data?.reduce((sum: number, exp: any) => sum + Number(exp.amount), 0) ??
         0;
 
       // إحصائيات المعلمين
       const totalTeachers = teachersRes.data?.length ?? 0;
       const activeTeachers =
-        teachersRes.data?.filter((t) => t.status === "active").length ?? 0;
+        teachersRes.data?.filter((t: any) => t.status === "active").length ?? 0;
       const totalSalaries =
         teachersRes.data
-          ?.filter((t) => t.status === "active")
-          .reduce((sum, t) => sum + Number(t.salary), 0) ?? 0;
+          ?.filter((t: any) => t.status === "active")
+          .reduce((sum: number, t: any) => sum + Number(t.salary), 0) ?? 0;
 
       // حساب حالات سداد الطلاب
       let paidStudents = 0;
       let partialPaidStudents = 0;
       let unpaidStudents = 0;
 
-      studentsRes.data?.forEach((student) => {
-        const studentFees = fees.filter((f) => f.student_id === student.id);
+      studentsRes.data?.forEach((student: any) => {
+        const studentFees = fees.filter((f: any) => f.student_id === student.id);
         const totalPaid = studentFees
-          .filter((f) => f.amount > 0)
-          .reduce((sum, f) => sum + f.amount, 0);
+          .filter((f: any) => f.amount > 0)
+          .reduce((sum: number, f: any) => sum + f.amount, 0);
         const totalRefunded = studentFees
-          .filter((f) => f.amount < 0)
-          .reduce((sum, f) => sum + Math.abs(f.amount), 0);
+          .filter((f: any) => f.amount < 0)
+          .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
         const netPaid = totalPaid - totalRefunded;
 
         if (netPaid >= 5000) {
@@ -800,7 +853,7 @@ export default function Dashboard() {
         cardPayments = 0,
         bankPayments = 0,
         checkPayments = 0;
-      fees.forEach((fee) => {
+      fees.forEach((fee: any) => {
         const amount = Math.abs(fee.amount);
         if (fee.notes) {
           try {
@@ -821,33 +874,33 @@ export default function Dashboard() {
       // حساب تحصيلات اليوم
       const today = new Date().toISOString().split("T")[0];
       const todayPayments = fees
-        .filter((f) => f.payment_date === today && f.amount > 0)
-        .reduce((sum, f) => sum + f.amount, 0);
+        .filter((f: any) => f.payment_date === today && f.amount > 0)
+        .reduce((sum: number, f: any) => sum + f.amount, 0);
       const todayRefunds = fees
-        .filter((f) => f.payment_date === today && f.amount < 0)
-        .reduce((sum, f) => sum + Math.abs(f.amount), 0);
+        .filter((f: any) => f.payment_date === today && f.amount < 0)
+        .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
       const todayCollections = todayPayments - todayRefunds;
 
       // حساب تحصيلات هذا الأسبوع
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
       const weekPayments = fees
-        .filter((f) => new Date(f.payment_date) >= oneWeekAgo && f.amount > 0)
-        .reduce((sum, f) => sum + f.amount, 0);
+        .filter((f: any) => new Date(f.payment_date) >= oneWeekAgo && f.amount > 0)
+        .reduce((sum: number, f: any) => sum + f.amount, 0);
       const weekRefunds = fees
-        .filter((f) => new Date(f.payment_date) >= oneWeekAgo && f.amount < 0)
-        .reduce((sum, f) => sum + Math.abs(f.amount), 0);
+        .filter((f: any) => new Date(f.payment_date) >= oneWeekAgo && f.amount < 0)
+        .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
       const thisWeekCollections = weekPayments - weekRefunds;
 
       // حساب تحصيلات هذا الشهر
       const oneMonthAgo = new Date();
       oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
       const monthPayments = fees
-        .filter((f) => new Date(f.payment_date) >= oneMonthAgo && f.amount > 0)
-        .reduce((sum, f) => sum + f.amount, 0);
+        .filter((f: any) => new Date(f.payment_date) >= oneMonthAgo && f.amount > 0)
+        .reduce((sum: number, f: any) => sum + f.amount, 0);
       const monthRefunds = fees
-        .filter((f) => new Date(f.payment_date) >= oneMonthAgo && f.amount < 0)
-        .reduce((sum, f) => sum + Math.abs(f.amount), 0);
+        .filter((f: any) => new Date(f.payment_date) >= oneMonthAgo && f.amount < 0)
+        .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
       const thisMonthCollections = monthPayments - monthRefunds;
 
       // نسبة التحصيل
@@ -878,8 +931,11 @@ export default function Dashboard() {
         thisWeekCollections,
         thisMonthCollections,
       });
-    } catch (error) {
-      console.error(`Error loading statistics for ${schoolName}:`, error);
+      
+      console.log("✅ Statistics loaded successfully");
+    } catch (error: any) {
+      console.error(`❌ Error loading statistics:`, error);
+      setDataError(error?.message || "حدث خطأ في تحميل البيانات");
     } finally {
       setLoading(false);
     }
@@ -961,66 +1017,67 @@ export default function Dashboard() {
         />
 
         {/* شريط حالة المدرسة */}
-<div className="relative border-b border-gray-200/50 bg-white/40 backdrop-blur-xl">
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div className="flex items-center justify-between py-2.5">
-      {/* الجهة اليمنى */}
-      <div className="flex items-center gap-4">
-        {/* شارة المدرسة */}
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-gradient-to-br from-blue-600/10 to-indigo-600/10 rounded-lg">
-            <School className="w-4 h-4 text-blue-600" />
-          </div>
-          <div>
-            <span className="text-sm font-semibold text-gray-900">{schoolName}</span>
-            <span className="text-[10px] text-gray-400 mr-2"> {schoolIdentifier}</span>
-          </div>
-        </div>
+        <div className="relative border-b border-gray-200/50 bg-white/40 backdrop-blur-xl">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between py-2.5">
+              {/* الجهة اليمنى */}
+              <div className="flex items-center gap-4">
+                {/* شارة المدرسة */}
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-gradient-to-br from-blue-600/10 to-indigo-600/10 rounded-lg">
+                    <School className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-semibold text-gray-900">{schoolName}</span>
+                    <span className="text-[10px] text-gray-400 mr-2"> {schoolIdentifier}</span>
+                  </div>
+                </div>
 
-        {/* فواصل نقطية */}
-        <span className="text-gray-300 text-lg leading-none">•</span>
+                {/* فواصل نقطية */}
+                <span className="text-gray-300 text-lg leading-none">•</span>
 
-        {/* الطلاب النشطين */}
-        <div className="flex items-center gap-1.5">
-          <Users className="w-3.5 h-3.5 text-gray-500" />
-          <span className="text-xs text-gray-600">
-            <span className="font-medium text-gray-900">{formatNumber(stats.activeStudents, language)}</span> طالب نشط
-          </span>
-        </div>
+                {/* الطلاب النشطين */}
+                <div className="flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-gray-500" />
+                  <span className="text-xs text-gray-600">
+                    <span className="font-medium text-gray-900">{formatNumber(stats.activeStudents, language)}</span> طالب نشط
+                  </span>
+                </div>
 
-        <span className="text-gray-300 text-lg leading-none">•</span>
+                <span className="text-gray-300 text-lg leading-none">•</span>
 
-        {/* البريد الإلكتروني */}
-        <div className="flex items-center gap-1.5">
-          <Mail className="w-3.5 h-3.5 text-gray-500" />
-          <span className="text-xs text-gray-600 truncate max-w-[180px]">{schoolEmail}</span>
-        </div>
-      </div>
+                {/* البريد الإلكتروني */}
+                <div className="flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-gray-500" />
+                  <span className="text-xs text-gray-600 truncate max-w-[180px]">{schoolEmail}</span>
+                </div>
+              </div>
 
-      {/* الجهة اليسرى - نسبة التحصيل */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">نسبة التحصيل</span>
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm font-bold text-green-600">{stats.collectionRate.toFixed(1)}%</span>
-            <div className="w-12 h-1 bg-gray-200 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-green-500 rounded-full"
-                style={{ width: `${stats.collectionRate}%` }}
-              ></div>
+              {/* الجهة اليسرى - نسبة التحصيل */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">نسبة التحصيل</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold text-green-600">{stats.collectionRate.toFixed(1)}%</span>
+                    <div className="w-12 h-1 bg-gray-200 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-green-500 rounded-full"
+                        style={{ width: `${stats.collectionRate}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* حالة الاتصال */}
+                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 rounded-full border border-green-100">
+                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-[10px] font-medium text-green-700">مباشر</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-
-        {/* حالة الاتصال */}
-        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 rounded-full border border-green-100">
-          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-          <span className="text-[10px] font-medium text-green-700">مباشر</span>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+        
         <div className="fixed bottom-6 left-6 z-50">
           <button
             onClick={() => setIsChatOpen(!isChatOpen)}
@@ -1130,7 +1187,7 @@ export default function Dashboard() {
             )}
 
             <main className="flex-1 min-w-0">
-              {currentView === "dashboard" && (
+              {currentView === "dashboard" ? (
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -1174,6 +1231,19 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </div>
+
+                  {dataError && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+                      <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                      <p className="text-sm text-red-700">{dataError}</p>
+                      <button
+                        onClick={loadStatistics}
+                        className="mr-auto text-sm bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700"
+                      >
+                        إعادة المحاولة
+                      </button>
+                    </div>
+                  )}
 
                   {loading ? (
                     <div className="flex items-center justify-center py-20">
@@ -1389,22 +1459,13 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </div>
+              ) : (
+                <ViewRenderer 
+                  view={currentView} 
+                  onUpdate={loadStatistics} 
+                  loading={loading}
+                />
               )}
-
-              {currentView === "students" && (
-                <StudentsManager onUpdate={loadStatistics} />
-              )}
-              {currentView === "teachers" && (
-                <TeachersManager onUpdate={loadStatistics} />
-              )}
-              {currentView === "fees" && (
-                <FeesManager onUpdate={loadStatistics} />
-              )}
-              {currentView === "expenses" && (
-                <ExpensesManager onUpdate={loadStatistics} />
-              )}
-              {currentView === "reports" && <ProfitReport />}
-              {currentView === "financial" && <FinancialReports />}
             </main>
           </div>
         </div>
