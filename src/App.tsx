@@ -93,9 +93,8 @@ function AppRoutes() {
 }
 
 // مكون التطبيق الرئيسي
-// في AppContent
 function AppContent() {
-  const { loading, error } = useAuth();
+  const { loading } = useAuth();
 
   if (loading) {
     return (
@@ -103,9 +102,6 @@ function AppContent() {
         <div className="text-center">
           <div className="inline-block w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
           <p className="text-gray-600">جارٍ التحميل...</p>
-          {error && (
-            <p className="text-red-500 text-sm mt-2">خطأ: {error}</p>
-          )}
         </div>
       </div>
     );
@@ -113,6 +109,7 @@ function AppContent() {
 
   return <AppRoutes />;
 }
+
 // التطبيق الرئيسي مع BrowserRouter - هنا نضيف LanguageProvider
 function App() {
   return (
