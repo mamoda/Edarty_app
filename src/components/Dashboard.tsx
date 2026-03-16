@@ -759,7 +759,7 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // تحميل البيانات فقط عندما يكون المستخدم موجوداً
+  // تحميل البيانات فقط عندما يكون المستخدم موجوداً - مع منع التكرار
   useEffect(() => {
     if (user) {
       console.log("👤 User authenticated, loading statistics...");
@@ -767,13 +767,26 @@ export default function Dashboard() {
     } else {
       console.log("⏳ Waiting for user...");
     }
-  }, [user]); // يعتمد على user
+  }, [user?.id]); // ✅ استخدام user?.id بدلاً من user
 
   const loadStatistics = async () => {
     if (!user) {
       console.log("⏳ No user yet, skipping data load");
       return;
     }
+
+    // ✅ منع التحميل إذا كان في تحميل بالفعل
+    if (loading) {
+      console.log("⏳ Already loading, skipping...");
+      return;
+    }
+
+    // ✅ مؤقت أمان: لو استغرق التحميل أكثر من 10 ثواني، أوقف التحميل
+    const timeoutId = setTimeout(() => {
+      setLoading(false);
+      setDataError("استغرق التحميل وقتاً طويلاً. حاول مرة أخرى.");
+      console.log("⚠️ Loading timeout - forced stop");
+    }, 10000);
 
     setLoading(true);
     setDataError(null);
@@ -961,11 +974,16 @@ export default function Dashboard() {
       });
 
       console.log("✅ Statistics loaded successfully");
+      
+      // ✅ إلغاء المؤقت إذا نجح التحميل
+      clearTimeout(timeoutId);
+      
     } catch (error: any) {
       console.error(`❌ Error loading statistics:`, error);
       setDataError(error?.message || "حدث خطأ في تحميل البيانات");
     } finally {
       setLoading(false);
+      console.log('✅ loadStatistics finished - loading set to false');
     }
   };
 
