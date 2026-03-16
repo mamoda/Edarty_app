@@ -248,32 +248,6 @@ export interface CustomUser extends SupabaseUser {
 }
 
 // ============================================
-// دوال مساعدة للتحقق من الصلاحيات
-// ============================================
-
-export function hasPermission(user: CustomUser | null, permission: string): boolean {
-  if (!user) return false;
-  if (user.role === 'admin') return true; // الأدمن عنده كل الصلاحيات
-  
-  // التحقق من الصلاحيات المخصصة
-  return user.permissions?.[permission] || false;
-}
-
-export function hasAnyPermission(user: CustomUser | null, permissions: string[]): boolean {
-  if (!user) return false;
-  if (user.role === 'admin') return true;
-  
-  return permissions.some(p => user.permissions?.[p]);
-}
-
-export function hasAllPermissions(user: CustomUser | null, permissions: string[]): boolean {
-  if (!user) return false;
-  if (user.role === 'admin') return true;
-  
-  return permissions.every(p => user.permissions?.[p]);
-}
-
-// ============================================
 // دوال مساعدة للأنواع (Type Guards)
 // ============================================
 
