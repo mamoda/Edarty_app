@@ -1,13 +1,18 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
-import { CustomUser } from '../types/database';
+import { CustomUser, UserRole } from '../types/database';
+import { permissionService } from '../services/permissionService';
 
 interface AuthContextType {
   user: CustomUser | null;
   loading: boolean;
+  error: string | null;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  refreshUserData: () => Promise<void>;
+  hasPermission: (permission: string) => boolean;
+  userRole: UserRole | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -15,38 +20,29 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CustomUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [userPermissions, setUserPermissions] = useState<Record<string, boolean>>({});
 
-  // دالة لجلب المستخدم من localStorage مباشرة (أسرع طريقة)
-  const getUserFromStorage = (): CustomUser | null => {
+  // دوال التحقق من الصلاحيات
+  const hasPermission = (permission: string): boolean => {
+    if (!user) return false;
+    if (user.role === 'admin') return true; // الأدمن عنده كل الصلاحيات
+    return userPermissions[permission] || false;
+  };
+
+  const userRole = user?.role as UserRole || null;
+
+  // تحميل الصلاحيات
+  const loadUserPermissions = async (userId: string) => {
     try {
-      // البحث عن مفتاح الجلسة في localStorage
-      const storageKey = Object.keys(localStorage).find(key => 
-        key.startsWith('sb-') && key.includes('-auth-token')
-      );
-      
-      if (!storageKey) return null;
-      
-      const sessionStr = localStorage.getItem(storageKey);
-      if (!sessionStr) return null;
-      
-      const sessionData = JSON.parse(sessionStr);
-      const supabaseUser = sessionData?.user;
-      
-      if (!supabaseUser) return null;
-
-      // إرجاع المستخدم مباشرة بدون الانتظار
-      return {
-        ...supabaseUser,
-        schoolName: 'مدرستي',
-        full_name: supabaseUser.email?.split('@')[0],
-      } as CustomUser;
-      
-    } catch (e) {
-      return null;
+      const permissions = await permissionService.getUserPermissions(userId);
+      setUserPermissions(permissions);
+    } catch (error) {
+      console.error('Error loading permissions:', error);
     }
   };
 
-  // دالة لجلب بيانات المستخدم الكاملة من جدول users
+  // دالة لجلب بيانات المستخدم الإضافية
   const fetchUserProfile = async (supabaseUser: any): Promise<CustomUser> => {
     try {
       const { data: profile } = await supabase
@@ -57,11 +53,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return {
         ...supabaseUser,
-        schoolName: profile?.school_name || 'مدرستي',
+        schoolName: profile?.school_name,
         schoolAddress: profile?.school_address,
         schoolPhone: profile?.school_phone,
         taxNumber: profile?.tax_number,
         full_name: profile?.full_name || supabaseUser.user_metadata?.full_name,
+        role: profile?.role || 'user',
       } as CustomUser;
     } catch {
       return supabaseUser as CustomUser;
@@ -69,91 +66,192 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // 1. أول حاجة: جرب تجيب المستخدم من localStorage (سريع جداً)
-    const storedUser = getUserFromStorage();
-    
-    if (storedUser) {
-      console.log('✅ User from localStorage:', storedUser.email);
-      setUser(storedUser);
-      setLoading(false);
-      
-      // 2. بعدين في الخلفية، حدث البيانات من Supabase
-      supabase.auth.getSession().then(async ({ data: { session } }) => {
-        if (session?.user) {
-          const enhancedUser = await fetchUserProfile(session.user);
-          setUser(enhancedUser);
+    let mounted = true;
+
+    const initializeAuth = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          setError(sessionError.message);
         }
-      });
-      
-      return;
-    }
 
-    // 3. إذا ما لقيناش في localStorage، نستنى Supabase
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const enhancedUser = await fetchUserProfile(session.user);
-        setUser(enhancedUser);
-      }
-      setLoading(false);
-    });
-
-    // الاستماع لتغييرات المصادقة
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
+        if (session?.user && mounted) {
+          console.log('User found in session:', session.user.email);
           const enhancedUser = await fetchUserProfile(session.user);
           setUser(enhancedUser);
+          await loadUserPermissions(enhancedUser.id); // تحميل الصلاحيات
         } else {
+          console.log('No active session');
           setUser(null);
         }
+      } catch (err: any) {
+        console.error('Auth initialization error:', err);
+        setError(err?.message || 'Unknown error');
+      } finally {
+        if (mounted) {
+          setLoading(false);
+          console.log('Auth initialization complete, loading:', false);
+        }
+      }
+    };
+
+    initializeAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
+        
+        if (!mounted) return;
+
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          if (session?.user) {
+            const enhancedUser = await fetchUserProfile(session.user);
+            setUser(enhancedUser);
+            await loadUserPermissions(enhancedUser.id); // تحميل الصلاحيات
+          }
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setUserPermissions({}); // مسح الصلاحيات
+        }
+        
         setLoading(false);
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (!error && data.user) {
-      const enhancedUser = await fetchUserProfile(data.user);
-      setUser(enhancedUser);
+    try {
+      setError(null);
+      console.log('Attempting sign in for:', email);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({ 
+        email, 
+        password 
+      });
+      
+      if (error) {
+        console.error('Sign in error:', error);
+        return { error };
+      }
+      
+      console.log('Sign in successful:', data.user?.email);
+      
+      if (data.user) {
+        const enhancedUser = await fetchUserProfile(data.user);
+        setUser(enhancedUser);
+        await loadUserPermissions(enhancedUser.id);
+      }
+      
+      return { error: null };
+    } catch (error: any) {
+      console.error('Sign in exception:', error);
+      return { error };
     }
-    return { error };
   };
 
   const signUp = async (email: string, password: string, fullName?: string) => {
-    const { data, error } = await supabase.auth.signUp({ 
-      email, 
-      password,
-      options: { data: { full_name: fullName } }
-    });
-    
-    if (!error && data.user) {
-      // إنشاء حساب في جدول users
-      await supabase
-        .from('users')
-        .upsert([{ 
-          id: data.user.id, 
-          email, 
-          full_name: fullName,
-          created_at: new Date().toISOString()
-        }], { onConflict: 'id' });
+    try {
+      setError(null);
+      console.log('Attempting sign up for:', email);
       
-      const enhancedUser = await fetchUserProfile(data.user);
-      setUser(enhancedUser);
+      const { data, error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          data: { full_name: fullName }
+        }
+      });
+      
+      if (error) {
+        console.error('Sign up error:', error);
+        return { error };
+      }
+      
+      console.log('Sign up successful:', data.user?.email);
+      
+      if (data.user) {
+        const { error: profileError } = await supabase
+          .from('users')
+          .upsert([{ 
+            id: data.user.id, 
+            email, 
+            full_name: fullName,
+            role: 'user',
+            created_at: new Date().toISOString()
+          }], { onConflict: 'id' });
+        
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+        } else {
+          console.log('User profile created successfully');
+        }
+        
+        const enhancedUser = await fetchUserProfile(data.user);
+        setUser(enhancedUser);
+        await loadUserPermissions(enhancedUser.id);
+      }
+      
+      return { error: null };
+    } catch (error: any) {
+      console.error('Sign up exception:', error);
+      return { error };
     }
-    
-    return { error };
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
+    try {
+      console.log('Signing out...');
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Sign out error:', error);
+      } else {
+        console.log('Signed out successfully');
+      }
+      setUser(null);
+      setUserPermissions({});
+    } catch (error) {
+      console.error('Sign out exception:', error);
+    }
+  };
+
+  const refreshUserData = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        console.log('Refreshing user data for:', session.user.email);
+        const enhancedUser = await fetchUserProfile(session.user);
+        setUser(enhancedUser);
+        await loadUserPermissions(enhancedUser.id);
+      }
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+    }
+  };
+
+  const value = {
+    user,
+    loading,
+    error,
+    signIn,
+    signUp,
+    signOut,
+    refreshUserData,
+    hasPermission, // 👈 أضفناها
+    userRole,      // 👈 أضفناها
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
@@ -161,6 +259,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
   return context;
 }

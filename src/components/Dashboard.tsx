@@ -38,7 +38,7 @@ import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useSchoolData } from "../hooks/useSchoolData";
 import { supabase } from "../lib/supabase";
-import type { Statistics } from "../types/database";
+import { hasPermission, type Statistics } from "../types/database";
 import StudentsManager from "./StudentsManager";
 import FeesManager from "./FeesManager";
 import ExpensesManager from "./ExpensesManager";
@@ -49,6 +49,7 @@ import logo from "../assets/logo.png";
 import backgroundPattern from "../assets/background-pattern.png";
 import backgroundWave from "../assets/background-wave.png";
 import backgroundDots from "../assets/background-dots.png";
+import UsersManager from "./UsersManager";
 
 type View =
   | "dashboard"
@@ -57,7 +58,8 @@ type View =
   | "fees"
   | "expenses"
   | "reports"
-  | "financial";
+  | "financial"
+  | "users";
 
 interface StatCardProps {
   title: string;
@@ -690,13 +692,15 @@ const ViewRenderer: React.FC<{
       return <ProfitReport />;
     case "financial":
       return <FinancialReports />;
+    case "users":
+      return <UsersManager />;
     default:
       return null;
   }
 };
 
 export default function Dashboard() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, hasPermission } = useAuth();
   const { schoolName, schoolEmail, schoolIdentifier } = useSchoolData();
   const { language, toggleLanguage, t } = useLanguage();
 
@@ -1188,6 +1192,15 @@ export default function Dashboard() {
                     currentView={currentView}
                     onClick={() => handleViewChange("financial")}
                   />
+                  {hasPermission("users.view") && (
+                    <ModernMenuItem
+                      label={t("users")}
+                      icon={Users}
+                      view="users"
+                      currentView={currentView}
+                      onClick={() => handleViewChange("users")}
+                    />
+                  )}
 
                   <div className="h-px bg-gray-200 my-2"></div>
 

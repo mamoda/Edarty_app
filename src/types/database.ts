@@ -25,6 +25,7 @@ export interface SchoolData {
 }
 
 // نوع المستخدم (لجدول users في قاعدة البيانات)
+// تحديث واجهة User الحالية
 export interface User {
   id: string;
   email: string | null;
@@ -33,7 +34,13 @@ export interface User {
   school_address: string | null;
   school_phone: string | null;
   tax_number: string | null;
-  role: string;
+  role: UserRole;
+  permissions?: Record<string, boolean>;
+  is_active: boolean;
+  last_login?: string;
+  avatar_url?: string | null;
+  phone?: string | null;
+  department?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -213,4 +220,74 @@ export function isTeacher(obj: any): obj is Teacher {
 
 export function isFee(obj: any): obj is Fee {
   return obj && typeof obj === 'object' && 'amount' in obj && 'payment_type' in obj;
+}
+
+// types/database.ts (أضف هذه الأنواع)
+
+export type UserRole = 'admin' | 'accountant' | 'moderator' | 'user' | 'teacher' | 'student' | 'parent';
+
+export interface Permission {
+  id: string;
+  name: string;
+  description: string;
+  module: string;
+  created_at: string;
+}
+
+export interface UserPermissions {
+  user_id: string;
+  permission_id: string;
+  granted_by?: string;
+  granted_at: string;
+  expires_at?: string;
+  permission?: Permission;
+}
+
+export interface UserActivityLog {
+  id: string;
+  user_id: string;
+  action: string;
+  entity: string;
+  entity_id?: string;
+  old_data?: any;
+  new_data?: any;
+  ip_address?: string;
+  user_agent?: string;
+  created_at: string;
+}
+
+
+// تحديث واجهة CustomUser
+export interface CustomUser extends SupabaseUser {
+  schoolName?: string;
+  schoolAddress?: string;
+  schoolPhone?: string;
+  taxNumber?: string;
+  full_name?: string;
+  role?: UserRole;
+  is_active?: boolean;
+  permissions?: Record<string, boolean>;
+}
+
+// دوال مساعدة للتحقق من الصلاحيات
+export function hasPermission(user: CustomUser | null, permission: string): boolean {
+  if (!user) return false;
+  if (user.role === 'admin') return true; // الأدمن عنده كل الصلاحيات
+  
+  // التحقق من الصلاحيات المخصصة
+  return user.permissions?.[permission] || false;
+}
+
+export function hasAnyPermission(user: CustomUser | null, permissions: string[]): boolean {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  
+  return permissions.some(p => user.permissions?.[p]);
+}
+
+export function hasAllPermissions(user: CustomUser | null, permissions: string[]): boolean {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  
+  return permissions.every(p => user.permissions?.[p]);
 }
