@@ -5,17 +5,6 @@
 // نوع المستخدم من Supabase (للتوافق مع الـ library)
 export type SupabaseUser = import('@supabase/supabase-js').User;
 
-// نوع المستخدم المخصص مع بيانات المدرسة
-export interface CustomUser extends SupabaseUser {
-  schoolName?: string;
-  schoolAddress?: string;
-  schoolPhone?: string;
-  taxNumber?: string;
-  full_name?: string;
-  permissions?: Record<string, boolean>; // 👈 أضف هذا السطر
-
-}
-
 // نوع بيانات المدرسة (للاستخدام في الـ hooks)
 export interface SchoolData {
   schoolName: string;
@@ -27,7 +16,6 @@ export interface SchoolData {
 }
 
 // نوع المستخدم (لجدول users في قاعدة البيانات)
-// تحديث واجهة User الحالية
 export interface User {
   id: string;
   email: string | null;
@@ -209,22 +197,8 @@ export interface SortOptions {
 }
 
 // ============================================
-// دوال مساعدة للأنواع (Type Guards)
+// الأنواع الإضافية (Roles & Permissions)
 // ============================================
-
-export function isStudent(obj: any): obj is Student {
-  return obj && typeof obj === 'object' && 'grade' in obj && 'parent_name' in obj;
-}
-
-export function isTeacher(obj: any): obj is Teacher {
-  return obj && typeof obj === 'object' && 'specialization' in obj && 'salary' in obj;
-}
-
-export function isFee(obj: any): obj is Fee {
-  return obj && typeof obj === 'object' && 'amount' in obj && 'payment_type' in obj;
-}
-
-// types/database.ts (أضف هذه الأنواع)
 
 export type UserRole = 'admin' | 'accountant' | 'moderator' | 'user' | 'teacher' | 'student' | 'parent';
 
@@ -258,8 +232,10 @@ export interface UserActivityLog {
   created_at: string;
 }
 
+// ============================================
+// نوع المستخدم المخصص (للاستخدام في AuthContext)
+// ============================================
 
-// تحديث واجهة CustomUser
 export interface CustomUser extends SupabaseUser {
   schoolName?: string;
   schoolAddress?: string;
@@ -271,7 +247,10 @@ export interface CustomUser extends SupabaseUser {
   permissions?: Record<string, boolean>;
 }
 
+// ============================================
 // دوال مساعدة للتحقق من الصلاحيات
+// ============================================
+
 export function hasPermission(user: CustomUser | null, permission: string): boolean {
   if (!user) return false;
   if (user.role === 'admin') return true; // الأدمن عنده كل الصلاحيات
@@ -292,4 +271,20 @@ export function hasAllPermissions(user: CustomUser | null, permissions: string[]
   if (user.role === 'admin') return true;
   
   return permissions.every(p => user.permissions?.[p]);
+}
+
+// ============================================
+// دوال مساعدة للأنواع (Type Guards)
+// ============================================
+
+export function isStudent(obj: any): obj is Student {
+  return obj && typeof obj === 'object' && 'grade' in obj && 'parent_name' in obj;
+}
+
+export function isTeacher(obj: any): obj is Teacher {
+  return obj && typeof obj === 'object' && 'specialization' in obj && 'salary' in obj;
+}
+
+export function isFee(obj: any): obj is Fee {
+  return obj && typeof obj === 'object' && 'amount' in obj && 'payment_type' in obj;
 }
