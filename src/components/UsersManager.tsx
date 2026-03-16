@@ -38,7 +38,7 @@ export default function UsersManager() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [allPermissions, setAllPermissions] = useState<Permission[]>([]); // 👈 استخدم Permission[]
+  const [allPermissions, setAllPermissions] = useState<Permission[]>([]); 
   const [userPermissions, setUserPermissions] = useState<Set<string>>(new Set());
 
   // نموذج المستخدم
@@ -122,8 +122,6 @@ export default function UsersManager() {
 
         if (error) throw error;
       } else {
-        // إنشاء مستخدم جديد (يحتاج تسجيل عبر Auth أولاً)
-        // هذا مثال مبسط - في الواقع تحتاج لاستخدام signUp من Auth
         alert('لإنشاء مستخدم جديد، استخدم صفحة التسجيل');
       }
 

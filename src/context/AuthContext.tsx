@@ -246,8 +246,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     signOut,
     refreshUserData,
-    hasPermission, // 👈 أضفناها
-    userRole,      // 👈 أضفناها
+    hasPermission, 
+    userRole,      
   };
 
   return (

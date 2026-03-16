@@ -12,6 +12,8 @@ export interface CustomUser extends SupabaseUser {
   schoolPhone?: string;
   taxNumber?: string;
   full_name?: string;
+  permissions?: Record<string, boolean>; // 👈 أضف هذا السطر
+
 }
 
 // نوع بيانات المدرسة (للاستخدام في الـ hooks)
