@@ -133,6 +133,12 @@ export default function UsersManager() {
     e.preventDefault();
     if (!editingUser) return;
 
+    // ✅ التحقق من الصلاحية
+    if (currentUser?.role !== 'admin' && currentUser?.id !== editingUser.id) {
+      showNotification('error', '❌ ليس لديك صلاحية لتعديل هذا المستخدم');
+      return;
+    }
+
     setSaving(true);
     setError(null);
     setSuccess(null);
@@ -157,18 +163,23 @@ export default function UsersManager() {
       }
 
       console.log('📤 Updating user with data:', updateData);
+      console.log('👤 Current user role:', currentUser?.role);
+      console.log('👤 Editing user ID:', editingUser.id);
 
       const { error: updateError } = await supabase
         .from('users')
         .update(updateData)
         .eq('id', editingUser.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('❌ Update error:', updateError);
+        throw updateError;
+      }
 
       console.log('✅ User updated successfully');
       
       // عرض رسالة نجاح
-      showNotification('success', 'تم تحديث المستخدم بنجاح');
+      showNotification('success', '✅ تم تحديث المستخدم بنجاح');
       
       // إعادة تحميل البيانات
       await loadUsers();
@@ -177,8 +188,8 @@ export default function UsersManager() {
       setShowForm(false);
       setEditingUser(null);
     } catch (error: any) {
-      console.error('Error saving user:', error);
-      showNotification('error', error.message || 'حدث خطأ في حفظ المستخدم');
+      console.error('❌ Error saving user:', error);
+      showNotification('error', error.message || '❌ حدث خطأ في حفظ المستخدم');
     } finally {
       setSaving(false);
     }
@@ -199,7 +210,7 @@ export default function UsersManager() {
             newSet.delete(permissionId);
             return newSet;
           });
-          showNotification('success', 'تم سحب الصلاحية بنجاح');
+          showNotification('success', '✅ تم سحب الصلاحية بنجاح');
         }
       } else {
         // منح الصلاحية
@@ -210,12 +221,12 @@ export default function UsersManager() {
         );
         if (success) {
           setUserPermissions(prev => new Set([...prev, permissionId]));
-          showNotification('success', 'تم منح الصلاحية بنجاح');
+          showNotification('success', '✅ تم منح الصلاحية بنجاح');
         }
       }
     } catch (error: any) {
       console.error('Error toggling permission:', error);
-      showNotification('error', error.message || 'حدث خطأ في تعديل الصلاحية');
+      showNotification('error', error.message || '❌ حدث خطأ في تعديل الصلاحية');
     }
   };
 
@@ -412,10 +423,10 @@ export default function UsersManager() {
                             
                             if (error) throw error;
                             
-                            showNotification('success', 'تم حذف المستخدم بنجاح');
+                            showNotification('success', '✅ تم حذف المستخدم بنجاح');
                             loadUsers();
                           } catch (error: any) {
-                            showNotification('error', error.message || 'حدث خطأ في حذف المستخدم');
+                            showNotification('error', error.message || '❌ حدث خطأ في حذف المستخدم');
                           }
                         }
                       }}
