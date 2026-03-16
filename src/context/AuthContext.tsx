@@ -21,22 +21,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CustomUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userPermissions, setUserPermissions] = useState<Record<string, boolean>>({});
 
-  // دوال التحقق من الصلاحيات
+  // دوال التحقق من الصلاحيات - تعتمد على user.permissions
   const hasPermission = (permission: string): boolean => {
     if (!user) return false;
     if (user.role === 'admin') return true; // الأدمن عنده كل الصلاحيات
-    return userPermissions[permission] || false;
+    return user.permissions?.[permission] || false;
   };
 
   const userRole = user?.role as UserRole || null;
 
-  // تحميل الصلاحيات
+  // تحميل الصلاحيات وتحديث user
   const loadUserPermissions = async (userId: string) => {
     try {
       const permissions = await permissionService.getUserPermissions(userId);
-      setUserPermissions(permissions);
+      // تحديث user مع الصلاحيات الجديدة
+      setUser(prev => prev ? { ...prev, permissions } : null);
     } catch (error) {
       console.error('Error loading permissions:', error);
     }
@@ -59,9 +59,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         taxNumber: profile?.tax_number,
         full_name: profile?.full_name || supabaseUser.user_metadata?.full_name,
         role: profile?.role || 'user',
+        permissions: {}, // تهيئة الصلاحيات
       } as CustomUser;
     } catch {
-      return supabaseUser as CustomUser;
+      return {
+        ...supabaseUser,
+        permissions: {},
+      } as CustomUser;
     }
   };
 
@@ -116,7 +120,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
-          setUserPermissions({}); // مسح الصلاحيات
         }
         
         setLoading(false);
@@ -218,7 +221,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('Signed out successfully');
       }
       setUser(null);
-      setUserPermissions({});
     } catch (error) {
       console.error('Sign out exception:', error);
     }
