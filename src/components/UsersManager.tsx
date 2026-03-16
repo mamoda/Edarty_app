@@ -10,15 +10,13 @@ import {
   Mail,
   Phone,
   Calendar,
-  Key,
   RefreshCw,
   X,
-  Check,
   AlertCircle,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import { User, UserRole} from '../types/database';
+import { User, UserRole } from '../types/database';
 import { permissionService } from '../services/permissionService';
 
 interface Permission {
@@ -38,8 +36,10 @@ export default function UsersManager() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [allPermissions, setAllPermissions] = useState<Permission[]>([]); 
+  const [allPermissions, setAllPermissions] = useState<Permission[]>([]);
   const [userPermissions, setUserPermissions] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // نموذج المستخدم
   const [formData, setFormData] = useState({
@@ -58,6 +58,7 @@ export default function UsersManager() {
 
   const loadUsers = async () => {
     setLoading(true);
+    setError(null);
     try {
       const { data, error } = await supabase
         .from('users')
@@ -66,24 +67,34 @@ export default function UsersManager() {
 
       if (error) throw error;
       setUsers(data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading users:', error);
+      setError(error.message || 'حدث خطأ في تحميل المستخدمين');
     } finally {
       setLoading(false);
     }
   };
 
   const loadAllPermissions = async () => {
-    const perms = await permissionService.getAllPermissions();
-    setAllPermissions(perms);
+    try {
+      const perms = await permissionService.getAllPermissions();
+      setAllPermissions(perms);
+    } catch (error) {
+      console.error('Error loading permissions:', error);
+    }
   };
 
   const loadUserPermissions = async (userId: string) => {
-    const perms = await permissionService.getUserPermissionsDetailed(userId);
-    setUserPermissions(new Set(perms.map(p => p.permission_id)));
+    try {
+      const perms = await permissionService.getUserPermissionsDetailed(userId);
+      setUserPermissions(new Set(perms.map(p => p.permission_id)));
+    } catch (error) {
+      console.error('Error loading user permissions:', error);
+    }
   };
 
   const handleEditUser = (user: User) => {
+    setError(null);
     setEditingUser(user);
     setFormData({
       email: user.email || '',
@@ -97,6 +108,7 @@ export default function UsersManager() {
   };
 
   const handleManagePermissions = (user: User) => {
+    setError(null);
     setSelectedUser(user);
     loadUserPermissions(user.id);
     setShowRoleModal(true);
@@ -104,56 +116,82 @@ export default function UsersManager() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    try {
-      if (editingUser) {
-        // تحديث مستخدم
-        const { error } = await supabase
-          .from('users')
-          .update({
-            full_name: formData.full_name,
-            phone: formData.phone,
-            role: formData.role,
-            department: formData.department,
-            is_active: formData.is_active,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', editingUser.id);
+    if (!editingUser) return;
 
-        if (error) throw error;
-      } else {
-        alert('لإنشاء مستخدم جديد، استخدم صفحة التسجيل');
+    setSaving(true);
+    setError(null);
+
+    try {
+      // تحضير البيانات - إزالة الحقول الفاضية
+      const updateData: Record<string, any> = {
+        full_name: formData.full_name,
+        role: formData.role,
+        is_active: formData.is_active,
+        updated_at: new Date().toISOString(),
+      };
+
+      // إضافة الحقول الاختيارية فقط إذا كانت موجودة
+      if (formData.phone?.trim()) updateData.phone = formData.phone.trim();
+      if (formData.department?.trim()) updateData.department = formData.department.trim();
+
+      // التحقق من صحة الـ role
+      const validRoles: UserRole[] = ['admin', 'accountant', 'moderator', 'user', 'teacher', 'student', 'parent'];
+      if (!validRoles.includes(formData.role)) {
+        setError('دور غير صالح');
+        return;
       }
 
-      loadUsers();
+      console.log('📤 Updating user with data:', updateData);
+
+      const { error: updateError } = await supabase
+        .from('users')
+        .update(updateData)
+        .eq('id', editingUser.id);
+
+      if (updateError) throw updateError;
+
+      console.log('✅ User updated successfully');
+      await loadUsers();
       setShowForm(false);
       setEditingUser(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving user:', error);
+      setError(error.message || 'حدث خطأ في حفظ المستخدم');
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleTogglePermission = async (permissionId: string) => {
-    if (!selectedUser) return;
+    if (!selectedUser || !currentUser) return;
 
-    const hasPermission = userPermissions.has(permissionId);
-    
-    if (hasPermission) {
-      // سحب الصلاحية
-      await permissionService.revokePermission(selectedUser.id, permissionId);
-      setUserPermissions(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(permissionId);
-        return newSet;
-      });
-    } else {
-      // منح الصلاحية
-      await permissionService.grantPermission(
-        selectedUser.id,
-        permissionId,
-        currentUser?.id || ''
-      );
-      setUserPermissions(prev => new Set([...prev, permissionId]));
+    try {
+      const hasPerm = userPermissions.has(permissionId);
+
+      if (hasPerm) {
+        // سحب الصلاحية
+        const success = await permissionService.revokePermission(selectedUser.id, permissionId);
+        if (success) {
+          setUserPermissions(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(permissionId);
+            return newSet;
+          });
+        }
+      } else {
+        // منح الصلاحية
+        const success = await permissionService.grantPermission(
+          selectedUser.id,
+          permissionId,
+          currentUser.id
+        );
+        if (success) {
+          setUserPermissions(prev => new Set([...prev, permissionId]));
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling permission:', error);
+      setError('حدث خطأ في تعديل الصلاحية');
     }
   };
 
@@ -162,28 +200,30 @@ export default function UsersManager() {
     user.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getRoleBadgeColor = (role: UserRole) => {
-    switch (role) {
-      case 'admin': return 'bg-purple-100 text-purple-800';
-      case 'accountant': return 'bg-green-100 text-green-800';
-      case 'moderator': return 'bg-blue-100 text-blue-800';
-      case 'teacher': return 'bg-orange-100 text-orange-800';
-      case 'student': return 'bg-yellow-100 text-yellow-800';
-      case 'parent': return 'bg-indigo-100 text-indigo-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+  const getRoleBadgeColor = (role: UserRole): string => {
+    const colors: Record<UserRole, string> = {
+      admin: 'bg-purple-100 text-purple-800',
+      accountant: 'bg-green-100 text-green-800',
+      moderator: 'bg-blue-100 text-blue-800',
+      teacher: 'bg-orange-100 text-orange-800',
+      student: 'bg-yellow-100 text-yellow-800',
+      parent: 'bg-indigo-100 text-indigo-800',
+      user: 'bg-gray-100 text-gray-800',
+    };
+    return colors[role] || 'bg-gray-100 text-gray-800';
   };
 
-  const getRoleName = (role: UserRole) => {
-    switch (role) {
-      case 'admin': return 'مدير النظام';
-      case 'accountant': return 'محاسب';
-      case 'moderator': return 'مشرف';
-      case 'teacher': return 'معلم';
-      case 'student': return 'طالب';
-      case 'parent': return 'ولي أمر';
-      default: return 'مستخدم';
-    }
+  const getRoleName = (role: UserRole): string => {
+    const names: Record<UserRole, string> = {
+      admin: 'مدير النظام',
+      accountant: 'محاسب',
+      moderator: 'مشرف',
+      teacher: 'معلم',
+      student: 'طالب',
+      parent: 'ولي أمر',
+      user: 'مستخدم',
+    };
+    return names[role] || 'مستخدم';
   };
 
   if (!hasPermission('users.view')) {
@@ -205,7 +245,18 @@ export default function UsersManager() {
         </div>
         {hasPermission('users.create') && (
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => {
+              setEditingUser(null);
+              setFormData({
+                email: '',
+                full_name: '',
+                phone: '',
+                role: 'user',
+                department: '',
+                is_active: true,
+              });
+              setShowForm(true);
+            }}
             className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2 rounded-lg transition-all shadow-md"
           >
             <UserPlus className="w-5 h-5" />
@@ -213,6 +264,17 @@ export default function UsersManager() {
           </button>
         )}
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+          <p className="text-sm text-red-700">{error}</p>
+          <button onClick={() => setError(null)} className="mr-auto">
+            <X className="w-4 h-4 text-red-400 hover:text-red-600" />
+          </button>
+        </div>
+      )}
 
       {/* Search */}
       <div className="bg-white rounded-xl shadow-md p-4">
@@ -246,7 +308,7 @@ export default function UsersManager() {
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center text-white font-bold">
-                      {user.full_name?.charAt(0) || user.email?.charAt(0)}
+                      {user.full_name?.charAt(0) || user.email?.charAt(0) || 'U'}
                     </div>
                     <div>
                       <h3 className="font-bold text-gray-900">{user.full_name || 'غير محدد'}</h3>
@@ -305,7 +367,12 @@ export default function UsersManager() {
                   )}
                   {hasPermission('users.delete') && user.id !== currentUser?.id && (
                     <button
-                      onClick={() => {/* حذف المستخدم */}}
+                      onClick={() => {
+                        // TODO: Implement delete
+                        if (window.confirm('هل أنت متأكد من حذف هذا المستخدم؟')) {
+                          // Delete logic
+                        }
+                      }}
                       className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       title="حذف"
                     >
@@ -414,12 +481,19 @@ export default function UsersManager() {
                   <label className="text-sm text-gray-700">حساب نشط</label>
                 </div>
 
+                {error && (
+                  <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                    {error}
+                  </div>
+                )}
+
                 <div className="flex gap-3 pt-4">
                   <button
                     type="submit"
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-all"
+                    disabled={saving}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    حفظ
+                    {saving ? 'جاري الحفظ...' : 'حفظ'}
                   </button>
                   <button
                     type="button"
@@ -453,59 +527,60 @@ export default function UsersManager() {
               <div className="bg-blue-50 p-4 rounded-lg mb-6">
                 <div className="flex items-center gap-2 mb-2">
                   <Shield className="w-5 h-5 text-blue-600" />
-                  <span className="font-medium text-blue-800">الدور الحالي: {getRoleName(selectedUser.role)}</span>
+                  <span className="font-medium text-blue-800">
+                    الدور الحالي: {getRoleName(selectedUser.role)}
+                  </span>
                 </div>
                 <p className="text-sm text-blue-700">
-                  {selectedUser.role === 'admin' 
+                  {selectedUser.role === 'admin'
                     ? 'مدير النظام لديه كل الصلاحيات تلقائياً'
                     : 'يمكنك إضافة صلاحيات إضافية للمستخدم'}
                 </p>
               </div>
 
               {/* Permissions by Module */}
-              {allPermissions.reduce((acc, perm) => {
-                const module = perm.module;
-                if (!acc[module]) acc[module] = [];
-                acc[module].push(perm);
-                return acc;
-              }, {} as Record<string, any[]>) &&
-                Object.entries(
-                  allPermissions.reduce((acc, perm) => {
-                    const module = perm.module;
-                    if (!acc[module]) acc[module] = [];
-                    acc[module].push(perm);
-                    return acc;
-                  }, {} as Record<string, any[]>)
-                ).map(([module, perms]) => (
-                  <div key={module} className="mb-6">
-                    <h4 className="font-medium text-gray-900 mb-3 capitalize">
-                      {module === 'users' ? 'المستخدمين' :
-                       module === 'students' ? 'الطلاب' :
-                       module === 'fees' ? 'الرسوم' :
-                       module === 'expenses' ? 'المصروفات' :
-                       module === 'teachers' ? 'المعلمين' :
-                       module === 'reports' ? 'التقارير' :
-                       module === 'system' ? 'النظام' : module}
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {perms.map((perm) => (
-                        <label key={perm.id} className="flex items-center gap-2 p-2 border border-gray-200 rounded-lg hover:bg-gray-50">
-                          <input
-                            type="checkbox"
-                            checked={userPermissions.has(perm.id)}
-                            onChange={() => handleTogglePermission(perm.id)}
-                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                            disabled={selectedUser.role === 'admin'}
-                          />
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{perm.name}</p>
-                            <p className="text-xs text-gray-500">{perm.description}</p>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
+              {Object.entries(
+                allPermissions.reduce((acc, perm) => {
+                  const module = perm.module;
+                  if (!acc[module]) acc[module] = [];
+                  acc[module].push(perm);
+                  return acc;
+                }, {} as Record<string, Permission[]>)
+              ).map(([module, perms]) => (
+                <div key={module} className="mb-6">
+                  <h4 className="font-medium text-gray-900 mb-3 capitalize">
+                    {module === 'users' ? 'المستخدمين' :
+                     module === 'students' ? 'الطلاب' :
+                     module === 'fees' ? 'الرسوم' :
+                     module === 'expenses' ? 'المصروفات' :
+                     module === 'teachers' ? 'المعلمين' :
+                     module === 'reports' ? 'التقارير' :
+                     module === 'system' ? 'النظام' : module}
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {perms.map((perm) => (
+                      <label
+                        key={perm.id}
+                        className={`flex items-center gap-2 p-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors ${
+                          selectedUser.role === 'admin' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={userPermissions.has(perm.id)}
+                          onChange={() => handleTogglePermission(perm.id)}
+                          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                          disabled={selectedUser.role === 'admin'}
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{perm.name}</p>
+                          <p className="text-xs text-gray-500">{perm.description}</p>
+                        </div>
+                      </label>
+                    ))}
                   </div>
-                ))}
+                </div>
+              ))}
 
               <div className="flex justify-end pt-4">
                 <button
