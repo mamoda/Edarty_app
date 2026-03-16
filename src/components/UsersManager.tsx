@@ -13,6 +13,7 @@ import {
   RefreshCw,
   X,
   AlertCircle,
+  CheckCircle,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
@@ -40,6 +41,7 @@ export default function UsersManager() {
   const [userPermissions, setUserPermissions] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   // نموذج المستخدم
   const [formData, setFormData] = useState({
@@ -70,8 +72,19 @@ export default function UsersManager() {
     } catch (error: any) {
       console.error('Error loading users:', error);
       setError(error.message || 'حدث خطأ في تحميل المستخدمين');
+      showNotification('error', error.message || 'حدث خطأ في تحميل المستخدمين');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    if (type === 'success') {
+      setSuccess(message);
+      setTimeout(() => setSuccess(null), 3000);
+    } else {
+      setError(message);
+      setTimeout(() => setError(null), 5000);
     }
   };
 
@@ -95,6 +108,7 @@ export default function UsersManager() {
 
   const handleEditUser = (user: User) => {
     setError(null);
+    setSuccess(null);
     setEditingUser(user);
     setFormData({
       email: user.email || '',
@@ -109,6 +123,7 @@ export default function UsersManager() {
 
   const handleManagePermissions = (user: User) => {
     setError(null);
+    setSuccess(null);
     setSelectedUser(user);
     loadUserPermissions(user.id);
     setShowRoleModal(true);
@@ -120,6 +135,7 @@ export default function UsersManager() {
 
     setSaving(true);
     setError(null);
+    setSuccess(null);
 
     try {
       // تحضير البيانات - إزالة الحقول الفاضية
@@ -137,8 +153,7 @@ export default function UsersManager() {
       // التحقق من صحة الـ role
       const validRoles: UserRole[] = ['admin', 'accountant', 'moderator', 'user', 'teacher', 'student', 'parent'];
       if (!validRoles.includes(formData.role)) {
-        setError('دور غير صالح');
-        return;
+        throw new Error('دور غير صالح');
       }
 
       console.log('📤 Updating user with data:', updateData);
@@ -151,12 +166,19 @@ export default function UsersManager() {
       if (updateError) throw updateError;
 
       console.log('✅ User updated successfully');
+      
+      // عرض رسالة نجاح
+      showNotification('success', 'تم تحديث المستخدم بنجاح');
+      
+      // إعادة تحميل البيانات
       await loadUsers();
+      
+      // إغلاق النموذج
       setShowForm(false);
       setEditingUser(null);
     } catch (error: any) {
       console.error('Error saving user:', error);
-      setError(error.message || 'حدث خطأ في حفظ المستخدم');
+      showNotification('error', error.message || 'حدث خطأ في حفظ المستخدم');
     } finally {
       setSaving(false);
     }
@@ -177,6 +199,7 @@ export default function UsersManager() {
             newSet.delete(permissionId);
             return newSet;
           });
+          showNotification('success', 'تم سحب الصلاحية بنجاح');
         }
       } else {
         // منح الصلاحية
@@ -187,11 +210,12 @@ export default function UsersManager() {
         );
         if (success) {
           setUserPermissions(prev => new Set([...prev, permissionId]));
+          showNotification('success', 'تم منح الصلاحية بنجاح');
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error toggling permission:', error);
-      setError('حدث خطأ في تعديل الصلاحية');
+      showNotification('error', error.message || 'حدث خطأ في تعديل الصلاحية');
     }
   };
 
@@ -265,9 +289,20 @@ export default function UsersManager() {
         )}
       </div>
 
-      {/* Error Display */}
+      {/* Success Notification */}
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3 animate-fade-in">
+          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+          <p className="text-sm text-green-700">{success}</p>
+          <button onClick={() => setSuccess(null)} className="mr-auto">
+            <X className="w-4 h-4 text-green-400 hover:text-green-600" />
+          </button>
+        </div>
+      )}
+
+      {/* Error Notification */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3 animate-fade-in">
           <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
           <p className="text-sm text-red-700">{error}</p>
           <button onClick={() => setError(null)} className="mr-auto">
@@ -367,10 +402,21 @@ export default function UsersManager() {
                   )}
                   {hasPermission('users.delete') && user.id !== currentUser?.id && (
                     <button
-                      onClick={() => {
-                        // TODO: Implement delete
-                        if (window.confirm('هل أنت متأكد من حذف هذا المستخدم؟')) {
-                          // Delete logic
+                      onClick={async () => {
+                        if (window.confirm(`هل أنت متأكد من حذف المستخدم ${user.full_name || user.email}؟`)) {
+                          try {
+                            const { error } = await supabase
+                              .from('users')
+                              .delete()
+                              .eq('id', user.id);
+                            
+                            if (error) throw error;
+                            
+                            showNotification('success', 'تم حذف المستخدم بنجاح');
+                            loadUsers();
+                          } catch (error: any) {
+                            showNotification('error', error.message || 'حدث خطأ في حذف المستخدم');
+                          }
                         }
                       }}
                       className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -480,12 +526,6 @@ export default function UsersManager() {
                   />
                   <label className="text-sm text-gray-700">حساب نشط</label>
                 </div>
-
-                {error && (
-                  <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
-                    {error}
-                  </div>
-                )}
 
                 <div className="flex gap-3 pt-4">
                   <button
