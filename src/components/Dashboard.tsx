@@ -38,7 +38,7 @@ import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useSchoolData } from "../hooks/useSchoolData";
 import { supabase } from "../lib/supabase";
-import { hasPermission, type Statistics } from "../types/database";
+import { type Statistics } from "../types/database";
 import StudentsManager from "./StudentsManager";
 import FeesManager from "./FeesManager";
 import ExpensesManager from "./ExpensesManager";
