@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Users,
   TrendingDown,
@@ -735,7 +735,9 @@ export default function Dashboard() {
   const [currentBackground, setCurrentBackground] = useState(0);
   const [dataError, setDataError] = useState<string | null>(null);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
-  const [isMounted, setIsMounted] = useState(true);
+  
+  // ✅ استخدام useRef بدلاً من useState
+  const isMounted = useRef(true);
 
   // مجموعة الخلفيات المتاحة
   const backgrounds = [
@@ -752,6 +754,14 @@ export default function Dashboard() {
       overlay: "from-purple-50/30 to-pink-50/30",
     },
   ];
+
+  // ✅ تهيئة isMounted
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   // للتحقق من حالة المستخدم
   useEffect(() => {
@@ -773,11 +783,8 @@ export default function Dashboard() {
 
   // تحميل البيانات فقط عندما يكون المستخدم موجوداً
   useEffect(() => {
-    let mounted = true;
-    setIsMounted(true);
-
     const loadData = async () => {
-      if (user?.id && schoolName && !initialLoadDone && mounted) {
+      if (user?.id && schoolName && !initialLoadDone && isMounted.current) {
         console.log("👤 User authenticated with ID, loading statistics...");
         setInitialLoadDone(true);
         await loadStatistics();
@@ -789,11 +796,6 @@ export default function Dashboard() {
     };
 
     loadData();
-
-    return () => {
-      mounted = false;
-      setIsMounted(false);
-    };
   }, [user?.id, schoolName]);
 
   const loadStatistics = async () => {
@@ -813,7 +815,7 @@ export default function Dashboard() {
     }
 
     const timeoutId = setTimeout(() => {
-      if (isMounted) {
+      if (isMounted.current) {
         setLoading(false);
         setDataError("استغرق التحميل وقتاً طويلاً. حاول مرة أخرى.");
         console.log("⚠️ Loading timeout - forced stop");
@@ -826,7 +828,6 @@ export default function Dashboard() {
     try {
       console.log(`📊 Loading statistics for ${schoolName} (user: ${user.id})`);
 
-      // جلب جميع البيانات المطلوبة
       const [studentsRes, feesRes, expensesRes, teachersRes] = await Promise.all([
         supabase.from("students").select("*").eq("user_id", user.id),
         supabase.from("fees").select("*, student:students(*)").eq("user_id", user.id),
@@ -834,12 +835,11 @@ export default function Dashboard() {
         supabase.from("teachers").select("*").eq("user_id", user.id),
       ]);
 
-      if (!isMounted) {
+      if (!isMounted.current) {
         clearTimeout(timeoutId);
         return;
       }
 
-      // التحقق من الأخطاء
       if (studentsRes.error) throw studentsRes.error;
       if (feesRes.error) throw feesRes.error;
       if (expensesRes.error) throw expensesRes.error;
@@ -973,7 +973,7 @@ export default function Dashboard() {
       const collectionRate =
         expectedRevenue > 0 ? (netRevenue / expectedRevenue) * 100 : 0;
 
-      if (isMounted) {
+      if (isMounted.current) {
         setStats({
           totalStudents,
           activeStudents,
@@ -1003,12 +1003,12 @@ export default function Dashboard() {
       }
       
     } catch (error: any) {
-      if (isMounted) {
+      if (isMounted.current) {
         console.error(`❌ Error loading statistics:`, error);
         setDataError(error?.message || "حدث خطأ في تحميل البيانات");
       }
     } finally {
-      if (isMounted) {
+      if (isMounted.current) {
         setLoading(false);
         console.log('✅ loadStatistics finished - loading set to false');
       }
