@@ -370,6 +370,10 @@ const ModernHeader: React.FC<HeaderProps> = ({
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
+  // أمان للـ user
+  const userEmail = user?.email || '';
+  const userInitial = userEmail ? userEmail.charAt(0).toUpperCase() : 'U';
+
   return (
     <header className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -389,8 +393,8 @@ const ModernHeader: React.FC<HeaderProps> = ({
 
             {/* اسم المدرسة بجانب الشعار */}
             <div className="hidden md:block">
-              {/* <p className="text-sm font-medium text-gray-900">{schoolName}</p> */}
-              {/* <p className="text-xs text-gray-500">{schoolIdentifier}</p> */}
+              <p className="text-sm font-medium text-gray-900">{schoolName}</p>
+              <p className="text-xs text-gray-500">{schoolIdentifier}</p>
             </div>
 
             <div className="h-6 w-px bg-gray-200"></div>
@@ -505,7 +509,7 @@ const ModernHeader: React.FC<HeaderProps> = ({
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center text-white font-medium text-sm shadow-sm hover:shadow-md transition-all duration-200"
               >
-                {user?.email?.charAt(0).toUpperCase() || "U"}
+                {userInitial}
               </button>
 
               {showUserMenu && (
@@ -773,6 +777,11 @@ export default function Dashboard() {
     });
   }, [user, loading, schoolName]);
 
+  // للتحقق من بيانات المدرسة
+  useEffect(() => {
+    console.log('🏫 School data:', { schoolName, schoolEmail, schoolIdentifier });
+  }, [schoolName, schoolEmail, schoolIdentifier]);
+
   // تغيير الخلفية كل 30 ثانية
   useEffect(() => {
     const interval = setInterval(() => {
@@ -798,69 +807,251 @@ export default function Dashboard() {
     loadData();
   }, [user?.id, schoolName]);
 
-const loadStatistics = async () => {
-  if (!user?.id) return;
-
-  setLoading(true);
-  setDataError(null);
-
-  try {
-    console.log(`📊 Loading statistics for ${schoolName}`);
-
-    // جلب البيانات بشكل متوازي مع معالجة الأخطاء بشكل فردي
-    const studentsPromise = supabase.from("students").select("*").eq("user_id", user.id);
-    const feesPromise = supabase.from("fees").select("*, student:students(*)").eq("user_id", user.id);
-    const expensesPromise = supabase.from("expenses").select("amount").eq("user_id", user.id);
-    const teachersPromise = supabase.from("teachers").select("*").eq("user_id", user.id);
-
-    const results = await Promise.allSettled([
-      studentsPromise,
-      feesPromise,
-      expensesPromise,
-      teachersPromise
-    ]);
-
-    // معالجة كل نتيجة على حدة
-    const [studentsResult, feesResult, expensesResult, teachersResult] = results;
-
-    let studentsData = [];
-    let feesData = [];
-    let expensesData = [];
-    let teachersData = [];
-
-    if (studentsResult.status === 'fulfilled' && !studentsResult.value.error) {
-      studentsData = studentsResult.value.data || [];
-    } else {
-      console.error('Students error:', studentsResult.status === 'fulfilled' ? studentsResult.value.error : studentsResult.reason);
+  const loadStatistics = async () => {
+    if (!user?.id) {
+      console.log("⏳ No user ID yet, skipping data load");
+      return;
     }
 
-    if (feesResult.status === 'fulfilled' && !feesResult.value.error) {
-      feesData = feesResult.value.data || [];
-    } else {
-      console.error('Fees error:', feesResult.status === 'fulfilled' ? feesResult.value.error : feesResult.reason);
+    if (!schoolName) {
+      console.log("⏳ School data not ready yet, waiting...");
+      return;
     }
 
-    if (expensesResult.status === 'fulfilled' && !expensesResult.value.error) {
-      expensesData = expensesResult.value.data || [];
-    } else {
-      console.error('Expenses error:', expensesResult.status === 'fulfilled' ? expensesResult.value.error : expensesResult.reason);
+    if (loading) {
+      console.log("⏳ Already loading, skipping...");
+      return;
     }
 
-    if (teachersResult.status === 'fulfilled' && !teachersResult.value.error) {
-      teachersData = teachersResult.value.data || [];
-    } else {
-      console.error('Teachers error:', teachersResult.status === 'fulfilled' ? teachersResult.value.error : teachersResult.reason);
-    }
+    setLoading(true);
+    setDataError(null);
 
-    // بقية الكود بنفس الشكل...
-    
-  } catch (error) {
-    console.error('Unexpected error:', error);
-    setDataError('حدث خطأ غير متوقع');
-  } finally {
-    setLoading(false);
-  }
-};  const handleViewChange = (view: View) => {
+    const timeoutId = setTimeout(() => {
+      if (isMounted.current) {
+        setLoading(false);
+        setDataError("استغرق التحميل وقتاً طويلاً. حاول مرة أخرى.");
+        console.log("⚠️ Loading timeout - forced stop");
+      }
+    }, 10000);
+
+    try {
+      console.log(`📊 Loading statistics for ${schoolName} (user: ${user.id})`);
+
+      // جلب جميع البيانات بشكل متوازي مع معالجة الأخطاء
+      const studentsPromise = supabase.from("students").select("*").eq("user_id", user.id);
+      const feesPromise = supabase.from("fees").select("*, student:students(*)").eq("user_id", user.id);
+      const expensesPromise = supabase.from("expenses").select("amount").eq("user_id", user.id);
+      const teachersPromise = supabase.from("teachers").select("*").eq("user_id", user.id);
+
+      const results = await Promise.allSettled([
+        studentsPromise,
+        feesPromise,
+        expensesPromise,
+        teachersPromise
+      ]);
+
+      if (!isMounted.current) {
+        clearTimeout(timeoutId);
+        return;
+      }
+
+      // معالجة كل نتيجة على حدة
+      const [studentsResult, feesResult, expensesResult, teachersResult] = results;
+
+      let studentsData: any[] = [];
+      let feesData: any[] = [];
+      let expensesData: any[] = [];
+      let teachersData: any[] = [];
+
+      if (studentsResult.status === 'fulfilled' && !studentsResult.value.error) {
+        studentsData = studentsResult.value.data || [];
+        console.log(`✅ Students loaded: ${studentsData.length}`);
+      } else {
+        console.error('❌ Students error:', studentsResult.status === 'fulfilled' ? studentsResult.value.error : studentsResult.reason);
+      }
+
+      if (feesResult.status === 'fulfilled' && !feesResult.value.error) {
+        feesData = feesResult.value.data || [];
+        console.log(`✅ Fees loaded: ${feesData.length}`);
+      } else {
+        console.error('❌ Fees error:', feesResult.status === 'fulfilled' ? feesResult.value.error : feesResult.reason);
+      }
+
+      if (expensesResult.status === 'fulfilled' && !expensesResult.value.error) {
+        expensesData = expensesResult.value.data || [];
+        console.log(`✅ Expenses loaded: ${expensesData.length}`);
+      } else {
+        console.error('❌ Expenses error:', expensesResult.status === 'fulfilled' ? expensesResult.value.error : expensesResult.reason);
+      }
+
+      if (teachersResult.status === 'fulfilled' && !teachersResult.value.error) {
+        teachersData = teachersResult.value.data || [];
+        console.log(`✅ Teachers loaded: ${teachersData.length}`);
+      } else {
+        console.error('❌ Teachers error:', teachersResult.status === 'fulfilled' ? teachersResult.value.error : teachersResult.reason);
+      }
+
+      // الإحصائيات الأساسية
+      const totalStudents = studentsData.length;
+      const activeStudents = studentsData.filter((s: any) => s.status === "active").length;
+
+      // حساب المدفوعات والاستردادات
+      const totalPayments = feesData
+        .filter((f: any) => f.amount > 0)
+        .reduce((sum: number, fee: any) => sum + Number(fee.amount), 0);
+      
+      const totalRefunds = feesData
+        .filter((f: any) => f.amount < 0)
+        .reduce((sum: number, fee: any) => sum + Math.abs(Number(fee.amount)), 0);
+      
+      const netRevenue = totalPayments - totalRefunds;
+
+      // حساب المصروفات
+      const totalExpenses = expensesData.reduce(
+        (sum: number, exp: any) => sum + Number(exp.amount), 0
+      );
+
+      // إحصائيات المعلمين
+      const totalTeachers = teachersData.length;
+      const activeTeachers = teachersData.filter((t: any) => t.status === "active").length;
+      const totalSalaries = teachersData
+        .filter((t: any) => t.status === "active")
+        .reduce((sum: number, t: any) => sum + Number(t.salary), 0);
+
+      // حساب حالات سداد الطلاب
+      let paidStudents = 0;
+      let partialPaidStudents = 0;
+      let unpaidStudents = 0;
+
+      studentsData.forEach((student: any) => {
+        const studentFees = feesData.filter((f: any) => f.student_id === student.id);
+        const totalPaid = studentFees
+          .filter((f: any) => f.amount > 0)
+          .reduce((sum: number, f: any) => sum + f.amount, 0);
+        const totalRefunded = studentFees
+          .filter((f: any) => f.amount < 0)
+          .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
+        const netPaid = totalPaid - totalRefunded;
+
+        if (netPaid >= 5000) {
+          paidStudents++;
+        } else if (netPaid > 0) {
+          partialPaidStudents++;
+        } else {
+          unpaidStudents++;
+        }
+      });
+
+      // حساب طرق الدفع
+      let cashPayments = 0, cardPayments = 0, bankPayments = 0, checkPayments = 0;
+      
+      feesData.forEach((fee: any) => {
+        const amount = Math.abs(fee.amount);
+        if (fee.notes) {
+          try {
+            const notes = JSON.parse(fee.notes);
+            const method = notes.payment_method;
+            if (method === "cash") cashPayments += amount;
+            else if (method === "card") cardPayments += amount;
+            else if (method === "bank_transfer") bankPayments += amount;
+            else if (method === "check") checkPayments += amount;
+          } catch {
+            cashPayments += amount;
+          }
+        } else {
+          cashPayments += amount;
+        }
+      });
+
+      // حساب تحصيلات اليوم
+      const today = new Date().toISOString().split("T")[0];
+      const todayPayments = feesData
+        .filter((f: any) => f.payment_date === today && f.amount > 0)
+        .reduce((sum: number, f: any) => sum + f.amount, 0);
+      const todayRefunds = feesData
+        .filter((f: any) => f.payment_date === today && f.amount < 0)
+        .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
+      const todayCollections = todayPayments - todayRefunds;
+
+      // حساب تحصيلات هذا الأسبوع
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      const weekPayments = feesData
+        .filter((f: any) => new Date(f.payment_date) >= oneWeekAgo && f.amount > 0)
+        .reduce((sum: number, f: any) => sum + f.amount, 0);
+      const weekRefunds = feesData
+        .filter((f: any) => new Date(f.payment_date) >= oneWeekAgo && f.amount < 0)
+        .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
+      const thisWeekCollections = weekPayments - weekRefunds;
+
+      // حساب تحصيلات هذا الشهر
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+      const monthPayments = feesData
+        .filter((f: any) => new Date(f.payment_date) >= oneMonthAgo && f.amount > 0)
+        .reduce((sum: number, f: any) => sum + f.amount, 0);
+      const monthRefunds = feesData
+        .filter((f: any) => new Date(f.payment_date) >= oneMonthAgo && f.amount < 0)
+        .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
+      const thisMonthCollections = monthPayments - monthRefunds;
+
+      // نسبة التحصيل
+      const expectedRevenue = activeStudents * 5000;
+      const collectionRate = expectedRevenue > 0 ? (netRevenue / expectedRevenue) * 100 : 0;
+
+      console.log('📊 Stats calculated:', {
+        totalStudents,
+        activeStudents,
+        totalPayments,
+        totalExpenses,
+        netRevenue,
+        paidStudents,
+        collectionRate
+      });
+
+      if (isMounted.current) {
+        setStats({
+          totalStudents,
+          activeStudents,
+          totalRevenue: totalPayments,
+          totalExpenses,
+          netProfit: netRevenue - totalExpenses,
+          totalTeachers,
+          activeTeachers,
+          totalSalaries,
+          totalRefunds,
+          netRevenue,
+          paidStudents,
+          partialPaidStudents,
+          unpaidStudents,
+          collectionRate,
+          cashPayments,
+          cardPayments,
+          bankTransferPayments: bankPayments,
+          checkPayments,
+          todayCollections,
+          thisWeekCollections,
+          thisMonthCollections,
+        });
+
+        console.log("✅ Statistics loaded successfully");
+        clearTimeout(timeoutId);
+      }
+      
+    } catch (error: any) {
+      if (isMounted.current) {
+        console.error(`❌ Error loading statistics:`, error);
+        setDataError(error?.message || "حدث خطأ في تحميل البيانات");
+      }
+    } finally {
+      if (isMounted.current) {
+        setLoading(false);
+        console.log('✅ loadStatistics finished - loading set to false');
+      }
+    }
+  };
+
+  const handleViewChange = (view: View) => {
     setCurrentView(view);
     if (view === "dashboard") {
       loadStatistics();
@@ -885,6 +1076,25 @@ const loadStatistics = async () => {
   const revenueTrend = calculateTrend();
   const expensesTrend = calculateTrend();
   const profitTrend = calculateTrend();
+
+  // عرض صفحة الخطأ إذا وجد
+  if (dataError) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md text-center">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">حدث خطأ</h2>
+          <p className="text-gray-600 mb-4">{dataError}</p>
+          <button
+            onClick={loadStatistics}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+          >
+            إعادة المحاولة
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -1172,23 +1382,11 @@ const loadStatistics = async () => {
                     </div>
                   </div>
 
-                  {dataError && (
-                    <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
-                      <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                      <p className="text-sm text-red-700">{dataError}</p>
-                      <button
-                        onClick={loadStatistics}
-                        className="mr-auto text-sm bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700"
-                      >
-                        إعادة المحاولة
-                      </button>
-                    </div>
-                  )}
-
                   {loading ? (
                     <div className="flex items-center justify-center py-20">
                       <div className="relative">
                         <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                        <p className="text-gray-600 mt-4">جاري تحميل البيانات...</p>
                       </div>
                     </div>
                   ) : (
