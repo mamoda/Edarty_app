@@ -125,11 +125,11 @@ export interface TeacherSalary {
 }
 
 // ============================================
-// أنواع الإحصائيات (Statistics)
+// أنواع الإحصائيات (Statistics) - المعدل
 // ============================================
 
 export interface Statistics {
-  // إحصائيات أساسية
+  // إحصائيات أساسية (كلها مطلوبة)
   totalStudents: number;
   activeStudents: number;
   totalRevenue: number;
@@ -137,31 +137,31 @@ export interface Statistics {
   netProfit: number;
   
   // إحصائيات المعلمين
-  totalTeachers?: number;
-  activeTeachers?: number;
-  totalSalaries?: number;
-  pendingSalaries?: number;
-  paidSalaries?: number;
-  monthlySalaryCost?: number;
+  totalTeachers: number;
+  activeTeachers: number;
+  totalSalaries: number;
+  pendingSalaries?: number;     // فقط هذه اختيارية
+  paidSalaries?: number;        // فقط هذه اختيارية
+  monthlySalaryCost?: number;   // فقط هذه اختيارية
   
-  // إحصائيات إضافية للرسوم
-  totalRefunds?: number;
-  netRevenue?: number;
-  paidStudents?: number;
-  partialPaidStudents?: number;
-  unpaidStudents?: number;
-  collectionRate?: number;
+  // إحصائيات إضافية للرسوم (كلها مطلوبة)
+  totalRefunds: number;
+  netRevenue: number;
+  paidStudents: number;
+  partialPaidStudents: number;
+  unpaidStudents: number;
+  collectionRate: number;
   
-  // إحصائيات طرق الدفع
-  cashPayments?: number;
-  cardPayments?: number;
-  bankTransferPayments?: number;
-  checkPayments?: number;
+  // إحصائيات طرق الدفع (كلها مطلوبة)
+  cashPayments: number;
+  cardPayments: number;
+  bankTransferPayments: number;
+  checkPayments: number;
   
-  // إحصائيات زمنية
-  todayCollections?: number;
-  thisWeekCollections?: number;
-  thisMonthCollections?: number;
+  // إحصائيات زمنية (كلها مطلوبة)
+  todayCollections: number;
+  thisWeekCollections: number;
+  thisMonthCollections: number;
 }
 
 // ============================================
@@ -247,18 +247,18 @@ export interface CustomUser extends SupabaseUser {
   permissions?: Record<string, boolean>;
 }
 
-// // ============================================
-// // دوال مساعدة للأنواع (Type Guards)
-// // ============================================
+// ============================================
+// دوال مساعدة للأنواع (Type Guards)
+// ============================================
 
-// export function isStudent(obj: any): obj is Student {
-//   return obj && typeof obj === 'object' && 'grade' in obj && 'parent_name' in obj;
-// }
+export function isStudent(obj: any): obj is Student {
+  return obj && typeof obj === 'object' && 'grade' in obj && 'parent_name' in obj;
+}
 
-// export function isTeacher(obj: any): obj is Teacher {
-//   return obj && typeof obj === 'object' && 'specialization' in obj && 'salary' in obj;
-// }
+export function isTeacher(obj: any): obj is Teacher {
+  return obj && typeof obj === 'object' && 'specialization' in obj && 'salary' in obj;
+}
 
-// export function isFee(obj: any): obj is Fee {
-//   return obj && typeof obj === 'object' && 'amount' in obj && 'payment_type' in obj;
-// }
+export function isFee(obj: any): obj is Fee {
+  return obj && typeof obj === 'object' && 'amount' in obj && 'payment_type' in obj;
+}
