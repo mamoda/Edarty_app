@@ -734,6 +734,7 @@ export default function Dashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState("month");
   const [currentBackground, setCurrentBackground] = useState(0);
   const [dataError, setDataError] = useState<string | null>(null);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   // مجموعة الخلفيات المتاحة
   const backgrounds = [
@@ -751,6 +752,16 @@ export default function Dashboard() {
     },
   ];
 
+  // للتحقق من حالة المستخدم
+  useEffect(() => {
+    console.log('👤 Current user state:', { 
+      user: user?.email, 
+      userId: user?.id,
+      loading: loading,
+      schoolName: schoolName
+    });
+  }, [user, loading, schoolName]);
+
   // تغيير الخلفية كل 30 ثانية
   useEffect(() => {
     const interval = setInterval(() => {
@@ -759,19 +770,34 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // تحميل البيانات فقط عندما يكون المستخدم موجوداً - مع منع التكرار
+  // تحميل البيانات فقط عندما يكون المستخدم موجوداً
   useEffect(() => {
-    if (user) {
-      console.log("👤 User authenticated, loading statistics...");
-      loadStatistics();
-    } else {
+    if (user?.id && schoolName && !initialLoadDone) {
+      console.log("👤 User authenticated with ID, loading statistics...");
+      setInitialLoadDone(true);
+      // تأخير بسيط للتأكد من اكتمال البيانات
+      const timer = setTimeout(() => {
+        loadStatistics();
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    } else if (!user) {
       console.log("⏳ Waiting for user...");
+    } else if (!schoolName) {
+      console.log("⏳ Waiting for school data...");
     }
-  }, [user?.id]); // ✅ استخدام user?.id بدلاً من user
+  }, [user?.id, schoolName]);
 
   const loadStatistics = async () => {
-    if (!user) {
-      console.log("⏳ No user yet, skipping data load");
+    if (!user?.id) {
+      console.log("⏳ No user ID yet, skipping data load");
+      return;
+    }
+
+    // ✅ التحقق من وجود بيانات كاملة
+    if (!schoolName) {
+      console.log("⏳ School data not ready yet, waiting...");
+      setTimeout(() => loadStatistics(), 500);
       return;
     }
 
