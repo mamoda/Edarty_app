@@ -735,6 +735,7 @@ export default function Dashboard() {
   const [currentBackground, setCurrentBackground] = useState(0);
   const [dataError, setDataError] = useState<string | null>(null);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
+  const [isMounted, setIsMounted] = useState(true);
 
   // مجموعة الخلفيات المتاحة
   const backgrounds = [
@@ -772,20 +773,27 @@ export default function Dashboard() {
 
   // تحميل البيانات فقط عندما يكون المستخدم موجوداً
   useEffect(() => {
-    if (user?.id && schoolName && !initialLoadDone) {
-      console.log("👤 User authenticated with ID, loading statistics...");
-      setInitialLoadDone(true);
-      // تأخير بسيط للتأكد من اكتمال البيانات
-      const timer = setTimeout(() => {
-        loadStatistics();
-      }, 100);
-      
-      return () => clearTimeout(timer);
-    } else if (!user) {
-      console.log("⏳ Waiting for user...");
-    } else if (!schoolName) {
-      console.log("⏳ Waiting for school data...");
-    }
+    let mounted = true;
+    setIsMounted(true);
+
+    const loadData = async () => {
+      if (user?.id && schoolName && !initialLoadDone && mounted) {
+        console.log("👤 User authenticated with ID, loading statistics...");
+        setInitialLoadDone(true);
+        await loadStatistics();
+      } else if (!user) {
+        console.log("⏳ Waiting for user...");
+      } else if (!schoolName) {
+        console.log("⏳ Waiting for school data...");
+      }
+    };
+
+    loadData();
+
+    return () => {
+      mounted = false;
+      setIsMounted(false);
+    };
   }, [user?.id, schoolName]);
 
   const loadStatistics = async () => {
@@ -794,25 +802,23 @@ export default function Dashboard() {
       return;
     }
 
-    // ✅ التحقق من وجود بيانات كاملة
     if (!schoolName) {
       console.log("⏳ School data not ready yet, waiting...");
-      setTimeout(() => loadStatistics(), 500);
       return;
     }
 
-    // ✅ منع التحميل إذا كان في تحميل بالفعل
     if (loading) {
       console.log("⏳ Already loading, skipping...");
       return;
     }
 
-    // ✅ مؤقت أمان: لو استغرق التحميل أكثر من 10 ثواني، أوقف التحميل
     const timeoutId = setTimeout(() => {
-      setLoading(false);
-      setDataError("استغرق التحميل وقتاً طويلاً. حاول مرة أخرى.");
-      console.log("⚠️ Loading timeout - forced stop");
-    }, 10000);
+      if (isMounted) {
+        setLoading(false);
+        setDataError("استغرق التحميل وقتاً طويلاً. حاول مرة أخرى.");
+        console.log("⚠️ Loading timeout - forced stop");
+      }
+    }, 5000);
 
     setLoading(true);
     setDataError(null);
@@ -820,32 +826,24 @@ export default function Dashboard() {
     try {
       console.log(`📊 Loading statistics for ${schoolName} (user: ${user.id})`);
 
-      // جلب جميع البيانات المطلوبة مع معالجة الأخطاء
-      const results = await Promise.allSettled([
+      // جلب جميع البيانات المطلوبة
+      const [studentsRes, feesRes, expensesRes, teachersRes] = await Promise.all([
         supabase.from("students").select("*").eq("user_id", user.id),
-        supabase
-          .from("fees")
-          .select("*, student:students(*)")
-          .eq("user_id", user.id),
+        supabase.from("fees").select("*, student:students(*)").eq("user_id", user.id),
         supabase.from("expenses").select("amount").eq("user_id", user.id),
         supabase.from("teachers").select("*").eq("user_id", user.id),
       ]);
 
-      // معالجة النتائج
-      const [studentsRes, feesRes, expensesRes, teachersRes] = results.map(
-        (result) =>
-          result.status === "fulfilled"
-            ? result.value
-            : { data: [], error: result.reason },
-      );
+      if (!isMounted) {
+        clearTimeout(timeoutId);
+        return;
+      }
 
-      if (studentsRes.error)
-        console.error("Students error:", studentsRes.error);
-      if (feesRes.error) console.error("Fees error:", feesRes.error);
-      if (expensesRes.error)
-        console.error("Expenses error:", expensesRes.error);
-      if (teachersRes.error)
-        console.error("Teachers error:", teachersRes.error);
+      // التحقق من الأخطاء
+      if (studentsRes.error) throw studentsRes.error;
+      if (feesRes.error) throw feesRes.error;
+      if (expensesRes.error) throw expensesRes.error;
+      if (teachersRes.error) throw teachersRes.error;
 
       // الإحصائيات الأساسية
       const totalStudents = studentsRes.data?.length ?? 0;
@@ -975,41 +973,45 @@ export default function Dashboard() {
       const collectionRate =
         expectedRevenue > 0 ? (netRevenue / expectedRevenue) * 100 : 0;
 
-      setStats({
-        totalStudents,
-        activeStudents,
-        totalRevenue: totalPayments,
-        totalExpenses,
-        netProfit: netRevenue - totalExpenses,
-        totalTeachers,
-        activeTeachers,
-        totalSalaries,
-        totalRefunds,
-        netRevenue,
-        paidStudents,
-        partialPaidStudents,
-        unpaidStudents,
-        collectionRate,
-        cashPayments,
-        cardPayments,
-        bankTransferPayments: bankPayments,
-        checkPayments,
-        todayCollections,
-        thisWeekCollections,
-        thisMonthCollections,
-      });
+      if (isMounted) {
+        setStats({
+          totalStudents,
+          activeStudents,
+          totalRevenue: totalPayments,
+          totalExpenses,
+          netProfit: netRevenue - totalExpenses,
+          totalTeachers,
+          activeTeachers,
+          totalSalaries,
+          totalRefunds,
+          netRevenue,
+          paidStudents,
+          partialPaidStudents,
+          unpaidStudents,
+          collectionRate,
+          cashPayments,
+          cardPayments,
+          bankTransferPayments: bankPayments,
+          checkPayments,
+          todayCollections,
+          thisWeekCollections,
+          thisMonthCollections,
+        });
 
-      console.log("✅ Statistics loaded successfully");
-      
-      // ✅ إلغاء المؤقت إذا نجح التحميل
-      clearTimeout(timeoutId);
+        console.log("✅ Statistics loaded successfully");
+        clearTimeout(timeoutId);
+      }
       
     } catch (error: any) {
-      console.error(`❌ Error loading statistics:`, error);
-      setDataError(error?.message || "حدث خطأ في تحميل البيانات");
+      if (isMounted) {
+        console.error(`❌ Error loading statistics:`, error);
+        setDataError(error?.message || "حدث خطأ في تحميل البيانات");
+      }
     } finally {
-      setLoading(false);
-      console.log('✅ loadStatistics finished - loading set to false');
+      if (isMounted) {
+        setLoading(false);
+        console.log('✅ loadStatistics finished - loading set to false');
+      }
     }
   };
 
@@ -1103,10 +1105,6 @@ export default function Dashboard() {
                     <span className="text-sm font-semibold text-gray-900">
                       {schoolName}
                     </span>
-                    {/* <span className="text-[10px] text-gray-400 mr-2">
-                      {" "}
-                      {schoolIdentifier}
-                    </span> */}
                   </div>
                 </div>
 
