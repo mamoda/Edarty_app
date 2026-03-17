@@ -370,7 +370,6 @@ const ModernHeader: React.FC<HeaderProps> = ({
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
-  // أمان للـ user
   const userEmail = user?.email || '';
   const userInitial = userEmail ? userEmail.charAt(0).toUpperCase() : 'U';
 
@@ -391,7 +390,6 @@ const ModernHeader: React.FC<HeaderProps> = ({
               />
             </div>
 
-            {/* اسم المدرسة بجانب الشعار */}
             <div className="hidden md:block">
               <p className="text-sm font-medium text-gray-900">{schoolName}</p>
               <p className="text-xs text-gray-500">{schoolIdentifier}</p>
@@ -428,86 +426,25 @@ const ModernHeader: React.FC<HeaderProps> = ({
                 className="w-full px-4 py-2 pr-10 bg-gray-100/50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all duration-300 text-sm placeholder:text-gray-400"
               />
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors duration-300" />
-
-              <kbd className="absolute left-10 top-1/2 transform -translate-y-1/2 hidden group-focus-within:inline-flex items-center gap-1 px-1.5 py-0.5 bg-gray-200/80 rounded text-xs text-gray-500">
-                ⌘K
-              </kbd>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={toggleLanguage}
-              className="p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-200 flex items-center gap-1"
-            >
+            <button onClick={toggleLanguage} className="p-2 hover:bg-gray-100/80 rounded-xl">
               <Globe className="w-4 h-4 text-gray-600" />
               <span className="text-xs font-medium text-gray-600">
                 {language === "ar" ? "English" : "العربية"}
               </span>
             </button>
 
-            <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className="p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-200"
-            >
-              {isDarkMode ? (
-                <Sun className="w-4 h-4 text-gray-600" />
-              ) : (
-                <Moon className="w-4 h-4 text-gray-600" />
-              )}
-            </button>
-
-            <div className="relative">
-              <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-200 relative"
-              >
-                <Bell className="w-4 h-4 text-gray-600" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-600 rounded-full ring-2 ring-white"></span>
-              </button>
-
-              {showNotifications && (
-                <div className="absolute left-0 mt-2 w-80 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200/50 overflow-hidden">
-                  <div className="p-3 border-b border-gray-100">
-                    <h3 className="font-semibold text-gray-900">
-                      {t("notifications")}
-                    </h3>
-                  </div>
-                  <div className="max-h-96 overflow-y-auto">
-                    {[1, 2, 3].map((i) => (
-                      <div
-                        key={i}
-                        className="p-3 hover:bg-gray-50/80 transition-colors duration-200 border-b border-gray-100 last:border-0"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="p-1.5 bg-blue-100 rounded-lg">
-                            <Activity className="w-3 h-3 text-blue-600" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm text-gray-900">
-                              {t("newUpdate")}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-0.5">
-                              {t("minAgo")}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <button className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-amber-500/25 transition-all duration-300">
-              <Crown className="w-4 h-4" />
-              <span>{t("upgrade")}</span>
+            <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 hover:bg-gray-100/80 rounded-xl">
+              {isDarkMode ? <Sun className="w-4 h-4 text-gray-600" /> : <Moon className="w-4 h-4 text-gray-600" />}
             </button>
 
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center text-white font-medium text-sm shadow-sm hover:shadow-md transition-all duration-200"
+                className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center text-white font-medium text-sm"
               >
                 {userInitial}
               </button>
@@ -515,16 +452,12 @@ const ModernHeader: React.FC<HeaderProps> = ({
               {showUserMenu && (
                 <div className="absolute left-0 mt-2 w-48 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200/50 overflow-hidden">
                   <div className="p-3 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-900">
-                      {user?.email}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {t("freePlan")}
-                    </p>
+                    <p className="text-sm font-medium text-gray-900">{user?.email}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{t("freePlan")}</p>
                   </div>
                   <button
                     onClick={onSignOut}
-                    className="w-full text-right p-3 text-sm text-red-600 hover:bg-red-50/80 transition-colors duration-200"
+                    className="w-full text-right p-3 text-sm text-red-600 hover:bg-red-50/80"
                   >
                     {t("signOut")}
                   </button>
@@ -545,13 +478,10 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose, language, t }) => {
       id: 1,
       type: "bot",
       text: t("aiAssistant"),
-      time: new Date().toLocaleTimeString(
-        language === "ar" ? "ar-EG" : "en-US",
-        {
-          hour: "2-digit",
-          minute: "2-digit",
-        },
-      ),
+      time: new Date().toLocaleTimeString(language === "ar" ? "ar-EG" : "en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
     },
   ]);
 
@@ -563,13 +493,10 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose, language, t }) => {
       id: messages.length + 1,
       type: "user",
       text: message,
-      time: new Date().toLocaleTimeString(
-        language === "ar" ? "ar-EG" : "en-US",
-        {
-          hour: "2-digit",
-          minute: "2-digit",
-        },
-      ),
+      time: new Date().toLocaleTimeString(language === "ar" ? "ar-EG" : "en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
     };
     setMessages([...messages, userMessage]);
     setMessage("");
@@ -579,13 +506,10 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose, language, t }) => {
         id: messages.length + 2,
         type: "bot",
         text: t("supportReply"),
-        time: new Date().toLocaleTimeString(
-          language === "ar" ? "ar-EG" : "en-US",
-          {
-            hour: "2-digit",
-            minute: "2-digit",
-          },
-        ),
+        time: new Date().toLocaleTimeString(language === "ar" ? "ar-EG" : "en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
       };
       setMessages((prev) => [...prev, botMessage]);
     }, 1000);
@@ -607,10 +531,7 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose, language, t }) => {
               <p className="text-xs text-white/80">{t("supportDesc")}</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-white/20 rounded-lg transition-all duration-200"
-          >
+          <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-lg">
             <X className="w-4 h-4 text-white" />
           </button>
         </div>
@@ -618,34 +539,20 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose, language, t }) => {
 
       <div className="h-96 overflow-y-auto p-4 space-y-3 bg-gray-50/50">
         {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex ${msg.type === "user" ? "justify-start" : "justify-end"}`}
-          >
+          <div key={msg.id} className={`flex ${msg.type === "user" ? "justify-start" : "justify-end"}`}>
             <div
               className={`relative max-w-[80%] rounded-lg p-3 ${
-                msg.type === "user"
-                  ? "bg-gray-200 text-gray-900"
-                  : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
+                msg.type === "user" ? "bg-gray-200 text-gray-900" : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
               }`}
             >
               <p className="text-sm">{msg.text}</p>
-              <p
-                className={`text-xs mt-1 ${
-                  msg.type === "user" ? "text-gray-500" : "text-white/70"
-                }`}
-              >
-                {msg.time}
-              </p>
+              <p className={`text-xs mt-1 ${msg.type === "user" ? "text-gray-500" : "text-white/70"}`}>{msg.time}</p>
             </div>
           </div>
         ))}
       </div>
 
-      <form
-        onSubmit={handleSendMessage}
-        className="p-4 border-t border-gray-100 bg-white"
-      >
+      <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-100 bg-white">
         <div className="flex gap-2">
           <input
             type="text"
@@ -656,7 +563,7 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose, language, t }) => {
           />
           <button
             type="submit"
-            className="p-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:shadow-lg transition-all duration-300 disabled:opacity-50"
+            className="p-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:shadow-lg disabled:opacity-50"
             disabled={!message.trim()}
           >
             <Send className="w-4 h-4" />
@@ -740,49 +647,32 @@ export default function Dashboard() {
   const [dataError, setDataError] = useState<string | null>(null);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   
-  // ✅ استخدام useRef بدلاً من useState
   const isMounted = useRef(true);
 
-  // مجموعة الخلفيات المتاحة
   const backgrounds = [
-    {
-      image: backgroundPattern,
-      overlay: "from-blue-50/30 to-indigo-50/30",
-    },
-    {
-      image: backgroundWave,
-      overlay: "from-emerald-50/30 to-teal-50/30",
-    },
-    {
-      image: backgroundDots,
-      overlay: "from-purple-50/30 to-pink-50/30",
-    },
+    { image: backgroundPattern, overlay: "from-blue-50/30 to-indigo-50/30" },
+    { image: backgroundWave, overlay: "from-emerald-50/30 to-teal-50/30" },
+    { image: backgroundDots, overlay: "from-purple-50/30 to-pink-50/30" },
   ];
 
-  // ✅ تهيئة isMounted
   useEffect(() => {
     isMounted.current = true;
-    return () => {
-      isMounted.current = false;
-    };
+    return () => { isMounted.current = false; };
   }, []);
 
-  // للتحقق من حالة المستخدم
   useEffect(() => {
     console.log('👤 Current user state:', { 
       user: user?.email, 
       userId: user?.id,
-      loading: loading,
-      schoolName: schoolName
+      loading,
+      schoolName
     });
   }, [user, loading, schoolName]);
 
-  // للتحقق من بيانات المدرسة
   useEffect(() => {
     console.log('🏫 School data:', { schoolName, schoolEmail, schoolIdentifier });
   }, [schoolName, schoolEmail, schoolIdentifier]);
 
-  // تغيير الخلفية كل 30 ثانية
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentBackground((prev) => (prev + 1) % backgrounds.length);
@@ -790,22 +680,28 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // تحميل البيانات فقط عندما يكون المستخدم موجوداً
+  // ✅ التعديل الأهم هنا
   useEffect(() => {
     const loadData = async () => {
-      if (user?.id && schoolName && !initialLoadDone && isMounted.current) {
-        console.log("👤 User authenticated with ID, loading statistics...");
+      // استخدام fallback لاسم المدرسة
+      const effectiveSchoolName = schoolName || user?.email?.split('@')[0] || 'مدرستي';
+      
+      if (user?.id && !initialLoadDone && !loading && isMounted.current) {
+        console.log("👤 Starting data load with:", { effectiveSchoolName });
         setInitialLoadDone(true);
         await loadStatistics();
-      } else if (!user) {
-        console.log("⏳ Waiting for user...");
-      } else if (!schoolName) {
-        console.log("⏳ Waiting for school data...");
+      } else {
+        console.log("⏳ Waiting conditions:", { 
+          hasUser: !!user?.id, 
+          initialLoadDone, 
+          loading,
+          isMounted: isMounted.current 
+        });
       }
     };
 
     loadData();
-  }, [user?.id, schoolName]);
+  }, [user?.id, loading]); // ✅ شيل schoolName من الـ dependencies
 
   const loadStatistics = async () => {
     if (!user?.id) {
@@ -813,15 +709,7 @@ export default function Dashboard() {
       return;
     }
 
-    if (!schoolName) {
-      console.log("⏳ School data not ready yet, waiting...");
-      return;
-    }
-
-    if (loading) {
-      console.log("⏳ Already loading, skipping...");
-      return;
-    }
+    console.log("🚀 loadStatistics started at:", new Date().toISOString());
 
     setLoading(true);
     setDataError(null);
@@ -832,30 +720,23 @@ export default function Dashboard() {
         setDataError("استغرق التحميل وقتاً طويلاً. حاول مرة أخرى.");
         console.log("⚠️ Loading timeout - forced stop");
       }
-    }, 10000);
+    }, 15000);
 
     try {
-      console.log(`📊 Loading statistics for ${schoolName} (user: ${user.id})`);
+      console.log(`📊 Loading statistics for user: ${user.id}`);
 
-      // جلب جميع البيانات بشكل متوازي مع معالجة الأخطاء
       const studentsPromise = supabase.from("students").select("*").eq("user_id", user.id);
       const feesPromise = supabase.from("fees").select("*, student:students(*)").eq("user_id", user.id);
       const expensesPromise = supabase.from("expenses").select("amount").eq("user_id", user.id);
       const teachersPromise = supabase.from("teachers").select("*").eq("user_id", user.id);
 
-      const results = await Promise.allSettled([
-        studentsPromise,
-        feesPromise,
-        expensesPromise,
-        teachersPromise
-      ]);
+      const results = await Promise.allSettled([studentsPromise, feesPromise, expensesPromise, teachersPromise]);
 
       if (!isMounted.current) {
         clearTimeout(timeoutId);
         return;
       }
 
-      // معالجة كل نتيجة على حدة
       const [studentsResult, feesResult, expensesResult, teachersResult] = results;
 
       let studentsData: any[] = [];
@@ -891,11 +772,9 @@ export default function Dashboard() {
         console.error('❌ Teachers error:', teachersResult.status === 'fulfilled' ? teachersResult.value.error : teachersResult.reason);
       }
 
-      // الإحصائيات الأساسية
       const totalStudents = studentsData.length;
       const activeStudents = studentsData.filter((s: any) => s.status === "active").length;
 
-      // حساب المدفوعات والاستردادات
       const totalPayments = feesData
         .filter((f: any) => f.amount > 0)
         .reduce((sum: number, fee: any) => sum + Number(fee.amount), 0);
@@ -906,19 +785,14 @@ export default function Dashboard() {
       
       const netRevenue = totalPayments - totalRefunds;
 
-      // حساب المصروفات
-      const totalExpenses = expensesData.reduce(
-        (sum: number, exp: any) => sum + Number(exp.amount), 0
-      );
+      const totalExpenses = expensesData.reduce((sum: number, exp: any) => sum + Number(exp.amount), 0);
 
-      // إحصائيات المعلمين
       const totalTeachers = teachersData.length;
       const activeTeachers = teachersData.filter((t: any) => t.status === "active").length;
       const totalSalaries = teachersData
         .filter((t: any) => t.status === "active")
         .reduce((sum: number, t: any) => sum + Number(t.salary), 0);
 
-      // حساب حالات سداد الطلاب
       let paidStudents = 0;
       let partialPaidStudents = 0;
       let unpaidStudents = 0;
@@ -933,16 +807,11 @@ export default function Dashboard() {
           .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
         const netPaid = totalPaid - totalRefunded;
 
-        if (netPaid >= 5000) {
-          paidStudents++;
-        } else if (netPaid > 0) {
-          partialPaidStudents++;
-        } else {
-          unpaidStudents++;
-        }
+        if (netPaid >= 5000) paidStudents++;
+        else if (netPaid > 0) partialPaidStudents++;
+        else unpaidStudents++;
       });
 
-      // حساب طرق الدفع
       let cashPayments = 0, cardPayments = 0, bankPayments = 0, checkPayments = 0;
       
       feesData.forEach((fee: any) => {
@@ -963,7 +832,6 @@ export default function Dashboard() {
         }
       });
 
-      // حساب تحصيلات اليوم
       const today = new Date().toISOString().split("T")[0];
       const todayPayments = feesData
         .filter((f: any) => f.payment_date === today && f.amount > 0)
@@ -973,7 +841,6 @@ export default function Dashboard() {
         .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
       const todayCollections = todayPayments - todayRefunds;
 
-      // حساب تحصيلات هذا الأسبوع
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
       const weekPayments = feesData
@@ -984,7 +851,6 @@ export default function Dashboard() {
         .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
       const thisWeekCollections = weekPayments - weekRefunds;
 
-      // حساب تحصيلات هذا الشهر
       const oneMonthAgo = new Date();
       oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
       const monthPayments = feesData
@@ -995,19 +861,8 @@ export default function Dashboard() {
         .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
       const thisMonthCollections = monthPayments - monthRefunds;
 
-      // نسبة التحصيل
       const expectedRevenue = activeStudents * 5000;
       const collectionRate = expectedRevenue > 0 ? (netRevenue / expectedRevenue) * 100 : 0;
-
-      console.log('📊 Stats calculated:', {
-        totalStudents,
-        activeStudents,
-        totalPayments,
-        totalExpenses,
-        netRevenue,
-        paidStudents,
-        collectionRate
-      });
 
       if (isMounted.current) {
         setStats({
@@ -1059,10 +914,9 @@ export default function Dashboard() {
   };
 
   const revenueData = [65, 45, 75, 55, 85, 95, 70];
-  const days =
-    language === "ar"
-      ? [t("mon"), t("tue"), t("wed"), t("thu"), t("fri"), t("sat"), t("sun")]
-      : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const days = language === "ar"
+    ? [t("mon"), t("tue"), t("wed"), t("thu"), t("fri"), t("sat"), t("sun")]
+    : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   const calculateTrend = (): { trend: "up" | "down"; value: number } => {
     const mockChange = Math.random() * 20 - 10;
@@ -1077,7 +931,6 @@ export default function Dashboard() {
   const expensesTrend = calculateTrend();
   const profitTrend = calculateTrend();
 
-  // عرض صفحة الخطأ إذا وجد
   if (dataError) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
@@ -1101,7 +954,6 @@ export default function Dashboard() {
       className="min-h-screen bg-gray-50/50 relative"
       dir={language === "ar" ? "rtl" : "ltr"}
     >
-      {/* خلفية متحركة مع صورة */}
       <div className="fixed inset-0 z-0">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000"
@@ -1110,23 +962,14 @@ export default function Dashboard() {
             opacity: 0.15,
           }}
         />
-
-        <div
-          className={`absolute inset-0 bg-gradient-to-br ${backgrounds[currentBackground].overlay} transition-all duration-1000`}
-        />
-
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.03),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(139,92,246,0.03),transparent_50%)]" />
-
+        <div className={`absolute inset-0 bg-gradient-to-br ${backgrounds[currentBackground].overlay} transition-all duration-1000`} />
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
           {backgrounds.map((_, index) => (
             <button
               key={index}
               onClick={() => setCurrentBackground(index)}
               className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                currentBackground === index
-                  ? "w-6 bg-blue-600"
-                  : "bg-gray-300 hover:bg-gray-400"
+                currentBackground === index ? "w-6 bg-blue-600" : "bg-gray-300 hover:bg-gray-400"
               }`}
             />
           ))}
@@ -1145,72 +988,45 @@ export default function Dashboard() {
           schoolIdentifier={schoolIdentifier}
         />
 
-        {/* شريط حالة المدرسة */}
         <div className="relative border-b border-gray-200/50 bg-white/40 backdrop-blur-xl">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between py-2.5">
-              {/* الجهة اليمنى */}
               <div className="flex items-center gap-4">
-                {/* شارة المدرسة */}
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 bg-gradient-to-br from-blue-600/10 to-indigo-600/10 rounded-lg">
                     <School className="w-4 h-4 text-blue-600" />
                   </div>
                   <div>
-                    <span className="text-sm font-semibold text-gray-900">
-                      {schoolName}
-                    </span>
+                    <span className="text-sm font-semibold text-gray-900">{schoolName}</span>
                   </div>
                 </div>
-
-                {/* فواصل نقطية */}
                 <span className="text-gray-300 text-lg leading-none">•</span>
-
-                {/* الطلاب النشطين */}
                 <div className="flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-gray-500" />
                   <span className="text-xs text-gray-600">
-                    <span className="font-medium text-gray-900">
-                      {formatNumber(stats.activeStudents, language)}
-                    </span>{" "}
-                    طالب نشط
+                    <span className="font-medium text-gray-900">{formatNumber(stats.activeStudents, language)}</span> طالب نشط
                   </span>
                 </div>
-
                 <span className="text-gray-300 text-lg leading-none">•</span>
-
-                {/* البريد الإلكتروني */}
                 <div className="flex items-center gap-1.5">
                   <Mail className="w-3.5 h-3.5 text-gray-500" />
-                  <span className="text-xs text-gray-600 truncate max-w-[180px]">
-                    {schoolEmail}
-                  </span>
+                  <span className="text-xs text-gray-600 truncate max-w-[180px]">{schoolEmail}</span>
                 </div>
               </div>
 
-              {/* الجهة اليسرى - نسبة التحصيل */}
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500">نسبة التحصيل</span>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-bold text-green-600">
-                      {stats.collectionRate.toFixed(1)}%
-                    </span>
+                    <span className="text-sm font-bold text-green-600">{stats.collectionRate.toFixed(1)}%</span>
                     <div className="w-12 h-1 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-green-500 rounded-full"
-                        style={{ width: `${stats.collectionRate}%` }}
-                      ></div>
+                      <div className="h-full bg-green-500 rounded-full" style={{ width: `${stats.collectionRate}%` }} />
                     </div>
                   </div>
                 </div>
-
-                {/* حالة الاتصال */}
                 <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 rounded-full border border-green-100">
-                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-[10px] font-medium text-green-700">
-                    مباشر
-                  </span>
+                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                  <span className="text-[10px] font-medium text-green-700">مباشر</span>
                 </div>
               </div>
             </div>
@@ -1223,101 +1039,43 @@ export default function Dashboard() {
             className="group relative w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow-lg hover:shadow-xl hover:shadow-blue-600/25 transition-all duration-300 hover:scale-110"
           >
             <MessageCircle className="w-5 h-5 mx-auto transition-transform duration-300 group-hover:rotate-12" />
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full"></span>
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full" />
           </button>
         </div>
 
-        <ModernChat
-          isOpen={isChatOpen}
-          onClose={() => setIsChatOpen(false)}
-          language={language}
-          t={t}
-        />
+        <ModernChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} language={language} t={t} />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex gap-6">
             {showSidebar && (
               <aside className="w-64 flex-shrink-0">
                 <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-2 sticky top-20 border border-gray-100/50">
-                  <ModernMenuItem
-                    label={t("dashboard")}
-                    icon={Home}
-                    view="dashboard"
-                    currentView={currentView}
-                    onClick={() => handleViewChange("dashboard")}
-                  />
-                  <ModernMenuItem
-                    label={t("students")}
-                    icon={GraduationCap}
-                    view="students"
-                    count={stats.activeStudents}
-                    currentView={currentView}
-                    onClick={() => handleViewChange("students")}
-                  />
-                  <ModernMenuItem
-                    label={t("teachers")}
-                    icon={Briefcase}
-                    view="teachers"
-                    currentView={currentView}
-                    onClick={() => handleViewChange("teachers")}
-                  />
-                  <ModernMenuItem
-                    label={t("fees")}
-                    icon={Wallet}
-                    view="fees"
-                    currentView={currentView}
-                    onClick={() => handleViewChange("fees")}
-                  />
-                  <ModernMenuItem
-                    label={t("expenses")}
-                    icon={TrendingDown}
-                    view="expenses"
-                    currentView={currentView}
-                    onClick={() => handleViewChange("expenses")}
-                  />
-                  <ModernMenuItem
-                    label={t("profit")}
-                    icon={TrendingUp}
-                    view="reports"
-                    currentView={currentView}
-                    onClick={() => handleViewChange("reports")}
-                  />
-                  <ModernMenuItem
-                    label={t("financial")}
-                    icon={LineChart}
-                    view="financial"
-                    currentView={currentView}
-                    onClick={() => handleViewChange("financial")}
-                  />
+                  <ModernMenuItem label={t("dashboard")} icon={Home} view="dashboard" currentView={currentView} onClick={() => handleViewChange("dashboard")} />
+                  <ModernMenuItem label={t("students")} icon={GraduationCap} view="students" count={stats.activeStudents} currentView={currentView} onClick={() => handleViewChange("students")} />
+                  <ModernMenuItem label={t("teachers")} icon={Briefcase} view="teachers" currentView={currentView} onClick={() => handleViewChange("teachers")} />
+                  <ModernMenuItem label={t("fees")} icon={Wallet} view="fees" currentView={currentView} onClick={() => handleViewChange("fees")} />
+                  <ModernMenuItem label={t("expenses")} icon={TrendingDown} view="expenses" currentView={currentView} onClick={() => handleViewChange("expenses")} />
+                  <ModernMenuItem label={t("profit")} icon={TrendingUp} view="reports" currentView={currentView} onClick={() => handleViewChange("reports")} />
+                  <ModernMenuItem label={t("financial")} icon={LineChart} view="financial" currentView={currentView} onClick={() => handleViewChange("financial")} />
                   {hasPermission("users.view") && (
-                    <ModernMenuItem
-                      label={t("users")}
-                      icon={Users}
-                      view="users"
-                      currentView={currentView}
-                      onClick={() => handleViewChange("users")}
-                    />
+                    <ModernMenuItem label={t("users")} icon={Users} view="users" currentView={currentView} onClick={() => handleViewChange("users")} />
                   )}
 
-                  <div className="h-px bg-gray-200 my-2"></div>
+                  <div className="h-px bg-gray-200 my-2" />
 
-                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200">
+                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80">
                     <Settings className="w-4 h-4" />
-                    <span className="flex-1 text-right font-medium">
-                      {t("settings")}
-                    </span>
+                    <span className="flex-1 text-right font-medium">{t("settings")}</span>
                   </button>
 
-                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200">
+                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80">
                     <School className="w-4 h-4" />
-                    <span className="flex-1 text-right font-medium">
-                      {t("schoolSettings") || "إعدادات المدرسة"}
-                    </span>
+                    <span className="flex-1 text-right font-medium">{t("schoolSettings") || "إعدادات المدرسة"}</span>
                   </button>
 
                   <button
                     onClick={() => setShowSidebar(false)}
-                    className="w-full mt-2 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100/80 rounded-lg transition-colors duration-200"
+                    className="w-full mt-2 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100/80 rounded-lg"
                   >
                     <ChevronRight className="w-4 h-4 mx-auto" />
                   </button>
@@ -1328,7 +1086,7 @@ export default function Dashboard() {
             {!showSidebar && (
               <button
                 onClick={() => setShowSidebar(true)}
-                className="fixed right-4 top-20 z-40 p-2 bg-white/90 backdrop-blur-xl rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100/50"
+                className="fixed right-4 top-20 z-40 p-2 bg-white/90 backdrop-blur-xl rounded-lg shadow-sm hover:shadow-md border border-gray-100/50"
               >
                 <ChevronLeft className="w-4 h-4 text-gray-600" />
               </button>
@@ -1339,45 +1097,33 @@ export default function Dashboard() {
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h1 className="text-2xl font-semibold text-gray-900">
-                        {t("dashboard")}
-                      </h1>
+                      <h1 className="text-2xl font-semibold text-gray-900">{t("dashboard")}</h1>
                       <p className="text-sm text-gray-500 mt-1">
-                        <span className="text-blue-600 font-medium">
-                          {schoolName}
-                        </span>
+                        <span className="text-blue-600 font-medium">{schoolName}</span>
                       </p>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={loadStatistics}
-                        className="p-2 hover:bg-gray-100/80 rounded-lg transition-all duration-200"
-                        title={t("refresh")}
-                      >
+                      <button onClick={loadStatistics} className="p-2 hover:bg-gray-100/80 rounded-lg" title={t("refresh")}>
                         <RefreshCw className="w-4 h-4 text-gray-600" />
                       </button>
                       <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xl rounded-lg p-1 border border-gray-100/50">
-                        {[t("day"), t("week"), t("month"), t("year")].map(
-                          (period, index) => {
-                            const periods = ["day", "week", "month", "year"];
-                            return (
-                              <button
-                                key={periods[index]}
-                                onClick={() =>
-                                  setSelectedPeriod(periods[index])
-                                }
-                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
-                                  selectedPeriod === periods[index]
-                                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm"
-                                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80"
-                                }`}
-                              >
-                                {period}
-                              </button>
-                            );
-                          },
-                        )}
+                        {[t("day"), t("week"), t("month"), t("year")].map((period, index) => {
+                          const periods = ["day", "week", "month", "year"];
+                          return (
+                            <button
+                              key={periods[index]}
+                              onClick={() => setSelectedPeriod(periods[index])}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                                selectedPeriod === periods[index]
+                                  ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm"
+                                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80"
+                              }`}
+                            >
+                              {period}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -1385,123 +1131,31 @@ export default function Dashboard() {
                   {loading ? (
                     <div className="flex items-center justify-center py-20">
                       <div className="relative">
-                        <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                        <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                         <p className="text-gray-600 mt-4">جاري تحميل البيانات...</p>
                       </div>
                     </div>
                   ) : (
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-2 xlg:grid-cols-4 gap-4">
-                        <ModernStatCard
-                          title={t("totalStudents")}
-                          value={stats.totalStudents}
-                          icon={Users}
-                          trend={studentsTrend.trend}
-                          trendValue={studentsTrend.value}
-                          color="from-blue-600 to-indigo-600"
-                          delay={0}
-                          subValue={`${formatNumber(stats.activeStudents, language)} ${t("active")}`}
-                        />
-                        <ModernStatCard
-                          title={t("netRevenue")}
-                          value={stats.netRevenue}
-                          icon={DollarSign}
-                          isCurrency={true}
-                          trend={revenueTrend.trend}
-                          trendValue={revenueTrend.value}
-                          color="from-emerald-600 to-teal-600"
-                          delay={50}
-                          subValue={t("afterRefunds")}
-                        />
-                        <ModernStatCard
-                          title={t("totalExpenses")}
-                          value={stats.totalExpenses}
-                          icon={TrendingDown}
-                          isCurrency={true}
-                          trend={expensesTrend.trend}
-                          trendValue={expensesTrend.value}
-                          color="from-red-600 to-rose-600"
-                          delay={100}
-                        />
-                        <ModernStatCard
-                          title={t("netProfit")}
-                          value={stats.netProfit}
-                          icon={TrendingUp}
-                          isCurrency={true}
-                          trend={profitTrend.trend}
-                          trendValue={profitTrend.value}
-                          color="from-purple-600 to-pink-600"
-                          delay={150}
-                        />
+                        <ModernStatCard title={t("totalStudents")} value={stats.totalStudents} icon={Users} trend={studentsTrend.trend} trendValue={studentsTrend.value} color="from-blue-600 to-indigo-600" delay={0} subValue={`${formatNumber(stats.activeStudents, language)} ${t("active")}`} />
+                        <ModernStatCard title={t("netRevenue")} value={stats.netRevenue} icon={DollarSign} isCurrency={true} trend={revenueTrend.trend} trendValue={revenueTrend.value} color="from-emerald-600 to-teal-600" delay={50} subValue={t("afterRefunds")} />
+                        <ModernStatCard title={t("totalExpenses")} value={stats.totalExpenses} icon={TrendingDown} isCurrency={true} trend={expensesTrend.trend} trendValue={expensesTrend.value} color="from-red-600 to-rose-600" delay={100} />
+                        <ModernStatCard title={t("netProfit")} value={stats.netProfit} icon={TrendingUp} isCurrency={true} trend={profitTrend.trend} trendValue={profitTrend.value} color="from-purple-600 to-pink-600" delay={150} />
                       </div>
 
-                      {/* بطاقة معلومات المدرسة */}
                       <div className="grid grid-cols-1 md:grid-cols-2 xlg:grid-cols-4 gap-4">
-                        <ModernStatCard
-                          title={t("collectionRate")}
-                          value={stats.collectionRate}
-                          icon={Activity}
-                          isPercentage={true}
-                          color="from-blue-600 to-indigo-600"
-                          delay={200}
-                        />
-                        <ModernStatCard
-                          title={t("todayCollections")}
-                          value={stats.todayCollections}
-                          icon={Wallet}
-                          isCurrency={true}
-                          color="from-amber-500 to-orange-600"
-                          delay={250}
-                        />
-                        <ModernStatCard
-                          title={t("paidStudents")}
-                          value={stats.paidStudents}
-                          icon={Users}
-                          color="from-green-600 to-emerald-600"
-                          delay={300}
-                        />
-                        <ModernStatCard
-                          title={t("unpaidStudents")}
-                          value={stats.unpaidStudents}
-                          icon={Users}
-                          color="from-red-600 to-rose-600"
-                          delay={350}
-                        />
+                        <ModernStatCard title={t("collectionRate")} value={stats.collectionRate} icon={Activity} isPercentage={true} color="from-blue-600 to-indigo-600" delay={200} />
+                        <ModernStatCard title={t("todayCollections")} value={stats.todayCollections} icon={Wallet} isCurrency={true} color="from-amber-500 to-orange-600" delay={250} />
+                        <ModernStatCard title={t("paidStudents")} value={stats.paidStudents} icon={Users} color="from-green-600 to-emerald-600" delay={300} />
+                        <ModernStatCard title={t("unpaidStudents")} value={stats.unpaidStudents} icon={Users} color="from-red-600 to-rose-600" delay={350} />
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <ModernStatCard
-                          title={t("cashPayments")}
-                          value={stats.cashPayments}
-                          icon={Wallet}
-                          isCurrency={true}
-                          color="from-green-600 to-emerald-600"
-                          delay={400}
-                        />
-                        <ModernStatCard
-                          title={t("cardPayments")}
-                          value={stats.cardPayments}
-                          icon={CreditCard}
-                          isCurrency={true}
-                          color="from-blue-600 to-indigo-600"
-                          delay={450}
-                        />
-                        <ModernStatCard
-                          title={t("bankTransferPayments")}
-                          value={stats.bankTransferPayments}
-                          icon={Landmark}
-                          isCurrency={true}
-                          color="from-purple-600 to-pink-600"
-                          delay={500}
-                        />
-                        <ModernStatCard
-                          title={t("checkPayments")}
-                          value={stats.checkPayments}
-                          icon={FileText}
-                          isCurrency={true}
-                          color="from-amber-500 to-orange-600"
-                          delay={550}
-                        />
+                        <ModernStatCard title={t("cashPayments")} value={stats.cashPayments} icon={Wallet} isCurrency={true} color="from-green-600 to-emerald-600" delay={400} />
+                        <ModernStatCard title={t("cardPayments")} value={stats.cardPayments} icon={CreditCard} isCurrency={true} color="from-blue-600 to-indigo-600" delay={450} />
+                        <ModernStatCard title={t("bankTransferPayments")} value={stats.bankTransferPayments} icon={Landmark} isCurrency={true} color="from-purple-600 to-pink-600" delay={500} />
+                        <ModernStatCard title={t("checkPayments")} value={stats.checkPayments} icon={FileText} isCurrency={true} color="from-amber-500 to-orange-600" delay={550} />
                       </div>
                     </>
                   )}
@@ -1509,85 +1163,37 @@ export default function Dashboard() {
                   <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-6 border border-gray-100/50">
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <h3 className="font-semibold text-gray-900">
-                          {t("revenueOverview")}
-                        </h3>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {t("last7Days")}
-                        </p>
+                        <h3 className="font-semibold text-gray-900">{t("revenueOverview")}</h3>
+                        <p className="text-xs text-gray-500 mt-1">{t("last7Days")}</p>
                       </div>
-                      <button className="p-2 hover:bg-gray-100/80 rounded-lg transition-colors duration-200">
+                      <button className="p-2 hover:bg-gray-100/80 rounded-lg">
                         <Maximize2 className="w-4 h-4 text-gray-500" />
                       </button>
                     </div>
 
                     <div className="h-32 flex items-end gap-2">
                       {revenueData.map((value, i) => (
-                        <div
-                          key={i}
-                          className="flex-1 flex flex-col items-center gap-1"
-                        >
-                          <div
-                            className="w-full bg-gradient-to-t from-blue-600 to-indigo-600 rounded-t-lg transition-all duration-500 hover:from-blue-500 hover:to-indigo-500"
-                            style={{ height: `${value}%` }}
-                          ></div>
-                          <span className="text-xs text-gray-500">
-                            {days[i]}
-                          </span>
+                        <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                          <div className="w-full bg-gradient-to-t from-blue-600 to-indigo-600 rounded-t-lg transition-all duration-500 hover:from-blue-500 hover:to-indigo-500" style={{ height: `${value}%` }} />
+                          <span className="text-xs text-gray-500">{days[i]}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-3">
-                      {t("quickActions")}
-                    </h3>
+                    <h3 className="text-sm font-medium text-gray-700 mb-3">{t("quickActions")}</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                      <QuickActionCard
-                        title={t("addStudent")}
-                        description={t("addStudentDesc")}
-                        icon={UserPlus}
-                        color="from-blue-600 to-indigo-600"
-                        onClick={() => handleViewChange("students")}
-                      />
-                      <QuickActionCard
-                        title={t("recordFee")}
-                        description={t("recordFeeDesc")}
-                        icon={Wallet}
-                        color="from-emerald-600 to-teal-600"
-                        onClick={() => handleViewChange("fees")}
-                      />
-                      <QuickActionCard
-                        title={t("addExpense")}
-                        description={t("addExpenseDesc")}
-                        icon={TrendingDown}
-                        color="from-red-600 to-rose-600"
-                        onClick={() => handleViewChange("expenses")}
-                      />
-                      <QuickActionCard
-                        title={t("viewReports")}
-                        description={t("viewReportsDesc")}
-                        icon={BarChart3}
-                        color="from-purple-600 to-pink-600"
-                        onClick={() => handleViewChange("reports")}
-                      />
-                      <QuickActionCard
-                        title={t("processRefund")}
-                        description={t("processRefundDesc")}
-                        icon={X}
-                        color="from-orange-600 to-red-600"
-                        onClick={() => handleViewChange("fees")}
-                      />
+                      <QuickActionCard title={t("addStudent")} description={t("addStudentDesc")} icon={UserPlus} color="from-blue-600 to-indigo-600" onClick={() => handleViewChange("students")} />
+                      <QuickActionCard title={t("recordFee")} description={t("recordFeeDesc")} icon={Wallet} color="from-emerald-600 to-teal-600" onClick={() => handleViewChange("fees")} />
+                      <QuickActionCard title={t("addExpense")} description={t("addExpenseDesc")} icon={TrendingDown} color="from-red-600 to-rose-600" onClick={() => handleViewChange("expenses")} />
+                      <QuickActionCard title={t("viewReports")} description={t("viewReportsDesc")} icon={BarChart3} color="from-purple-600 to-pink-600" onClick={() => handleViewChange("reports")} />
+                      <QuickActionCard title={t("processRefund")} description={t("processRefundDesc")} icon={X} color="from-orange-600 to-red-600" onClick={() => handleViewChange("fees")} />
                     </div>
                   </div>
                 </div>
               ) : (
-                <ViewRenderer
-                  view={currentView}
-                  onUpdate={loadStatistics}
-                  loading={loading}
-                />
+                <ViewRenderer view={currentView} onUpdate={loadStatistics} loading={loading} />
               )}
             </main>
           </div>
