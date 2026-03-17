@@ -247,18 +247,18 @@ export interface CustomUser extends SupabaseUser {
   permissions?: Record<string, boolean>;
 }
 
-// ============================================
-// دوال مساعدة للأنواع (Type Guards)
-// ============================================
+// // ============================================
+// // دوال مساعدة للأنواع (Type Guards)
+// // ============================================
 
-export function isStudent(obj: any): obj is Student {
-  return obj && typeof obj === 'object' && 'grade' in obj && 'parent_name' in obj;
-}
+// export function isStudent(obj: any): obj is Student {
+//   return obj && typeof obj === 'object' && 'grade' in obj && 'parent_name' in obj;
+// }
 
-export function isTeacher(obj: any): obj is Teacher {
-  return obj && typeof obj === 'object' && 'specialization' in obj && 'salary' in obj;
-}
+// export function isTeacher(obj: any): obj is Teacher {
+//   return obj && typeof obj === 'object' && 'specialization' in obj && 'salary' in obj;
+// }
 
-export function isFee(obj: any): obj is Fee {
-  return obj && typeof obj === 'object' && 'amount' in obj && 'payment_type' in obj;
-}
+// export function isFee(obj: any): obj is Fee {
+//   return obj && typeof obj === 'object' && 'amount' in obj && 'payment_type' in obj;
+// }
