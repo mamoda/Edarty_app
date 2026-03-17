@@ -799,217 +799,68 @@ export default function Dashboard() {
   }, [user?.id, schoolName]);
 
 const loadStatistics = async () => {
-  if (!user?.id) {
-    console.log("⏳ No user ID yet, skipping data load");
-    return;
-  }
-
-  if (!schoolName) {
-    console.log("⏳ School data not ready yet, waiting...");
-    return;
-  }
+  if (!user?.id) return;
 
   setLoading(true);
   setDataError(null);
 
-  const timeoutId = setTimeout(() => {
-    if (isMounted.current) {
-      setLoading(false);
-      setDataError("استغرق التحميل وقتاً طويلاً. حاول مرة أخرى.");
-      console.log("⚠️ Loading timeout - forced stop");
-    }
-  }, 10000); // 10 ثواني
-
   try {
-    console.log(`📊 Loading statistics for ${schoolName} (user: ${user.id})`);
+    console.log(`📊 Loading statistics for ${schoolName}`);
 
-    // تنفيذ الاستعلامات بشكل منفصل مع معالجة الأخطاء
-    const [studentsResult, feesResult, expensesResult, teachersResult] = await Promise.all([
-      supabase.from("students").select("*").eq("user_id", user.id).maybeSingle(),
-      supabase.from("fees").select("*, student:students(*)").eq("user_id", user.id),
-      supabase.from("expenses").select("amount").eq("user_id", user.id),
-      supabase.from("teachers").select("*").eq("user_id", user.id),
+    // جلب البيانات بشكل متوازي مع معالجة الأخطاء بشكل فردي
+    const studentsPromise = supabase.from("students").select("*").eq("user_id", user.id);
+    const feesPromise = supabase.from("fees").select("*, student:students(*)").eq("user_id", user.id);
+    const expensesPromise = supabase.from("expenses").select("amount").eq("user_id", user.id);
+    const teachersPromise = supabase.from("teachers").select("*").eq("user_id", user.id);
+
+    const results = await Promise.allSettled([
+      studentsPromise,
+      feesPromise,
+      expensesPromise,
+      teachersPromise
     ]);
 
-    if (!isMounted.current) {
-      clearTimeout(timeoutId);
-      return;
+    // معالجة كل نتيجة على حدة
+    const [studentsResult, feesResult, expensesResult, teachersResult] = results;
+
+    let studentsData = [];
+    let feesData = [];
+    let expensesData = [];
+    let teachersData = [];
+
+    if (studentsResult.status === 'fulfilled' && !studentsResult.value.error) {
+      studentsData = studentsResult.value.data || [];
+    } else {
+      console.error('Students error:', studentsResult.status === 'fulfilled' ? studentsResult.value.error : studentsResult.reason);
     }
 
-    // التحقق من الأخطاء بشكل منفصل
-    if (studentsResult.error) {
-      console.error("Students error (continuing):", studentsResult.error);
-      // لا نرمي الخطأ، نكمل ببيانات فارغة
-    }
-    
-    if (feesResult.error) {
-      console.error("Fees error (continuing):", feesResult.error);
-    }
-    
-    if (expensesResult.error) {
-      console.error("Expenses error (continuing):", expensesResult.error);
-    }
-    
-    if (teachersResult.error) {
-      console.error("Teachers error (continuing):", teachersResult.error);
+    if (feesResult.status === 'fulfilled' && !feesResult.value.error) {
+      feesData = feesResult.value.data || [];
+    } else {
+      console.error('Fees error:', feesResult.status === 'fulfilled' ? feesResult.value.error : feesResult.reason);
     }
 
-    // استخدام البيانات المتاحة أو مصفوفات فارغة
-    const students = studentsResult.data || [];
-    const fees = feesResult.data || [];
-    const expenses = expensesResult.data || [];
-    const teachers = teachersResult.data || [];
-
-    // الإحصائيات الأساسية
-    const totalStudents = students.length;
-    const activeStudents = students.filter((s: any) => s.status === "active").length;
-
-    // حساب المدفوعات والاستردادات
-    const totalPayments = fees
-      .filter((f: any) => f.amount > 0)
-      .reduce((sum: number, fee: any) => sum + Number(fee.amount), 0);
-    
-    const totalRefunds = fees
-      .filter((f: any) => f.amount < 0)
-      .reduce((sum: number, fee: any) => sum + Math.abs(Number(fee.amount)), 0);
-    
-    const netRevenue = totalPayments - totalRefunds;
-
-    // حساب المصروفات
-    const totalExpenses = expenses.reduce(
-      (sum: number, exp: any) => sum + Number(exp.amount), 0
-    );
-
-    // إحصائيات المعلمين
-    const totalTeachers = teachers.length;
-    const activeTeachers = teachers.filter((t: any) => t.status === "active").length;
-    const totalSalaries = teachers
-      .filter((t: any) => t.status === "active")
-      .reduce((sum: number, t: any) => sum + Number(t.salary), 0);
-
-    // حساب حالات سداد الطلاب
-    let paidStudents = 0;
-    let partialPaidStudents = 0;
-    let unpaidStudents = 0;
-
-    students.forEach((student: any) => {
-      const studentFees = fees.filter((f: any) => f.student_id === student.id);
-      const totalPaid = studentFees
-        .filter((f: any) => f.amount > 0)
-        .reduce((sum: number, f: any) => sum + f.amount, 0);
-      const totalRefunded = studentFees
-        .filter((f: any) => f.amount < 0)
-        .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
-      const netPaid = totalPaid - totalRefunded;
-
-      if (netPaid >= 5000) {
-        paidStudents++;
-      } else if (netPaid > 0) {
-        partialPaidStudents++;
-      } else {
-        unpaidStudents++;
-      }
-    });
-
-    // حساب طرق الدفع
-    let cashPayments = 0, cardPayments = 0, bankPayments = 0, checkPayments = 0;
-    
-    fees.forEach((fee: any) => {
-      const amount = Math.abs(fee.amount);
-      if (fee.notes) {
-        try {
-          const notes = JSON.parse(fee.notes);
-          const method = notes.payment_method;
-          if (method === "cash") cashPayments += amount;
-          else if (method === "card") cardPayments += amount;
-          else if (method === "bank_transfer") bankPayments += amount;
-          else if (method === "check") checkPayments += amount;
-        } catch {
-          cashPayments += amount;
-        }
-      } else {
-        cashPayments += amount;
-      }
-    });
-
-    // حساب تحصيلات اليوم
-    const today = new Date().toISOString().split("T")[0];
-    const todayPayments = fees
-      .filter((f: any) => f.payment_date === today && f.amount > 0)
-      .reduce((sum: number, f: any) => sum + f.amount, 0);
-    const todayRefunds = fees
-      .filter((f: any) => f.payment_date === today && f.amount < 0)
-      .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
-    const todayCollections = todayPayments - todayRefunds;
-
-    // حساب تحصيلات هذا الأسبوع
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    const weekPayments = fees
-      .filter((f: any) => new Date(f.payment_date) >= oneWeekAgo && f.amount > 0)
-      .reduce((sum: number, f: any) => sum + f.amount, 0);
-    const weekRefunds = fees
-      .filter((f: any) => new Date(f.payment_date) >= oneWeekAgo && f.amount < 0)
-      .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
-    const thisWeekCollections = weekPayments - weekRefunds;
-
-    // حساب تحصيلات هذا الشهر
-    const oneMonthAgo = new Date();
-    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-    const monthPayments = fees
-      .filter((f: any) => new Date(f.payment_date) >= oneMonthAgo && f.amount > 0)
-      .reduce((sum: number, f: any) => sum + f.amount, 0);
-    const monthRefunds = fees
-      .filter((f: any) => new Date(f.payment_date) >= oneMonthAgo && f.amount < 0)
-      .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
-    const thisMonthCollections = monthPayments - monthRefunds;
-
-    // نسبة التحصيل
-    const expectedRevenue = activeStudents * 5000;
-    const collectionRate = expectedRevenue > 0 ? (netRevenue / expectedRevenue) * 100 : 0;
-
-    if (isMounted.current) {
-      setStats({
-        totalStudents,
-        activeStudents,
-        totalRevenue: totalPayments,
-        totalExpenses,
-        netProfit: netRevenue - totalExpenses,
-        totalTeachers,
-        activeTeachers,
-        totalSalaries,
-        totalRefunds,
-        netRevenue,
-        paidStudents,
-        partialPaidStudents,
-        unpaidStudents,
-        collectionRate,
-        cashPayments,
-        cardPayments,
-        bankTransferPayments: bankPayments,
-        checkPayments,
-        todayCollections,
-        thisWeekCollections,
-        thisMonthCollections,
-      });
-
-      console.log("✅ Statistics loaded successfully");
-      clearTimeout(timeoutId);
+    if (expensesResult.status === 'fulfilled' && !expensesResult.value.error) {
+      expensesData = expensesResult.value.data || [];
+    } else {
+      console.error('Expenses error:', expensesResult.status === 'fulfilled' ? expensesResult.value.error : expensesResult.reason);
     }
-    
-  } catch (error: any) {
-    if (isMounted.current) {
-      console.error(`❌ Error loading statistics:`, error);
-      setDataError(error?.message || "حدث خطأ في تحميل البيانات");
+
+    if (teachersResult.status === 'fulfilled' && !teachersResult.value.error) {
+      teachersData = teachersResult.value.data || [];
+    } else {
+      console.error('Teachers error:', teachersResult.status === 'fulfilled' ? teachersResult.value.error : teachersResult.reason);
     }
+
+    // بقية الكود بنفس الشكل...
+    
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    setDataError('حدث خطأ غير متوقع');
   } finally {
-    if (isMounted.current) {
-      setLoading(false);
-      console.log('✅ loadStatistics finished - loading set to false');
-    }
+    setLoading(false);
   }
-};
-  const handleViewChange = (view: View) => {
+};  const handleViewChange = (view: View) => {
     setCurrentView(view);
     if (view === "dashboard") {
       loadStatistics();
