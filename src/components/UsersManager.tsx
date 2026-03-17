@@ -42,6 +42,8 @@ export default function UsersManager() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   // نموذج المستخدم
   const [formData, setFormData] = useState({
@@ -54,11 +56,18 @@ export default function UsersManager() {
   });
 
   useEffect(() => {
+    setIsMounted(true);
     loadUsers();
     loadAllPermissions();
+    
+    return () => {
+      setIsMounted(false);
+    };
   }, []);
 
   const loadUsers = async () => {
+    if (!isMounted) return;
+    
     setLoading(true);
     setError(null);
     try {
@@ -68,30 +77,44 @@ export default function UsersManager() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setUsers(data || []);
+      if (isMounted) {
+        setUsers(data || []);
+      }
     } catch (error: any) {
       console.error('Error loading users:', error);
-      setError(error.message || 'حدث خطأ في تحميل المستخدمين');
-      showNotification('error', error.message || 'حدث خطأ في تحميل المستخدمين');
+      if (isMounted) {
+        setError(error.message || 'حدث خطأ في تحميل المستخدمين');
+        showNotification('error', error.message || 'حدث خطأ في تحميل المستخدمين');
+      }
     } finally {
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     }
   };
 
   const showNotification = (type: 'success' | 'error', message: string) => {
+    if (!isMounted) return;
+    
     if (type === 'success') {
       setSuccess(message);
-      setTimeout(() => setSuccess(null), 3000);
+      setTimeout(() => {
+        if (isMounted) setSuccess(null);
+      }, 3000);
     } else {
       setError(message);
-      setTimeout(() => setError(null), 5000);
+      setTimeout(() => {
+        if (isMounted) setError(null);
+      }, 5000);
     }
   };
 
   const loadAllPermissions = async () => {
     try {
       const perms = await permissionService.getAllPermissions();
-      setAllPermissions(perms);
+      if (isMounted) {
+        setAllPermissions(perms);
+      }
     } catch (error) {
       console.error('Error loading permissions:', error);
     }
@@ -100,13 +123,17 @@ export default function UsersManager() {
   const loadUserPermissions = async (userId: string) => {
     try {
       const perms = await permissionService.getUserPermissionsDetailed(userId);
-      setUserPermissions(new Set(perms.map(p => p.permission_id)));
+      if (isMounted) {
+        setUserPermissions(new Set(perms.map(p => p.permission_id)));
+      }
     } catch (error) {
       console.error('Error loading user permissions:', error);
     }
   };
 
   const handleEditUser = (user: User) => {
+    if (!isMounted) return;
+    
     setError(null);
     setSuccess(null);
     setEditingUser(user);
@@ -122,6 +149,8 @@ export default function UsersManager() {
   };
 
   const handleManagePermissions = (user: User) => {
+    if (!isMounted) return;
+    
     setError(null);
     setSuccess(null);
     setSelectedUser(user);
@@ -139,9 +168,25 @@ export default function UsersManager() {
       return;
     }
 
+    // ✅ منع التكرار
+    if (isLoading) {
+      console.log("⏳ Already saving, skipping...");
+      return;
+    }
+
+    setIsLoading(true);
     setSaving(true);
     setError(null);
     setSuccess(null);
+
+    // ✅ مؤقت أمان 5 ثواني
+    const timeoutId = setTimeout(() => {
+      if (isMounted) {
+        setIsLoading(false);
+        setSaving(false);
+        setError("استغرق الحفظ وقتاً طويلاً. حاول مرة أخرى.");
+      }
+    }, 5000);
 
     try {
       // تحضير البيانات - إزالة الحقول الفاضية
@@ -166,32 +211,42 @@ export default function UsersManager() {
       console.log('👤 Current user role:', currentUser?.role);
       console.log('👤 Editing user ID:', editingUser.id);
 
-      const { error: updateError } = await supabase
+      const { error: updateError, data } = await supabase
         .from('users')
         .update(updateData)
-        .eq('id', editingUser.id);
+        .eq('id', editingUser.id)
+        .select();
 
       if (updateError) {
         console.error('❌ Update error:', updateError);
         throw updateError;
       }
 
-      console.log('✅ User updated successfully');
+      console.log('✅ User updated successfully:', data);
       
-      // عرض رسالة نجاح
-      showNotification('success', '✅ تم تحديث المستخدم بنجاح');
+      if (isMounted) {
+        // عرض رسالة نجاح
+        showNotification('success', '✅ تم تحديث المستخدم بنجاح');
+        
+        // إعادة تحميل البيانات
+        await loadUsers();
+        
+        // إغلاق النموذج
+        setShowForm(false);
+        setEditingUser(null);
+      }
       
-      // إعادة تحميل البيانات
-      await loadUsers();
-      
-      // إغلاق النموذج
-      setShowForm(false);
-      setEditingUser(null);
     } catch (error: any) {
-      console.error('❌ Error saving user:', error);
-      showNotification('error', error.message || '❌ حدث خطأ في حفظ المستخدم');
+      if (isMounted) {
+        console.error('❌ Error saving user:', error);
+        showNotification('error', error.message || '❌ حدث خطأ في حفظ المستخدم');
+      }
     } finally {
-      setSaving(false);
+      if (isMounted) {
+        setIsLoading(false);
+        setSaving(false);
+        clearTimeout(timeoutId);
+      }
     }
   };
 
@@ -204,7 +259,7 @@ export default function UsersManager() {
       if (hasPerm) {
         // سحب الصلاحية
         const success = await permissionService.revokePermission(selectedUser.id, permissionId);
-        if (success) {
+        if (success && isMounted) {
           setUserPermissions(prev => {
             const newSet = new Set(prev);
             newSet.delete(permissionId);
@@ -219,14 +274,16 @@ export default function UsersManager() {
           permissionId,
           currentUser.id
         );
-        if (success) {
+        if (success && isMounted) {
           setUserPermissions(prev => new Set([...prev, permissionId]));
           showNotification('success', '✅ تم منح الصلاحية بنجاح');
         }
       }
     } catch (error: any) {
       console.error('Error toggling permission:', error);
-      showNotification('error', error.message || '❌ حدث خطأ في تعديل الصلاحية');
+      if (isMounted) {
+        showNotification('error', error.message || '❌ حدث خطأ في تعديل الصلاحية');
+      }
     }
   };
 
@@ -423,10 +480,14 @@ export default function UsersManager() {
                             
                             if (error) throw error;
                             
-                            showNotification('success', '✅ تم حذف المستخدم بنجاح');
-                            loadUsers();
+                            if (isMounted) {
+                              showNotification('success', '✅ تم حذف المستخدم بنجاح');
+                              loadUsers();
+                            }
                           } catch (error: any) {
-                            showNotification('error', error.message || '❌ حدث خطأ في حذف المستخدم');
+                            if (isMounted) {
+                              showNotification('error', error.message || '❌ حدث خطأ في حذف المستخدم');
+                            }
                           }
                         }
                       }}
@@ -541,7 +602,7 @@ export default function UsersManager() {
                 <div className="flex gap-3 pt-4">
                   <button
                     type="submit"
-                    disabled={saving}
+                    disabled={saving || isLoading}
                     className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {saving ? 'جاري الحفظ...' : 'حفظ'}
