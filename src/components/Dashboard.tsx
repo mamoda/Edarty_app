@@ -361,8 +361,6 @@ const ModernHeader: React.FC<HeaderProps> = ({
   language,
   toggleLanguage,
   t,
-  schoolName,
-  schoolIdentifier,
 }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
