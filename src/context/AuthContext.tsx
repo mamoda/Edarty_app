@@ -42,33 +42,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // دالة لجلب بيانات المستخدم الإضافية
-  const fetchUserProfile = async (supabaseUser: any): Promise<CustomUser> => {
-    try {
-      const { data: profile } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', supabaseUser.id)
-        .maybeSingle();
+// دالة لجلب بيانات المستخدم الإضافية
+const fetchUserProfile = async (supabaseUser: any): Promise<CustomUser> => {
+  try {
+    console.log('🔍 Fetching profile for user:', supabaseUser.id);
+    
+    const { data: profile, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', supabaseUser.id)
+      .maybeSingle();
 
+    if (error) {
+      console.error('⚠️ Error fetching profile:', error);
+    }
+
+    // إذا مفيش بروفايل، نستخدم قيم افتراضية
+    if (!profile) {
+      console.log('🆕 No profile found for:', supabaseUser.email);
+      const defaultSchoolName = supabaseUser.email?.split('@')[0] || 'مدرستي';
+      
       return {
         ...supabaseUser,
-        schoolName: profile?.school_name,
-        schoolAddress: profile?.school_address,
-        schoolPhone: profile?.school_phone,
-        taxNumber: profile?.tax_number,
-        full_name: profile?.full_name || supabaseUser.user_metadata?.full_name,
-        role: profile?.role || 'user',
-        permissions: {}, // تهيئة الصلاحيات
-      } as CustomUser;
-    } catch {
-      return {
-        ...supabaseUser,
+        schoolName: defaultSchoolName,
+        schoolAddress: '',
+        schoolPhone: '',
+        taxNumber: '',
+        full_name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || '',
+        role: 'user',
         permissions: {},
       } as CustomUser;
     }
-  };
 
+    console.log('✅ Profile fetched:', profile);
+
+    return {
+      ...supabaseUser,
+      schoolName: profile?.school_name || supabaseUser.email?.split('@')[0] || 'مدرستي',
+      schoolAddress: profile?.school_address || '',
+      schoolPhone: profile?.school_phone || '',
+      taxNumber: profile?.tax_number || '',
+      full_name: profile?.full_name || supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || '',
+      role: profile?.role || 'user',
+      permissions: {},
+    } as CustomUser;
+    
+  } catch (error) {
+    console.error('❌ Error in fetchUserProfile:', error);
+    return {
+      ...supabaseUser,
+      schoolName: supabaseUser.email?.split('@')[0] || 'مدرستي',
+      schoolAddress: '',
+      schoolPhone: '',
+      taxNumber: '',
+      full_name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || '',
+      role: 'user',
+      permissions: {},
+    } as CustomUser;
+  }
+};
   useEffect(() => {
     let mounted = true;
 
