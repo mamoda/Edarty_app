@@ -34,6 +34,49 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from 'jspdf-autotable';
 
+// ==================== إعدادات اللغة العربية ====================
+// تعريب الأرقام
+const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+const toArabicNumber = (num: number | string): string => {
+  return num.toString().replace(/[0-9]/g, (d) => arabicNumbers[parseInt(d)]);
+};
+
+// تنسيق العملة بالعربية
+const formatCurrency = (num: number): string => {
+  return new Intl.NumberFormat('ar-EG', {
+    style: 'currency',
+    currency: 'EGP',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(num);
+};
+
+// تنسيق النسبة المئوية بالعربية
+const formatPercentage = (num: number): string => {
+  return new Intl.NumberFormat('ar-EG', {
+    style: 'percent',
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(num / 100);
+};
+
+// تنسيق التاريخ بالعربية
+const formatDate = (date: string): string => {
+  return new Date(date).toLocaleDateString('ar-EG', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+};
+
+// تنسيق الشهر بالعربية
+const formatMonth = (date: Date): string => {
+  return date.toLocaleDateString('ar-EG', {
+    year: 'numeric',
+    month: 'long',
+  });
+};
+
 // ==================== أنواع البيانات المحسنة ====================
 interface FinancialReport {
   period: string;
@@ -180,25 +223,26 @@ interface FinancialReport {
   };
 }
 
-// ==================== دوال مساعدة احترافية ====================
+// ==================== دوال مساعدة محسنة ====================
 
-// تنسيق العملة
-const formatCurrency = (num: number): string => {
-  return new Intl.NumberFormat('ar-EG', {
-    style: 'currency',
-    currency: 'EGP',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(num);
-};
-
-// تنسيق النسبة المئوية
-const formatPercentage = (num: number): string => {
-  return new Intl.NumberFormat('ar-EG', {
-    style: 'percent',
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }).format(num / 100);
+// دالة مخصصة لتنسيق أداة التلميح بالعربية
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white p-3 shadow-lg rounded-lg border border-gray-200" dir="rtl">
+        <p className="text-sm font-bold text-gray-900 mb-2">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <div key={index} className="flex items-center justify-between gap-4 text-xs">
+            <span style={{ color: entry.color }}>{entry.name}:</span>
+            <span className="font-medium">
+              {typeof entry.value === 'number' ? formatCurrency(entry.value) : entry.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
 };
 
 // التحقق من صحة البيانات
@@ -227,14 +271,6 @@ const calculateSeasonalFactors = (months: number = 12): number[] => {
     factors.push(monthFactor);
   }
   return factors;
-};
-
-// دالة مساعدة لتنسيق أداة التلميح (Tooltip)
-const tooltipFormatter = (value: any): string => {
-  if (typeof value === 'number') {
-    return formatCurrency(value);
-  }
-  return String(value);
 };
 
 export default function FinancialReports() {
@@ -561,10 +597,7 @@ export default function FinancialReports() {
         else if (dataQuality < 0.3 || i > 6) confidence = 'low';
         
         projections.push({
-          month: nextMonth.toLocaleDateString("ar-EG", {
-            month: "long",
-            year: "numeric",
-          }),
+          month: formatMonth(nextMonth),
           projectedRevenue: Math.max(0, projectedPayments),
           projectedRefunds: Math.max(0, projectedRefunds),
           projectedExpenses: Math.max(0, projectedExpensesAmount),
@@ -1094,7 +1127,7 @@ export default function FinancialReports() {
         const profit = values.revenue - values.expenses;
         cumulativeProfit += profit;
         return {
-          date,
+          date: formatDate(date),
           revenue: values.revenue,
           expenses: values.expenses,
           profit,
@@ -1158,7 +1191,7 @@ export default function FinancialReports() {
           total_paid: s.total_paid,
           total_refunded: s.total_refunded,
           net_paid,
-          last_payment: s.lastDate,
+          last_payment: formatDate(s.lastDate),
           payments_count: s.count,
           average_payment: s.payments.length > 0 ? s.total_paid / s.payments.length : 0,
           status,
@@ -1216,12 +1249,13 @@ export default function FinancialReports() {
     })).sort((a, b) => b.amount - a.amount);
   };
 
-  // ==================== التصدير ====================
+  // ==================== التصدير المحسن ====================
 
   const exportToExcel = () => {
     if (!report) return;
 
     try {
+      // إعداد المصنف
       const wb = XLSX.utils.book_new();
 
       // ورقة الملخص
@@ -1239,6 +1273,8 @@ export default function FinancialReports() {
         ["النقدية في البنك", formatCurrency(report.summary.cashInBank)],
       ];
       const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+      // ضبط عرض الأعمدة
+      wsSummary['!cols'] = [{ wch: 30 }, { wch: 20 }];
       XLSX.utils.book_append_sheet(wb, wsSummary, "ملخص");
 
       // ورقة الإيرادات
@@ -1246,11 +1282,12 @@ export default function FinancialReports() {
         r.category,
         formatCurrency(r.amount),
         formatPercentage(r.percentage),
-        r.count,
+        r.count.toString(),
         r.type === 'payment' ? 'دفع' : r.type === 'refund' ? 'استرداد' : r.type === 'discount' ? 'خصم' : 'غرامة'
       ]);
       revenueData.unshift(["الفئة", "المبلغ", "النسبة", "عدد العمليات", "النوع"]);
       const wsRevenue = XLSX.utils.aoa_to_sheet(revenueData);
+      wsRevenue['!cols'] = [{ wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
       XLSX.utils.book_append_sheet(wb, wsRevenue, "الإيرادات");
 
       // ورقة المصروفات
@@ -1258,10 +1295,11 @@ export default function FinancialReports() {
         e.category,
         formatCurrency(e.amount),
         formatPercentage(e.percentage),
-        e.count,
+        e.count.toString(),
       ]);
       expensesData.unshift(["الفئة", "المبلغ", "النسبة", "عدد العمليات"]);
       const wsExpenses = XLSX.utils.aoa_to_sheet(expensesData);
+      wsExpenses['!cols'] = [{ wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 15 }];
       XLSX.utils.book_append_sheet(wb, wsExpenses, "المصروفات");
 
       // ورقة التوقعات
@@ -1275,6 +1313,7 @@ export default function FinancialReports() {
       ]);
       projectionsData.unshift(["الشهر", "الإيرادات", "الاستردادات", "المصروفات", "صافي الربح", "مستوى الثقة"]);
       const wsProjections = XLSX.utils.aoa_to_sheet(projectionsData);
+      wsProjections['!cols'] = [{ wch: 25 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 15 }];
       XLSX.utils.book_append_sheet(wb, wsProjections, "التوقعات");
 
       // ورقة النسب المالية
@@ -1295,6 +1334,7 @@ export default function FinancialReports() {
         ["المستحق لكل طالب", formatCurrency(report.ratios.expectedPerStudent || 0)],
       ];
       const wsRatios = XLSX.utils.aoa_to_sheet(ratiosData);
+      wsRatios['!cols'] = [{ wch: 30 }, { wch: 20 }];
       XLSX.utils.book_append_sheet(wb, wsRatios, "النسب المالية");
 
       // ورقة تحليل المصاريف
@@ -1315,9 +1355,12 @@ export default function FinancialReports() {
         })
       ];
       const wsFeesBreakdown = XLSX.utils.aoa_to_sheet(feesBreakdownData);
+      wsFeesBreakdown['!cols'] = [{ wch: 25 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 15 }];
       XLSX.utils.book_append_sheet(wb, wsFeesBreakdown, "تحليل المصاريف");
 
-      XLSX.writeFile(wb, `تقرير_مالي_${startDate}_الى_${endDate}.xlsx`);
+      // حفظ الملف
+      const fileName = `تقرير_مالي_${startDate}_الى_${endDate}.xlsx`;
+      XLSX.writeFile(wb, fileName);
       
     } catch (error) {
       console.error("Error exporting to Excel:", error);
@@ -1335,22 +1378,23 @@ export default function FinancialReports() {
         format: 'a4',
       });
 
-      doc.setFont('helvetica');
+      // تعريب المستند
+      doc.setFont('helvetica', 'normal');
       
       // العنوان
-      doc.setFontSize(20);
+      doc.setFontSize(24);
       doc.setTextColor(5, 150, 105);
-      doc.text("تقرير مالي شامل", 105, 15, { align: "center" });
+      doc.text("تقرير مالي شامل", 105, 20, { align: "center" });
 
       // الفترة
-      doc.setFontSize(10);
+      doc.setFontSize(12);
       doc.setTextColor(100, 100, 100);
-      doc.text(`الفترة: ${startDate} إلى ${endDate}`, 105, 22, { align: "center" });
+      doc.text(`الفترة: ${formatDate(startDate)} إلى ${formatDate(endDate)}`, 105, 30, { align: "center" });
 
       // الملخص التنفيذي
-      doc.setFontSize(14);
+      doc.setFontSize(16);
       doc.setTextColor(5, 150, 105);
-      doc.text("ملخص تنفيذي", 20, 30);
+      doc.text("ملخص تنفيذي", 20, 45);
 
       const summaryLines = [
         [`إجمالي الإيرادات:`, formatCurrency(report.summary.totalRevenue)],
@@ -1362,19 +1406,19 @@ export default function FinancialReports() {
         [`الذمم الدائنة:`, formatCurrency(report.summary.accountsPayable)],
       ];
 
-      let yPos = 38;
+      let yPos = 55;
       summaryLines.forEach(([label, value]) => {
         doc.setFontSize(10);
         doc.setTextColor(60, 60, 60);
         doc.text(label, 30, yPos);
         doc.text(value, 100, yPos);
-        yPos += 6;
+        yPos += 8;
       });
 
       // التنبيهات
       if (report.alerts.length > 0) {
         doc.addPage();
-        doc.setFontSize(14);
+        doc.setFontSize(16);
         doc.setTextColor(5, 150, 105);
         doc.text("تنبيهات وإشعارات", 20, 20);
 
@@ -1387,13 +1431,13 @@ export default function FinancialReports() {
           doc.setTextColor(color[0], color[1], color[2]);
           doc.setFontSize(10);
           doc.text(`• ${alert.message}`, 25, alertY);
-          alertY += 6;
+          alertY += 8;
         });
       }
 
       // جدول الإيرادات
       doc.addPage();
-      doc.setFontSize(14);
+      doc.setFontSize(16);
       doc.setTextColor(5, 150, 105);
       doc.text("تحليل الإيرادات", 20, 20);
 
@@ -1420,6 +1464,82 @@ export default function FinancialReports() {
           fontSize: 8,
           halign: 'right',
           font: 'helvetica',
+          cellPadding: 3,
+        },
+        columnStyles: {
+          0: { cellWidth: 40 },
+          1: { cellWidth: 30 },
+          2: { cellWidth: 20 },
+          3: { cellWidth: 20 },
+          4: { cellWidth: 25 },
+        },
+      });
+
+      // جدول المصروفات
+      doc.addPage();
+      doc.setFontSize(16);
+      doc.setTextColor(5, 150, 105);
+      doc.text("تحليل المصروفات", 20, 20);
+
+      const expensesTableData = report.expensesByCategory.map(e => [
+        e.category,
+        formatCurrency(e.amount),
+        formatPercentage(e.percentage),
+        e.count.toString(),
+      ]);
+
+      autoTable(doc, {
+        startY: 30,
+        head: [['الفئة', 'المبلغ', 'النسبة', 'عدد العمليات']],
+        body: expensesTableData,
+        theme: 'grid',
+        headStyles: { 
+          fillColor: [5, 150, 105],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'center',
+        },
+        styles: { 
+          fontSize: 8,
+          halign: 'right',
+          font: 'helvetica',
+          cellPadding: 3,
+        },
+      });
+
+      // أفضل الطلاب
+      doc.addPage();
+      doc.setFontSize(16);
+      doc.setTextColor(5, 150, 105);
+      doc.text("أفضل 10 طلاب من حيث السداد", 20, 20);
+
+      const studentsTableData = report.topStudents.map(s => [
+        s.student_name,
+        formatCurrency(s.total_paid),
+        formatCurrency(s.total_refunded),
+        formatCurrency(s.net_paid),
+        s.payments_count.toString(),
+        formatCurrency(s.average_payment),
+        s.last_payment,
+        s.status,
+      ]);
+
+      autoTable(doc, {
+        startY: 30,
+        head: [['اسم الطالب', 'إجمالي المدفوعات', 'إجمالي الاستردادات', 'صافي المدفوعات', 'عدد الدفعات', 'متوسط الدفعة', 'آخر دفعة', 'الحالة']],
+        body: studentsTableData,
+        theme: 'grid',
+        headStyles: { 
+          fillColor: [5, 150, 105],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'center',
+        },
+        styles: { 
+          fontSize: 7,
+          halign: 'right',
+          font: 'helvetica',
+          cellPadding: 2,
         },
       });
 
@@ -1435,7 +1555,7 @@ export default function FinancialReports() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-64" dir="rtl">
         <div className="relative">
           <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-sm text-gray-500 mt-4">جاري تحميل التقرير المالي...</p>
@@ -1769,7 +1889,7 @@ export default function FinancialReports() {
                       />
                     ))}
                   </Pie>
-                  <Tooltip formatter={tooltipFormatter} />
+                  <Tooltip content={<CustomTooltip />} />
                 </RechartsPieChart>
               </ResponsiveContainer>
             </div>
@@ -1798,7 +1918,7 @@ export default function FinancialReports() {
                       />
                     ))}
                   </Pie>
-                  <Tooltip formatter={tooltipFormatter} />
+                  <Tooltip content={<CustomTooltip />} />
                 </RechartsPieChart>
               </ResponsiveContainer>
             </div>
@@ -1811,7 +1931,7 @@ export default function FinancialReports() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
                   <YAxis />
-                  <Tooltip formatter={tooltipFormatter} />
+                  <Tooltip content={<CustomTooltip />} />
                   <Legend />
                   <Area
                     type="monotone"
@@ -1939,7 +2059,7 @@ export default function FinancialReports() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis />
-                    <Tooltip formatter={tooltipFormatter} />
+                    <Tooltip content={<CustomTooltip />} />
                     <Legend />
                     <Bar dataKey="projectedRevenue" name="الإيرادات المتوقعة" fill="#059669" />
                     <Bar dataKey="projectedRefunds" name="الاستردادات المتوقعة" fill="#f59e0b" />
