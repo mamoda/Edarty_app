@@ -728,29 +728,27 @@ export default function Dashboard() {
   }, []);
 
   // ✅ التعديل الأهم هنا
-  useEffect(() => {
-    const loadData = async () => {
-      // استخدام fallback لاسم المدرسة
-      const effectiveSchoolName =
-        schoolName || user?.email?.split("@")[0] || "مدرستي";
+useEffect(() => {
+  const loadData = async () => {
+    // استخدام fallback لاسم المدرسة
+    const effectiveSchoolName = schoolName || user?.email?.split("@")[0] || "مدرستي";
 
-      if (user?.id && !initialLoadDone && !loading && isMounted.current) {
-        console.log("👤 Starting data load with:", { effectiveSchoolName });
-        setInitialLoadDone(true);
-        await loadStatistics();
-      } else {
-        console.log("⏳ Waiting conditions:", {
-          hasUser: !!user?.id,
-          initialLoadDone,
-          loading,
-          isMounted: isMounted.current,
-        });
-      }
-    };
+    if (user?.id && !initialLoadDone && !loading && isMounted.current) {
+      console.log("👤 Starting data load with:", { effectiveSchoolName });
+      setInitialLoadDone(true);
+      await loadStatistics();
+    } else {
+      console.log("⏳ Waiting conditions:", {
+        hasUser: !!user?.id,
+        initialLoadDone,
+        loading,
+        isMounted: isMounted.current,
+      });
+    }
+  };
 
-    loadData();
-  }, [user?.id, loading]); // ✅ شيل schoolName من الـ dependencies
-
+  loadData();
+}, [user?.id, initialLoadDone]); // <-- شيل loading من الـ dependencies
   const loadStatistics = async () => {
     if (!user?.id) {
       console.log("⏳ No user ID yet, skipping data load");
