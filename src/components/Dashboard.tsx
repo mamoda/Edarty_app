@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Users,
   TrendingDown,
@@ -38,7 +38,7 @@ import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useSchoolData } from "../hooks/useSchoolData";
 import { supabase } from "../lib/supabase";
-import { type Statistics } from "../types/database";
+import type { Statistics } from "../types/database";
 import StudentsManager from "./StudentsManager";
 import FeesManager from "./FeesManager";
 import ExpensesManager from "./ExpensesManager";
@@ -49,7 +49,6 @@ import logo from "../assets/logo.png";
 import backgroundPattern from "../assets/background-pattern.png";
 import backgroundWave from "../assets/background-wave.png";
 import backgroundDots from "../assets/background-dots.png";
-import UsersManager from "./UsersManager";
 
 type View =
   | "dashboard"
@@ -58,8 +57,7 @@ type View =
   | "fees"
   | "expenses"
   | "reports"
-  | "financial"
-  | "users";
+  | "financial";
 
 interface StatCardProps {
   title: string;
@@ -370,9 +368,6 @@ const ModernHeader: React.FC<HeaderProps> = ({
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
-  const userEmail = user?.email || "";
-  const userInitial = userEmail ? userEmail.charAt(0).toUpperCase() : "U";
-
   return (
     <header className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -390,9 +385,10 @@ const ModernHeader: React.FC<HeaderProps> = ({
               />
             </div>
 
+            {/* اسم المدرسة بجانب الشعار */}
             <div className="hidden md:block">
-              <p className="text-sm font-medium text-gray-900">{schoolName}</p>
-              <p className="text-xs text-gray-500">{schoolIdentifier}</p>
+              {/* <p className="text-sm font-medium text-gray-900">{schoolName}</p> */}
+              {/* <p className="text-xs text-gray-500">{schoolIdentifier}</p> */}
             </div>
 
             <div className="h-6 w-px bg-gray-200"></div>
@@ -426,13 +422,17 @@ const ModernHeader: React.FC<HeaderProps> = ({
                 className="w-full px-4 py-2 pr-10 bg-gray-100/50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all duration-300 text-sm placeholder:text-gray-400"
               />
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors duration-300" />
+
+              <kbd className="absolute left-10 top-1/2 transform -translate-y-1/2 hidden group-focus-within:inline-flex items-center gap-1 px-1.5 py-0.5 bg-gray-200/80 rounded text-xs text-gray-500">
+                ⌘K
+              </kbd>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={toggleLanguage}
-              className="p-2 hover:bg-gray-100/80 rounded-xl"
+              className="p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-200 flex items-center gap-1"
             >
               <Globe className="w-4 h-4 text-gray-600" />
               <span className="text-xs font-medium text-gray-600">
@@ -442,7 +442,7 @@ const ModernHeader: React.FC<HeaderProps> = ({
 
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
-              className="p-2 hover:bg-gray-100/80 rounded-xl"
+              className="p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-200"
             >
               {isDarkMode ? (
                 <Sun className="w-4 h-4 text-gray-600" />
@@ -453,10 +453,57 @@ const ModernHeader: React.FC<HeaderProps> = ({
 
             <div className="relative">
               <button
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center text-white font-medium text-sm"
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-200 relative"
               >
-                {userInitial}
+                <Bell className="w-4 h-4 text-gray-600" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-600 rounded-full ring-2 ring-white"></span>
+              </button>
+
+              {showNotifications && (
+                <div className="absolute left-0 mt-2 w-80 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200/50 overflow-hidden">
+                  <div className="p-3 border-b border-gray-100">
+                    <h3 className="font-semibold text-gray-900">
+                      {t("notifications")}
+                    </h3>
+                  </div>
+                  <div className="max-h-96 overflow-y-auto">
+                    {[1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        className="p-3 hover:bg-gray-50/80 transition-colors duration-200 border-b border-gray-100 last:border-0"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="p-1.5 bg-blue-100 rounded-lg">
+                            <Activity className="w-3 h-3 text-blue-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-900">
+                              {t("newUpdate")}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {t("minAgo")}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-amber-500/25 transition-all duration-300">
+              <Crown className="w-4 h-4" />
+              <span>{t("upgrade")}</span>
+            </button>
+
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center text-white font-medium text-sm shadow-sm hover:shadow-md transition-all duration-200"
+              >
+                {user?.email?.charAt(0).toUpperCase() || "U"}
               </button>
 
               {showUserMenu && (
@@ -471,7 +518,7 @@ const ModernHeader: React.FC<HeaderProps> = ({
                   </div>
                   <button
                     onClick={onSignOut}
-                    className="w-full text-right p-3 text-sm text-red-600 hover:bg-red-50/80"
+                    className="w-full text-right p-3 text-sm text-red-600 hover:bg-red-50/80 transition-colors duration-200"
                   >
                     {t("signOut")}
                   </button>
@@ -556,7 +603,7 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose, language, t }) => {
           </div>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-white/20 rounded-lg"
+            className="p-1 hover:bg-white/20 rounded-lg transition-all duration-200"
           >
             <X className="w-4 h-4 text-white" />
           </button>
@@ -578,7 +625,9 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose, language, t }) => {
             >
               <p className="text-sm">{msg.text}</p>
               <p
-                className={`text-xs mt-1 ${msg.type === "user" ? "text-gray-500" : "text-white/70"}`}
+                className={`text-xs mt-1 ${
+                  msg.type === "user" ? "text-gray-500" : "text-white/70"
+                }`}
               >
                 {msg.time}
               </p>
@@ -601,7 +650,7 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose, language, t }) => {
           />
           <button
             type="submit"
-            className="p-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:shadow-lg disabled:opacity-50"
+            className="p-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:shadow-lg transition-all duration-300 disabled:opacity-50"
             disabled={!message.trim()}
           >
             <Send className="w-4 h-4" />
@@ -641,15 +690,13 @@ const ViewRenderer: React.FC<{
       return <ProfitReport />;
     case "financial":
       return <FinancialReports />;
-    case "users":
-      return <UsersManager />;
     default:
       return null;
   }
 };
 
 export default function Dashboard() {
-  const { user, signOut, hasPermission } = useAuth();
+  const { user, signOut } = useAuth();
   const { schoolName, schoolEmail, schoolIdentifier } = useSchoolData();
   const { language, toggleLanguage, t } = useLanguage();
 
@@ -683,43 +730,24 @@ export default function Dashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState("month");
   const [currentBackground, setCurrentBackground] = useState(0);
   const [dataError, setDataError] = useState<string | null>(null);
-  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
-  const isMounted = useRef(true);
-
+  // مجموعة الخلفيات المتاحة
   const backgrounds = [
-    { image: backgroundPattern, overlay: "from-blue-50/30 to-indigo-50/30" },
-    { image: backgroundWave, overlay: "from-emerald-50/30 to-teal-50/30" },
-    { image: backgroundDots, overlay: "from-purple-50/30 to-pink-50/30" },
+    {
+      image: backgroundPattern,
+      overlay: "from-blue-50/30 to-indigo-50/30",
+    },
+    {
+      image: backgroundWave,
+      overlay: "from-emerald-50/30 to-teal-50/30",
+    },
+    {
+      image: backgroundDots,
+      overlay: "from-purple-50/30 to-pink-50/30",
+    },
   ];
 
-  useEffect(() => {
-    isMounted.current = true;
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    console.log("👤 Current user state:", {
-      user: user?.email,
-      userId: user?.id,
-      loading,
-      schoolName,
-    });
-  }, [user, loading, schoolName]);
-
-  useEffect(() => {
-    console.log("📊 Dashboard mounted - user:", user?.email);
-    console.log("📊 Dashboard loading state:", loading);
-    console.log("📊 Dashboard schoolName:", schoolName);
-    console.log("🏫 School data:", {
-      schoolName,
-      schoolEmail,
-      schoolIdentifier,
-    });
-  }, [schoolName, schoolEmail, schoolIdentifier]);
-
+  // تغيير الخلفية كل 30 ثانية
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentBackground((prev) => (prev + 1) % backgrounds.length);
@@ -727,183 +755,96 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ التعديل الأهم هنا - إزالة loading من الـ dependencies
+  // تحميل البيانات فقط عندما يكون المستخدم موجوداً
   useEffect(() => {
-    const loadData = async () => {
-      // استخدام fallback لاسم المدرسة
-      const effectiveSchoolName =
-        schoolName || user?.email?.split("@")[0] || "مدرستي";
-
-      if (user?.id && !initialLoadDone && !loading && isMounted.current) {
-        console.log("👤 Starting data load with:", { effectiveSchoolName });
-        setInitialLoadDone(true);
-        await loadStatistics();
-      } else {
-        console.log("⏳ Waiting conditions:", {
-          hasUser: !!user?.id,
-          initialLoadDone,
-          loading,
-          isMounted: isMounted.current,
-        });
-      }
-    };
-
-    loadData();
-  }, [user?.id, initialLoadDone]); // ✅ شيل loading من هنا
+    if (user) {
+      console.log("👤 User authenticated, loading statistics...");
+      loadStatistics();
+    } else {
+      console.log("⏳ Waiting for user...");
+    }
+  }, [user]); // يعتمد على user
 
   const loadStatistics = async () => {
-    if (!user?.id) {
-      console.log("⏳ No user ID yet, skipping data load");
+    if (!user) {
+      console.log("⏳ No user yet, skipping data load");
       return;
     }
-
-    console.log("🚀 loadStatistics started at:", new Date().toISOString());
 
     setLoading(true);
     setDataError(null);
 
-    const timeoutId = setTimeout(() => {
-      if (isMounted.current) {
-        setLoading(false);
-        setDataError("استغرق التحميل وقتاً طويلاً. حاول مرة أخرى.");
-        console.log("⚠️ Loading timeout - forced stop");
-      }
-    }, 15000);
-
     try {
-      console.log(`📊 Loading statistics for user: ${user.id}`);
+      console.log(`📊 Loading statistics for ${schoolName} (user: ${user.id})`);
 
-      const studentsPromise = supabase
-        .from("students")
-        .select("*")
-        .eq("user_id", user.id);
-      const feesPromise = supabase
-        .from("fees")
-        .select("*, student:students(*)")
-        .eq("user_id", user.id);
-      const expensesPromise = supabase
-        .from("expenses")
-        .select("amount")
-        .eq("user_id", user.id);
-      const teachersPromise = supabase
-        .from("teachers")
-        .select("*")
-        .eq("user_id", user.id);
-
+      // جلب جميع البيانات المطلوبة مع معالجة الأخطاء
       const results = await Promise.allSettled([
-        studentsPromise,
-        feesPromise,
-        expensesPromise,
-        teachersPromise,
+        supabase.from("students").select("*").eq("user_id", user.id),
+        supabase
+          .from("fees")
+          .select("*, student:students(*)")
+          .eq("user_id", user.id),
+        supabase.from("expenses").select("amount").eq("user_id", user.id),
+        supabase.from("teachers").select("*").eq("user_id", user.id),
       ]);
 
-      if (!isMounted.current) {
-        clearTimeout(timeoutId);
-        return;
-      }
+      // معالجة النتائج
+      const [studentsRes, feesRes, expensesRes, teachersRes] = results.map(
+        (result) =>
+          result.status === "fulfilled"
+            ? result.value
+            : { data: [], error: result.reason },
+      );
 
-      const [studentsResult, feesResult, expensesResult, teachersResult] =
-        results;
+      if (studentsRes.error)
+        console.error("Students error:", studentsRes.error);
+      if (feesRes.error) console.error("Fees error:", feesRes.error);
+      if (expensesRes.error)
+        console.error("Expenses error:", expensesRes.error);
+      if (teachersRes.error)
+        console.error("Teachers error:", teachersRes.error);
 
-      let studentsData: any[] = [];
-      let feesData: any[] = [];
-      let expensesData: any[] = [];
-      let teachersData: any[] = [];
+      // الإحصائيات الأساسية
+      const totalStudents = studentsRes.data?.length ?? 0;
+      const activeStudents =
+        studentsRes.data?.filter((s: any) => s.status === "active").length ?? 0;
 
-      if (
-        studentsResult.status === "fulfilled" &&
-        !studentsResult.value.error
-      ) {
-        studentsData = studentsResult.value.data || [];
-        console.log(`✅ Students loaded: ${studentsData.length}`);
-      } else {
-        console.error(
-          "❌ Students error:",
-          studentsResult.status === "fulfilled"
-            ? studentsResult.value.error
-            : studentsResult.reason,
-        );
-      }
-
-      if (feesResult.status === "fulfilled" && !feesResult.value.error) {
-        feesData = feesResult.value.data || [];
-        console.log(`✅ Fees loaded: ${feesData.length}`);
-      } else {
-        console.error(
-          "❌ Fees error:",
-          feesResult.status === "fulfilled"
-            ? feesResult.value.error
-            : feesResult.reason,
-        );
-      }
-
-      if (
-        expensesResult.status === "fulfilled" &&
-        !expensesResult.value.error
-      ) {
-        expensesData = expensesResult.value.data || [];
-        console.log(`✅ Expenses loaded: ${expensesData.length}`);
-      } else {
-        console.error(
-          "❌ Expenses error:",
-          expensesResult.status === "fulfilled"
-            ? expensesResult.value.error
-            : expensesResult.reason,
-        );
-      }
-
-      if (
-        teachersResult.status === "fulfilled" &&
-        !teachersResult.value.error
-      ) {
-        teachersData = teachersResult.value.data || [];
-        console.log(`✅ Teachers loaded: ${teachersData.length}`);
-      } else {
-        console.error(
-          "❌ Teachers error:",
-          teachersResult.status === "fulfilled"
-            ? teachersResult.value.error
-            : teachersResult.reason,
-        );
-      }
-
-      const totalStudents = studentsData.length;
-      const activeStudents = studentsData.filter(
-        (s: any) => s.status === "active",
-      ).length;
-
-      const totalPayments = feesData
+      // حساب المدفوعات والاستردادات
+      const fees = feesRes.data ?? [];
+      const totalPayments = fees
         .filter((f: any) => f.amount > 0)
         .reduce((sum: number, fee: any) => sum + Number(fee.amount), 0);
-
-      const totalRefunds = feesData
+      const totalRefunds = fees
         .filter((f: any) => f.amount < 0)
         .reduce(
           (sum: number, fee: any) => sum + Math.abs(Number(fee.amount)),
           0,
         );
-
       const netRevenue = totalPayments - totalRefunds;
 
-      const totalExpenses = expensesData.reduce(
-        (sum: number, exp: any) => sum + Number(exp.amount),
-        0,
-      );
+      // حساب المصروفات
+      const totalExpenses =
+        expensesRes.data?.reduce(
+          (sum: number, exp: any) => sum + Number(exp.amount),
+          0,
+        ) ?? 0;
 
-      const totalTeachers = teachersData.length;
-      const activeTeachers = teachersData.filter(
-        (t: any) => t.status === "active",
-      ).length;
-      const totalSalaries = teachersData
-        .filter((t: any) => t.status === "active")
-        .reduce((sum: number, t: any) => sum + Number(t.salary), 0);
+      // إحصائيات المعلمين
+      const totalTeachers = teachersRes.data?.length ?? 0;
+      const activeTeachers =
+        teachersRes.data?.filter((t: any) => t.status === "active").length ?? 0;
+      const totalSalaries =
+        teachersRes.data
+          ?.filter((t: any) => t.status === "active")
+          .reduce((sum: number, t: any) => sum + Number(t.salary), 0) ?? 0;
 
+      // حساب حالات سداد الطلاب
       let paidStudents = 0;
       let partialPaidStudents = 0;
       let unpaidStudents = 0;
 
-      studentsData.forEach((student: any) => {
-        const studentFees = feesData.filter(
+      studentsRes.data?.forEach((student: any) => {
+        const studentFees = fees.filter(
           (f: any) => f.student_id === student.id,
         );
         const totalPaid = studentFees
@@ -914,17 +855,21 @@ export default function Dashboard() {
           .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
         const netPaid = totalPaid - totalRefunded;
 
-        if (netPaid >= 5000) paidStudents++;
-        else if (netPaid > 0) partialPaidStudents++;
-        else unpaidStudents++;
+        if (netPaid >= 5000) {
+          paidStudents++;
+        } else if (netPaid > 0) {
+          partialPaidStudents++;
+        } else {
+          unpaidStudents++;
+        }
       });
 
+      // حساب طرق الدفع
       let cashPayments = 0,
         cardPayments = 0,
         bankPayments = 0,
         checkPayments = 0;
-
-      feesData.forEach((fee: any) => {
+      fees.forEach((fee: any) => {
         const amount = Math.abs(fee.amount);
         if (fee.notes) {
           try {
@@ -942,85 +887,81 @@ export default function Dashboard() {
         }
       });
 
+      // حساب تحصيلات اليوم
       const today = new Date().toISOString().split("T")[0];
-      const todayPayments = feesData
+      const todayPayments = fees
         .filter((f: any) => f.payment_date === today && f.amount > 0)
         .reduce((sum: number, f: any) => sum + f.amount, 0);
-      const todayRefunds = feesData
+      const todayRefunds = fees
         .filter((f: any) => f.payment_date === today && f.amount < 0)
         .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
       const todayCollections = todayPayments - todayRefunds;
 
+      // حساب تحصيلات هذا الأسبوع
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-      const weekPayments = feesData
+      const weekPayments = fees
         .filter(
           (f: any) => new Date(f.payment_date) >= oneWeekAgo && f.amount > 0,
         )
         .reduce((sum: number, f: any) => sum + f.amount, 0);
-      const weekRefunds = feesData
+      const weekRefunds = fees
         .filter(
           (f: any) => new Date(f.payment_date) >= oneWeekAgo && f.amount < 0,
         )
         .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
       const thisWeekCollections = weekPayments - weekRefunds;
 
+      // حساب تحصيلات هذا الشهر
       const oneMonthAgo = new Date();
       oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-      const monthPayments = feesData
+      const monthPayments = fees
         .filter(
           (f: any) => new Date(f.payment_date) >= oneMonthAgo && f.amount > 0,
         )
         .reduce((sum: number, f: any) => sum + f.amount, 0);
-      const monthRefunds = feesData
+      const monthRefunds = fees
         .filter(
           (f: any) => new Date(f.payment_date) >= oneMonthAgo && f.amount < 0,
         )
         .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
       const thisMonthCollections = monthPayments - monthRefunds;
 
+      // نسبة التحصيل
       const expectedRevenue = activeStudents * 5000;
       const collectionRate =
         expectedRevenue > 0 ? (netRevenue / expectedRevenue) * 100 : 0;
 
-      if (isMounted.current) {
-        setStats({
-          totalStudents,
-          activeStudents,
-          totalRevenue: totalPayments,
-          totalExpenses,
-          netProfit: netRevenue - totalExpenses,
-          totalTeachers,
-          activeTeachers,
-          totalSalaries,
-          totalRefunds,
-          netRevenue,
-          paidStudents,
-          partialPaidStudents,
-          unpaidStudents,
-          collectionRate,
-          cashPayments,
-          cardPayments,
-          bankTransferPayments: bankPayments,
-          checkPayments,
-          todayCollections,
-          thisWeekCollections,
-          thisMonthCollections,
-        });
+      setStats({
+        totalStudents,
+        activeStudents,
+        totalRevenue: totalPayments,
+        totalExpenses,
+        netProfit: netRevenue - totalExpenses,
+        totalTeachers,
+        activeTeachers,
+        totalSalaries,
+        totalRefunds,
+        netRevenue,
+        paidStudents,
+        partialPaidStudents,
+        unpaidStudents,
+        collectionRate,
+        cashPayments,
+        cardPayments,
+        bankTransferPayments: bankPayments,
+        checkPayments,
+        todayCollections,
+        thisWeekCollections,
+        thisMonthCollections,
+      });
 
-        console.log("✅ Statistics loaded successfully");
-        clearTimeout(timeoutId);
-      }
+      console.log("✅ Statistics loaded successfully");
     } catch (error: any) {
-      if (isMounted.current) {
-        console.error(`❌ Error loading statistics:`, error);
-        setDataError(error?.message || "حدث خطأ في تحميل البيانات");
-      }
+      console.error(`❌ Error loading statistics:`, error);
+      setDataError(error?.message || "حدث خطأ في تحميل البيانات");
     } finally {
-      if (isMounted.current) {
-        setLoading(false);
-        console.log("✅ loadStatistics finished - loading set to false");
-      }
+      setLoading(false);
     }
   };
 
@@ -1050,29 +991,12 @@ export default function Dashboard() {
   const expensesTrend = calculateTrend();
   const profitTrend = calculateTrend();
 
-  if (dataError) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md text-center">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">حدث خطأ</h2>
-          <p className="text-gray-600 mb-4">{dataError}</p>
-          <button
-            onClick={loadStatistics}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-          >
-            إعادة المحاولة
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
       className="min-h-screen bg-gray-50/50 relative"
       dir={language === "ar" ? "rtl" : "ltr"}
     >
+      {/* خلفية متحركة مع صورة */}
       <div className="fixed inset-0 z-0">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000"
@@ -1081,9 +1005,14 @@ export default function Dashboard() {
             opacity: 0.15,
           }}
         />
+
         <div
           className={`absolute inset-0 bg-gradient-to-br ${backgrounds[currentBackground].overlay} transition-all duration-1000`}
         />
+
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.03),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(139,92,246,0.03),transparent_50%)]" />
+
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
           {backgrounds.map((_, index) => (
             <button
@@ -1111,10 +1040,13 @@ export default function Dashboard() {
           schoolIdentifier={schoolIdentifier}
         />
 
+        {/* شريط حالة المدرسة */}
         <div className="relative border-b border-gray-200/50 bg-white/40 backdrop-blur-xl">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between py-2.5">
+              {/* الجهة اليمنى */}
               <div className="flex items-center gap-4">
+                {/* شارة المدرسة */}
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 bg-gradient-to-br from-blue-600/10 to-indigo-600/10 rounded-lg">
                     <School className="w-4 h-4 text-blue-600" />
@@ -1123,9 +1055,17 @@ export default function Dashboard() {
                     <span className="text-sm font-semibold text-gray-900">
                       {schoolName}
                     </span>
+                    {/* <span className="text-[10px] text-gray-400 mr-2">
+                      {" "}
+                      {schoolIdentifier}
+                    </span> */}
                   </div>
                 </div>
+
+                {/* فواصل نقطية */}
                 <span className="text-gray-300 text-lg leading-none">•</span>
+
+                {/* الطلاب النشطين */}
                 <div className="flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-gray-500" />
                   <span className="text-xs text-gray-600">
@@ -1135,7 +1075,10 @@ export default function Dashboard() {
                     طالب نشط
                   </span>
                 </div>
+
                 <span className="text-gray-300 text-lg leading-none">•</span>
+
+                {/* البريد الإلكتروني */}
                 <div className="flex items-center gap-1.5">
                   <Mail className="w-3.5 h-3.5 text-gray-500" />
                   <span className="text-xs text-gray-600 truncate max-w-[180px]">
@@ -1144,6 +1087,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
+              {/* الجهة اليسرى - نسبة التحصيل */}
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500">نسبة التحصيل</span>
@@ -1155,12 +1099,14 @@ export default function Dashboard() {
                       <div
                         className="h-full bg-green-500 rounded-full"
                         style={{ width: `${stats.collectionRate}%` }}
-                      />
+                      ></div>
                     </div>
                   </div>
                 </div>
+
+                {/* حالة الاتصال */}
                 <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 rounded-full border border-green-100">
-                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
                   <span className="text-[10px] font-medium text-green-700">
                     مباشر
                   </span>
@@ -1176,7 +1122,7 @@ export default function Dashboard() {
             className="group relative w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow-lg hover:shadow-xl hover:shadow-blue-600/25 transition-all duration-300 hover:scale-110"
           >
             <MessageCircle className="w-5 h-5 mx-auto transition-transform duration-300 group-hover:rotate-12" />
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full" />
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full"></span>
           </button>
         </div>
 
@@ -1242,26 +1188,17 @@ export default function Dashboard() {
                     currentView={currentView}
                     onClick={() => handleViewChange("financial")}
                   />
-                  {hasPermission("users.view") && (
-                    <ModernMenuItem
-                      label={t("users")}
-                      icon={Users}
-                      view="users"
-                      currentView={currentView}
-                      onClick={() => handleViewChange("users")}
-                    />
-                  )}
 
-                  <div className="h-px bg-gray-200 my-2" />
+                  <div className="h-px bg-gray-200 my-2"></div>
 
-                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80">
+                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200">
                     <Settings className="w-4 h-4" />
                     <span className="flex-1 text-right font-medium">
                       {t("settings")}
                     </span>
                   </button>
 
-                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80">
+                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200">
                     <School className="w-4 h-4" />
                     <span className="flex-1 text-right font-medium">
                       {t("schoolSettings") || "إعدادات المدرسة"}
@@ -1270,7 +1207,7 @@ export default function Dashboard() {
 
                   <button
                     onClick={() => setShowSidebar(false)}
-                    className="w-full mt-2 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100/80 rounded-lg"
+                    className="w-full mt-2 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100/80 rounded-lg transition-colors duration-200"
                   >
                     <ChevronRight className="w-4 h-4 mx-auto" />
                   </button>
@@ -1281,7 +1218,7 @@ export default function Dashboard() {
             {!showSidebar && (
               <button
                 onClick={() => setShowSidebar(true)}
-                className="fixed right-4 top-20 z-40 p-2 bg-white/90 backdrop-blur-xl rounded-lg shadow-sm hover:shadow-md border border-gray-100/50"
+                className="fixed right-4 top-20 z-40 p-2 bg-white/90 backdrop-blur-xl rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100/50"
               >
                 <ChevronLeft className="w-4 h-4 text-gray-600" />
               </button>
@@ -1305,7 +1242,7 @@ export default function Dashboard() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={loadStatistics}
-                        className="p-2 hover:bg-gray-100/80 rounded-lg"
+                        className="p-2 hover:bg-gray-100/80 rounded-lg transition-all duration-200"
                         title={t("refresh")}
                       >
                         <RefreshCw className="w-4 h-4 text-gray-600" />
@@ -1335,13 +1272,23 @@ export default function Dashboard() {
                     </div>
                   </div>
 
+                  {dataError && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+                      <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                      <p className="text-sm text-red-700">{dataError}</p>
+                      <button
+                        onClick={loadStatistics}
+                        className="mr-auto text-sm bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700"
+                      >
+                        إعادة المحاولة
+                      </button>
+                    </div>
+                  )}
+
                   {loading ? (
                     <div className="flex items-center justify-center py-20">
                       <div className="relative">
-                        <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                        <p className="text-gray-600 mt-4">
-                          جاري تحميل البيانات...
-                        </p>
+                        <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                       </div>
                     </div>
                   ) : (
@@ -1390,6 +1337,7 @@ export default function Dashboard() {
                         />
                       </div>
 
+                      {/* بطاقة معلومات المدرسة */}
                       <div className="grid grid-cols-1 md:grid-cols-2 xlg:grid-cols-4 gap-4">
                         <ModernStatCard
                           title={t("collectionRate")}
@@ -1470,7 +1418,7 @@ export default function Dashboard() {
                           {t("last7Days")}
                         </p>
                       </div>
-                      <button className="p-2 hover:bg-gray-100/80 rounded-lg">
+                      <button className="p-2 hover:bg-gray-100/80 rounded-lg transition-colors duration-200">
                         <Maximize2 className="w-4 h-4 text-gray-500" />
                       </button>
                     </div>
@@ -1484,7 +1432,7 @@ export default function Dashboard() {
                           <div
                             className="w-full bg-gradient-to-t from-blue-600 to-indigo-600 rounded-t-lg transition-all duration-500 hover:from-blue-500 hover:to-indigo-500"
                             style={{ height: `${value}%` }}
-                          />
+                          ></div>
                           <span className="text-xs text-gray-500">
                             {days[i]}
                           </span>

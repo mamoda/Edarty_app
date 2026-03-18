@@ -5,6 +5,15 @@
 // نوع المستخدم من Supabase (للتوافق مع الـ library)
 export type SupabaseUser = import('@supabase/supabase-js').User;
 
+// نوع المستخدم المخصص مع بيانات المدرسة
+export interface CustomUser extends SupabaseUser {
+  schoolName?: string;
+  schoolAddress?: string;
+  schoolPhone?: string;
+  taxNumber?: string;
+  full_name?: string;
+}
+
 // نوع بيانات المدرسة (للاستخدام في الـ hooks)
 export interface SchoolData {
   schoolName: string;
@@ -24,13 +33,7 @@ export interface User {
   school_address: string | null;
   school_phone: string | null;
   tax_number: string | null;
-  role: UserRole;
-  permissions?: Record<string, boolean>;
-  is_active: boolean;
-  last_login?: string;
-  avatar_url?: string | null;
-  phone?: string | null;
-  department?: string | null;
+  role: string;
   created_at: string;
   updated_at: string;
 }
@@ -125,11 +128,11 @@ export interface TeacherSalary {
 }
 
 // ============================================
-// أنواع الإحصائيات (Statistics) - المعدل
+// أنواع الإحصائيات (Statistics)
 // ============================================
 
 export interface Statistics {
-  // إحصائيات أساسية (كلها مطلوبة)
+  // إحصائيات أساسية
   totalStudents: number;
   activeStudents: number;
   totalRevenue: number;
@@ -137,31 +140,31 @@ export interface Statistics {
   netProfit: number;
   
   // إحصائيات المعلمين
-  totalTeachers: number;
-  activeTeachers: number;
-  totalSalaries: number;
-  pendingSalaries?: number;     // فقط هذه اختيارية
-  paidSalaries?: number;        // فقط هذه اختيارية
-  monthlySalaryCost?: number;   // فقط هذه اختيارية
+  totalTeachers?: number;
+  activeTeachers?: number;
+  totalSalaries?: number;
+  pendingSalaries?: number;
+  paidSalaries?: number;
+  monthlySalaryCost?: number;
   
-  // إحصائيات إضافية للرسوم (كلها مطلوبة)
-  totalRefunds: number;
-  netRevenue: number;
-  paidStudents: number;
-  partialPaidStudents: number;
-  unpaidStudents: number;
-  collectionRate: number;
+  // إحصائيات إضافية للرسوم
+  totalRefunds?: number;
+  netRevenue?: number;
+  paidStudents?: number;
+  partialPaidStudents?: number;
+  unpaidStudents?: number;
+  collectionRate?: number;
   
-  // إحصائيات طرق الدفع (كلها مطلوبة)
-  cashPayments: number;
-  cardPayments: number;
-  bankTransferPayments: number;
-  checkPayments: number;
+  // إحصائيات طرق الدفع
+  cashPayments?: number;
+  cardPayments?: number;
+  bankTransferPayments?: number;
+  checkPayments?: number;
   
-  // إحصائيات زمنية (كلها مطلوبة)
-  todayCollections: number;
-  thisWeekCollections: number;
-  thisMonthCollections: number;
+  // إحصائيات زمنية
+  todayCollections?: number;
+  thisWeekCollections?: number;
+  thisMonthCollections?: number;
 }
 
 // ============================================
@@ -194,57 +197,6 @@ export interface FilterOptions {
 export interface SortOptions {
   field: string;
   direction: 'asc' | 'desc';
-}
-
-// ============================================
-// الأنواع الإضافية (Roles & Permissions)
-// ============================================
-
-export type UserRole = 'admin' | 'accountant' | 'moderator' | 'user' | 'teacher' | 'student' | 'parent';
-
-export interface Permission {
-  id: string;
-  name: string;
-  description: string;
-  module: string;
-  created_at: string;
-}
-
-export interface UserPermissions {
-  user_id: string;
-  permission_id: string;
-  granted_by?: string;
-  granted_at: string;
-  expires_at?: string;
-  permission?: Permission;
-}
-
-export interface UserActivityLog {
-  id: string;
-  user_id: string;
-  action: string;
-  entity: string;
-  entity_id?: string;
-  old_data?: any;
-  new_data?: any;
-  ip_address?: string;
-  user_agent?: string;
-  created_at: string;
-}
-
-// ============================================
-// نوع المستخدم المخصص (للاستخدام في AuthContext)
-// ============================================
-
-export interface CustomUser extends SupabaseUser {
-  schoolName?: string;
-  schoolAddress?: string;
-  schoolPhone?: string;
-  taxNumber?: string;
-  full_name?: string;
-  role?: UserRole;
-  is_active?: boolean;
-  permissions?: Record<string, boolean>;
 }
 
 // ============================================

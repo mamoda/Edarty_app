@@ -135,7 +135,6 @@ const translations = {
     print: 'Print',
     download: 'Download',
     close: 'Close',
-    
   },
   ar: {
     // القائمة الرئيسية
