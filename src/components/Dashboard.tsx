@@ -33,27 +33,18 @@ import {
   School,
   Mail,
   AlertCircle,
-  Shield,
-  UserCog,
-  UsersRound,
-  Lock,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { usePermissions } from "../hooks/usePermissions";
-import { PermissionGate } from "../components/PermissionGate";
 import { useLanguage } from "../context/LanguageContext";
 import { useSchoolData } from "../hooks/useSchoolData";
 import { supabase } from "../lib/supabase";
-import type { Statistics, Module } from "../types/database";
+import type { Statistics } from "../types/database";
 import StudentsManager from "./StudentsManager";
 import FeesManager from "./FeesManager";
 import ExpensesManager from "./ExpensesManager";
 import TeachersManager from "./TeachersManager";
 import ProfitReport from "./ProfitReport";
 import FinancialReports from "./FinancialReports";
-import UsersManager from "./UsersManager";
-import PermissionsManager from "./PermissionsManager";
-import SchoolSettings from "./SchoolSettings";
 import logo from "../assets/logo.png";
 import backgroundPattern from "../assets/background-pattern.png";
 import backgroundWave from "../assets/background-wave.png";
@@ -66,10 +57,7 @@ type View =
   | "fees"
   | "expenses"
   | "reports"
-  | "financial"
-  | "users"
-  | "permissions"
-  | "schoolSettings";
+  | "financial";
 
 interface StatCardProps {
   title: string;
@@ -91,8 +79,6 @@ interface MenuItemProps {
   count?: number;
   currentView: View;
   onClick: () => void;
-  requiredModule?: Module;
-  requiredAction?: "view" | "manage";
 }
 
 interface QuickActionProps {
@@ -101,8 +87,6 @@ interface QuickActionProps {
   icon: React.ElementType;
   color: string;
   onClick: () => void;
-  requiredModule?: Module;
-  requiredAction?: "create" | "view";
 }
 
 interface HeaderProps {
@@ -282,16 +266,8 @@ const ModernMenuItem: React.FC<MenuItemProps> = ({
   count,
   currentView,
   onClick,
-  requiredModule,
-  requiredAction = "view",
 }) => {
-  const { hasPermission } = useAuth();
   const isActive = currentView === view;
-
-  // التحقق من الصلاحية إذا كان مطلوباً
-  if (requiredModule && !hasPermission(requiredModule, requiredAction)) {
-    return null;
-  }
 
   return (
     <button
@@ -355,39 +331,28 @@ const QuickActionCard: React.FC<QuickActionProps> = ({
   icon: Icon,
   color,
   onClick,
-  requiredModule,
-  requiredAction = "create",
-}) => {
-  const { hasPermission } = useAuth();
+}) => (
+  <button
+    onClick={onClick}
+    className="group relative bg-white/90 backdrop-blur-xl rounded-xl shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden border border-gray-100/50 hover:border-gray-200/80"
+  >
+    <div
+      className={`absolute inset-0 bg-gradient-to-br ${color} opacity-0 group-hover:opacity-5 transition-opacity duration-700`}
+    ></div>
+    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
 
-  // التحقق من الصلاحية إذا كان مطلوباً
-  if (requiredModule && !hasPermission(requiredModule, requiredAction)) {
-    return null;
-  }
-
-  return (
-    <button
-      onClick={onClick}
-      className="group relative bg-white/90 backdrop-blur-xl rounded-xl shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden border border-gray-100/50 hover:border-gray-200/80"
-    >
+    <div className="relative p-5 text-right">
       <div
-        className={`absolute inset-0 bg-gradient-to-br ${color} opacity-0 group-hover:opacity-5 transition-opacity duration-700`}
-      ></div>
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-
-      <div className="relative p-5 text-right">
-        <div
-          className={`inline-flex p-2.5 bg-gradient-to-br ${color} rounded-xl shadow-lg mb-3 transform group-hover:scale-110 group-hover:-rotate-3 transition-all duration-500`}
-        >
-          <Icon className="w-5 h-5 text-white" />
-        </div>
-
-        <h4 className="font-semibold text-gray-900 mb-1">{title}</h4>
-        <p className="text-xs text-gray-500 leading-relaxed">{description}</p>
+        className={`inline-flex p-2.5 bg-gradient-to-br ${color} rounded-xl shadow-lg mb-3 transform group-hover:scale-110 group-hover:-rotate-3 transition-all duration-500`}
+      >
+        <Icon className="w-5 h-5 text-white" />
       </div>
-    </button>
-  );
-};
+
+      <h4 className="font-semibold text-gray-900 mb-1">{title}</h4>
+      <p className="text-xs text-gray-500 leading-relaxed">{description}</p>
+    </div>
+  </button>
+);
 
 const ModernHeader: React.FC<HeaderProps> = ({
   user,
@@ -402,7 +367,6 @@ const ModernHeader: React.FC<HeaderProps> = ({
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const { isAdmin } = usePermissions();
 
   return (
     <header className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-50">
@@ -421,6 +385,12 @@ const ModernHeader: React.FC<HeaderProps> = ({
               />
             </div>
 
+            {/* اسم المدرسة بجانب الشعار */}
+            <div className="hidden md:block">
+              {/* <p className="text-sm font-medium text-gray-900">{schoolName}</p> */}
+              {/* <p className="text-xs text-gray-500">{schoolIdentifier}</p> */}
+            </div>
+
             <div className="h-6 w-px bg-gray-200"></div>
             <nav className="hidden md:flex items-center gap-1">
               <button
@@ -429,22 +399,18 @@ const ModernHeader: React.FC<HeaderProps> = ({
               >
                 {t("overview")}
               </button>
-              <PermissionGate module="reports" action="view">
-                <button
-                  onClick={() => onViewChange("financial")}
-                  className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200"
-                >
-                  {t("analytics")}
-                </button>
-              </PermissionGate>
-              <PermissionGate module="reports" action="view">
-                <button
-                  onClick={() => onViewChange("reports")}
-                  className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200"
-                >
-                  {t("reports")}
-                </button>
-              </PermissionGate>
+              <button
+                onClick={() => onViewChange("financial")}
+                className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200"
+              >
+                {t("analytics")}
+              </button>
+              <button
+                onClick={() => onViewChange("reports")}
+                className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200"
+              >
+                {t("reports")}
+              </button>
             </nav>
           </div>
 
@@ -527,12 +493,10 @@ const ModernHeader: React.FC<HeaderProps> = ({
               )}
             </div>
 
-            {isAdmin() && (
-              <button className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-amber-500/25 transition-all duration-300">
-                <Crown className="w-4 h-4" />
-                <span>{t("admin")}</span>
-              </button>
-            )}
+            <button className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-amber-500/25 transition-all duration-300">
+              <Crown className="w-4 h-4" />
+              <span>{t("upgrade")}</span>
+            </button>
 
             <div className="relative">
               <button
@@ -549,7 +513,7 @@ const ModernHeader: React.FC<HeaderProps> = ({
                       {user?.email}
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      {isAdmin() ? t("admin") : t("user")}
+                      {t("freePlan")}
                     </p>
                   </div>
                   <button
@@ -697,14 +661,12 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose, language, t }) => {
   );
 };
 
-// مكون عرض المكونات الفرعية مع التحميل والصلاحيات
+// مكون عرض المكونات الفرعية مع التحميل
 const ViewRenderer: React.FC<{
   view: View;
   onUpdate: () => void;
   loading?: boolean;
 }> = ({ view, onUpdate, loading = false }) => {
-  const { hasPermission } = useAuth();
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -717,68 +679,17 @@ const ViewRenderer: React.FC<{
 
   switch (view) {
     case "students":
-      return hasPermission("students", "view") ? (
-        <StudentsManager onUpdate={onUpdate} />
-      ) : (
-        <div className="bg-red-50 p-4 rounded-lg text-red-600">ليس لديك صلاحية لعرض الطلاب</div>
-      );
-    
+      return <StudentsManager onUpdate={onUpdate} />;
     case "teachers":
-      return hasPermission("teachers", "view") ? (
-        <TeachersManager onUpdate={onUpdate} />
-      ) : (
-        <div className="bg-red-50 p-4 rounded-lg text-red-600">ليس لديك صلاحية لعرض المعلمين</div>
-      );
-    
+      return <TeachersManager onUpdate={onUpdate} />;
     case "fees":
-      return hasPermission("fees", "view") ? (
-        <FeesManager onUpdate={onUpdate} />
-      ) : (
-        <div className="bg-red-50 p-4 rounded-lg text-red-600">ليس لديك صلاحية لعرض الرسوم</div>
-      );
-    
+      return <FeesManager onUpdate={onUpdate} />;
     case "expenses":
-      return hasPermission("expenses", "view") ? (
-        <ExpensesManager onUpdate={onUpdate} />
-      ) : (
-        <div className="bg-red-50 p-4 rounded-lg text-red-600">ليس لديك صلاحية لعرض المصروفات</div>
-      );
-    
+      return <ExpensesManager onUpdate={onUpdate} />;
     case "reports":
-      return hasPermission("reports", "view") ? (
-        <ProfitReport />
-      ) : (
-        <div className="bg-red-50 p-4 rounded-lg text-red-600">ليس لديك صلاحية لعرض التقارير</div>
-      );
-    
+      return <ProfitReport />;
     case "financial":
-      return hasPermission("reports", "view") ? (
-        <FinancialReports />
-      ) : (
-        <div className="bg-red-50 p-4 rounded-lg text-red-600">ليس لديك صلاحية لعرض التقارير المالية</div>
-      );
-    
-    case "users":
-      return hasPermission("users", "manage") ? (
-        <UsersManager />
-      ) : (
-        <div className="bg-red-50 p-4 rounded-lg text-red-600">ليس لديك صلاحية لإدارة المستخدمين</div>
-      );
-    
-    case "permissions":
-      return hasPermission("permissions", "manage") ? (
-        <PermissionsManager />
-      ) : (
-        <div className="bg-red-50 p-4 rounded-lg text-red-600">ليس لديك صلاحية لإدارة الصلاحيات</div>
-      );
-    
-    case "schoolSettings":
-      return hasPermission("settings", "manage") ? (
-        <SchoolSettings />
-      ) : (
-        <div className="bg-red-50 p-4 rounded-lg text-red-600">ليس لديك صلاحية لإعدادات المدرسة</div>
-      );
-    
+      return <FinancialReports />;
     default:
       return null;
   }
@@ -786,7 +697,6 @@ const ViewRenderer: React.FC<{
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
-  const { isAdmin } = usePermissions();
   const { schoolName, schoolEmail, schoolIdentifier } = useSchoolData();
   const { language, toggleLanguage, t } = useLanguage();
 
@@ -853,7 +763,7 @@ export default function Dashboard() {
     } else {
       console.log("⏳ Waiting for user...");
     }
-  }, [user]);
+  }, [user]); // يعتمد على user
 
   const loadStatistics = async () => {
     if (!user) {
@@ -1145,28 +1055,28 @@ export default function Dashboard() {
                     <span className="text-sm font-semibold text-gray-900">
                       {schoolName}
                     </span>
+                    {/* <span className="text-[10px] text-gray-400 mr-2">
+                      {" "}
+                      {schoolIdentifier}
+                    </span> */}
                   </div>
                 </div>
 
                 {/* فواصل نقطية */}
                 <span className="text-gray-300 text-lg leading-none">•</span>
 
-                {/* الطلاب النشطين - يظهر فقط لمن لديه صلاحية */}
-                <PermissionGate module="students" action="view">
-                  <div className="flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5 text-gray-500" />
-                    <span className="text-xs text-gray-600">
-                      <span className="font-medium text-gray-900">
-                        {formatNumber(stats.activeStudents, language)}
-                      </span>{" "}
-                      طالب نشط
-                    </span>
-                  </div>
-                </PermissionGate>
+                {/* الطلاب النشطين */}
+                <div className="flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-gray-500" />
+                  <span className="text-xs text-gray-600">
+                    <span className="font-medium text-gray-900">
+                      {formatNumber(stats.activeStudents, language)}
+                    </span>{" "}
+                    طالب نشط
+                  </span>
+                </div>
 
-                <PermissionGate module="students" action="view">
-                  <span className="text-gray-300 text-lg leading-none">•</span>
-                </PermissionGate>
+                <span className="text-gray-300 text-lg leading-none">•</span>
 
                 {/* البريد الإلكتروني */}
                 <div className="flex items-center gap-1.5">
@@ -1177,33 +1087,31 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* الجهة اليسرى - نسبة التحصيل (تظهر فقط لمن لديه صلاحية) */}
-              <PermissionGate module="fees" action="view">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500">نسبة التحصيل</span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-bold text-green-600">
-                        {stats.collectionRate.toFixed(1)}%
-                      </span>
-                      <div className="w-12 h-1 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-green-500 rounded-full"
-                          style={{ width: `${stats.collectionRate}%` }}
-                        ></div>
-                      </div>
+              {/* الجهة اليسرى - نسبة التحصيل */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">نسبة التحصيل</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold text-green-600">
+                      {stats.collectionRate.toFixed(1)}%
+                    </span>
+                    <div className="w-12 h-1 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-green-500 rounded-full"
+                        style={{ width: `${stats.collectionRate}%` }}
+                      ></div>
                     </div>
                   </div>
-
-                  {/* حالة الاتصال */}
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 rounded-full border border-green-100">
-                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-[10px] font-medium text-green-700">
-                      مباشر
-                    </span>
-                  </div>
                 </div>
-              </PermissionGate>
+
+                {/* حالة الاتصال */}
+                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 rounded-full border border-green-100">
+                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-[10px] font-medium text-green-700">
+                    مباشر
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1237,7 +1145,6 @@ export default function Dashboard() {
                     currentView={currentView}
                     onClick={() => handleViewChange("dashboard")}
                   />
-                  
                   <ModernMenuItem
                     label={t("students")}
                     icon={GraduationCap}
@@ -1245,104 +1152,58 @@ export default function Dashboard() {
                     count={stats.activeStudents}
                     currentView={currentView}
                     onClick={() => handleViewChange("students")}
-                    requiredModule="students"
                   />
-                  
                   <ModernMenuItem
                     label={t("teachers")}
                     icon={Briefcase}
                     view="teachers"
                     currentView={currentView}
                     onClick={() => handleViewChange("teachers")}
-                    requiredModule="teachers"
                   />
-                  
                   <ModernMenuItem
                     label={t("fees")}
                     icon={Wallet}
                     view="fees"
                     currentView={currentView}
                     onClick={() => handleViewChange("fees")}
-                    requiredModule="fees"
                   />
-                  
                   <ModernMenuItem
                     label={t("expenses")}
                     icon={TrendingDown}
                     view="expenses"
                     currentView={currentView}
                     onClick={() => handleViewChange("expenses")}
-                    requiredModule="expenses"
                   />
-                  
                   <ModernMenuItem
                     label={t("profit")}
                     icon={TrendingUp}
                     view="reports"
                     currentView={currentView}
                     onClick={() => handleViewChange("reports")}
-                    requiredModule="reports"
                   />
-                  
                   <ModernMenuItem
                     label={t("financial")}
                     icon={LineChart}
                     view="financial"
                     currentView={currentView}
                     onClick={() => handleViewChange("financial")}
-                    requiredModule="reports"
                   />
 
-                  {/* عناصر إدارة النظام - تظهر فقط للمشرفين */}
-                  {isAdmin() && (
-                    <>
-                      <div className="h-px bg-gray-200 my-2"></div>
+                  <div className="h-px bg-gray-200 my-2"></div>
 
-                      <ModernMenuItem
-                        label={t("users")}
-                        icon={UsersRound}
-                        view="users"
-                        currentView={currentView}
-                        onClick={() => handleViewChange("users")}
-                        requiredModule="users"
-                        requiredAction="manage"
-                      />
-                      
-                      <ModernMenuItem
-                        label={t("permissions")}
-                        icon={Shield}
-                        view="permissions"
-                        currentView={currentView}
-                        onClick={() => handleViewChange("permissions")}
-                        requiredModule="permissions"
-                        requiredAction="manage"
-                      />
-                      
-                      <ModernMenuItem
-                        label={t("schoolSettings")}
-                        icon={School}
-                        view="schoolSettings"
-                        currentView={currentView}
-                        onClick={() => handleViewChange("schoolSettings")}
-                        requiredModule="settings"
-                        requiredAction="manage"
-                      />
-                    </>
-                  )}
+                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200">
+                    <Settings className="w-4 h-4" />
+                    <span className="flex-1 text-right font-medium">
+                      {t("settings")}
+                    </span>
+                  </button>
 
-                  {/* عناصر الإعدادات العامة - تظهر لمن لديه صلاحية */}
-                  <PermissionGate module="settings" action="view">
-                    <>
-                      <div className="h-px bg-gray-200 my-2"></div>
-                      
-                      <button className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200">
-                        <Settings className="w-4 h-4" />
-                        <span className="flex-1 text-right font-medium">
-                          {t("settings")}
-                        </span>
-                      </button>
-                    </>
-                  </PermissionGate>
+                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200">
+                    <School className="w-4 h-4" />
+                    <span className="flex-1 text-right font-medium">
+                      {t("schoolSettings") || "إعدادات المدرسة"}
+                    </span>
+                  </button>
 
                   <button
                     onClick={() => setShowSidebar(false)}
@@ -1375,11 +1236,6 @@ export default function Dashboard() {
                         <span className="text-blue-600 font-medium">
                           {schoolName}
                         </span>
-                        {isAdmin() && (
-                          <span className="mr-2 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
-                            {t("admin")}
-                          </span>
-                        )}
                       </p>
                     </div>
 
@@ -1437,193 +1293,154 @@ export default function Dashboard() {
                     </div>
                   ) : (
                     <>
-                      {/* الصف الأول من البطاقات - أساسيات */}
                       <div className="grid grid-cols-1 md:grid-cols-2 xlg:grid-cols-4 gap-4">
-                        <PermissionGate module="students" action="view">
-                          <ModernStatCard
-                            title={t("totalStudents")}
-                            value={stats.totalStudents}
-                            icon={Users}
-                            trend={studentsTrend.trend}
-                            trendValue={studentsTrend.value}
-                            color="from-blue-600 to-indigo-600"
-                            delay={0}
-                            subValue={`${formatNumber(stats.activeStudents, language)} ${t("active")}`}
-                          />
-                        </PermissionGate>
-
-                        <PermissionGate module="fees" action="view">
-                          <ModernStatCard
-                            title={t("netRevenue")}
-                            value={stats.netRevenue}
-                            icon={DollarSign}
-                            isCurrency={true}
-                            trend={revenueTrend.trend}
-                            trendValue={revenueTrend.value}
-                            color="from-emerald-600 to-teal-600"
-                            delay={50}
-                            subValue={t("afterRefunds")}
-                          />
-                        </PermissionGate>
-
-                        <PermissionGate module="expenses" action="view">
-                          <ModernStatCard
-                            title={t("totalExpenses")}
-                            value={stats.totalExpenses}
-                            icon={TrendingDown}
-                            isCurrency={true}
-                            trend={expensesTrend.trend}
-                            trendValue={expensesTrend.value}
-                            color="from-red-600 to-rose-600"
-                            delay={100}
-                          />
-                        </PermissionGate>
-
-                        <PermissionGate module="fees" action="view">
-                          <ModernStatCard
-                            title={t("netProfit")}
-                            value={stats.netProfit}
-                            icon={TrendingUp}
-                            isCurrency={true}
-                            trend={profitTrend.trend}
-                            trendValue={profitTrend.value}
-                            color="from-purple-600 to-pink-600"
-                            delay={150}
-                          />
-                        </PermissionGate>
+                        <ModernStatCard
+                          title={t("totalStudents")}
+                          value={stats.totalStudents}
+                          icon={Users}
+                          trend={studentsTrend.trend}
+                          trendValue={studentsTrend.value}
+                          color="from-blue-600 to-indigo-600"
+                          delay={0}
+                          subValue={`${formatNumber(stats.activeStudents, language)} ${t("active")}`}
+                        />
+                        <ModernStatCard
+                          title={t("netRevenue")}
+                          value={stats.netRevenue}
+                          icon={DollarSign}
+                          isCurrency={true}
+                          trend={revenueTrend.trend}
+                          trendValue={revenueTrend.value}
+                          color="from-emerald-600 to-teal-600"
+                          delay={50}
+                          subValue={t("afterRefunds")}
+                        />
+                        <ModernStatCard
+                          title={t("totalExpenses")}
+                          value={stats.totalExpenses}
+                          icon={TrendingDown}
+                          isCurrency={true}
+                          trend={expensesTrend.trend}
+                          trendValue={expensesTrend.value}
+                          color="from-red-600 to-rose-600"
+                          delay={100}
+                        />
+                        <ModernStatCard
+                          title={t("netProfit")}
+                          value={stats.netProfit}
+                          icon={TrendingUp}
+                          isCurrency={true}
+                          trend={profitTrend.trend}
+                          trendValue={profitTrend.value}
+                          color="from-purple-600 to-pink-600"
+                          delay={150}
+                        />
                       </div>
 
-                      {/* الصف الثاني من البطاقات - تحليلات متقدمة */}
+                      {/* بطاقة معلومات المدرسة */}
                       <div className="grid grid-cols-1 md:grid-cols-2 xlg:grid-cols-4 gap-4">
-                        <PermissionGate module="fees" action="view">
-                          <ModernStatCard
-                            title={t("collectionRate")}
-                            value={stats.collectionRate}
-                            icon={Activity}
-                            isPercentage={true}
-                            color="from-blue-600 to-indigo-600"
-                            delay={200}
-                          />
-                        </PermissionGate>
-
-                        <PermissionGate module="fees" action="view">
-                          <ModernStatCard
-                            title={t("todayCollections")}
-                            value={stats.todayCollections}
-                            icon={Wallet}
-                            isCurrency={true}
-                            color="from-amber-500 to-orange-600"
-                            delay={250}
-                          />
-                        </PermissionGate>
-
-                        <PermissionGate module="students" action="view">
-                          <ModernStatCard
-                            title={t("paidStudents")}
-                            value={stats.paidStudents}
-                            icon={Users}
-                            color="from-green-600 to-emerald-600"
-                            delay={300}
-                          />
-                        </PermissionGate>
-
-                        <PermissionGate module="students" action="view">
-                          <ModernStatCard
-                            title={t("unpaidStudents")}
-                            value={stats.unpaidStudents}
-                            icon={Users}
-                            color="from-red-600 to-rose-600"
-                            delay={350}
-                          />
-                        </PermissionGate>
+                        <ModernStatCard
+                          title={t("collectionRate")}
+                          value={stats.collectionRate}
+                          icon={Activity}
+                          isPercentage={true}
+                          color="from-blue-600 to-indigo-600"
+                          delay={200}
+                        />
+                        <ModernStatCard
+                          title={t("todayCollections")}
+                          value={stats.todayCollections}
+                          icon={Wallet}
+                          isCurrency={true}
+                          color="from-amber-500 to-orange-600"
+                          delay={250}
+                        />
+                        <ModernStatCard
+                          title={t("paidStudents")}
+                          value={stats.paidStudents}
+                          icon={Users}
+                          color="from-green-600 to-emerald-600"
+                          delay={300}
+                        />
+                        <ModernStatCard
+                          title={t("unpaidStudents")}
+                          value={stats.unpaidStudents}
+                          icon={Users}
+                          color="from-red-600 to-rose-600"
+                          delay={350}
+                        />
                       </div>
 
-                      {/* الصف الثالث - طرق الدفع */}
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <PermissionGate module="fees" action="view">
-                          <ModernStatCard
-                            title={t("cashPayments")}
-                            value={stats.cashPayments}
-                            icon={Wallet}
-                            isCurrency={true}
-                            color="from-green-600 to-emerald-600"
-                            delay={400}
-                          />
-                        </PermissionGate>
-
-                        <PermissionGate module="fees" action="view">
-                          <ModernStatCard
-                            title={t("cardPayments")}
-                            value={stats.cardPayments}
-                            icon={CreditCard}
-                            isCurrency={true}
-                            color="from-blue-600 to-indigo-600"
-                            delay={450}
-                          />
-                        </PermissionGate>
-
-                        <PermissionGate module="fees" action="view">
-                          <ModernStatCard
-                            title={t("bankTransferPayments")}
-                            value={stats.bankTransferPayments}
-                            icon={Landmark}
-                            isCurrency={true}
-                            color="from-purple-600 to-pink-600"
-                            delay={500}
-                          />
-                        </PermissionGate>
-
-                        <PermissionGate module="fees" action="view">
-                          <ModernStatCard
-                            title={t("checkPayments")}
-                            value={stats.checkPayments}
-                            icon={FileText}
-                            isCurrency={true}
-                            color="from-amber-500 to-orange-600"
-                            delay={550}
-                          />
-                        </PermissionGate>
+                        <ModernStatCard
+                          title={t("cashPayments")}
+                          value={stats.cashPayments}
+                          icon={Wallet}
+                          isCurrency={true}
+                          color="from-green-600 to-emerald-600"
+                          delay={400}
+                        />
+                        <ModernStatCard
+                          title={t("cardPayments")}
+                          value={stats.cardPayments}
+                          icon={CreditCard}
+                          isCurrency={true}
+                          color="from-blue-600 to-indigo-600"
+                          delay={450}
+                        />
+                        <ModernStatCard
+                          title={t("bankTransferPayments")}
+                          value={stats.bankTransferPayments}
+                          icon={Landmark}
+                          isCurrency={true}
+                          color="from-purple-600 to-pink-600"
+                          delay={500}
+                        />
+                        <ModernStatCard
+                          title={t("checkPayments")}
+                          value={stats.checkPayments}
+                          icon={FileText}
+                          isCurrency={true}
+                          color="from-amber-500 to-orange-600"
+                          delay={550}
+                        />
                       </div>
                     </>
                   )}
 
-                  {/* الرسم البياني - يظهر فقط لمن لديه صلاحية */}
-                  <PermissionGate module="reports" action="view">
-                    <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-6 border border-gray-100/50">
-                      <div className="flex items-center justify-between mb-4">
-                        <div>
-                          <h3 className="font-semibold text-gray-900">
-                            {t("revenueOverview")}
-                          </h3>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {t("last7Days")}
-                          </p>
-                        </div>
-                        <button className="p-2 hover:bg-gray-100/80 rounded-lg transition-colors duration-200">
-                          <Maximize2 className="w-4 h-4 text-gray-500" />
-                        </button>
+                  <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-6 border border-gray-100/50">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="font-semibold text-gray-900">
+                          {t("revenueOverview")}
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {t("last7Days")}
+                        </p>
                       </div>
-
-                      <div className="h-32 flex items-end gap-2">
-                        {revenueData.map((value, i) => (
-                          <div
-                            key={i}
-                            className="flex-1 flex flex-col items-center gap-1"
-                          >
-                            <div
-                              className="w-full bg-gradient-to-t from-blue-600 to-indigo-600 rounded-t-lg transition-all duration-500 hover:from-blue-500 hover:to-indigo-500"
-                              style={{ height: `${value}%` }}
-                            ></div>
-                            <span className="text-xs text-gray-500">
-                              {days[i]}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                      <button className="p-2 hover:bg-gray-100/80 rounded-lg transition-colors duration-200">
+                        <Maximize2 className="w-4 h-4 text-gray-500" />
+                      </button>
                     </div>
-                  </PermissionGate>
 
-                  {/* الإجراءات السريعة - تعتمد على الصلاحيات */}
+                    <div className="h-32 flex items-end gap-2">
+                      {revenueData.map((value, i) => (
+                        <div
+                          key={i}
+                          className="flex-1 flex flex-col items-center gap-1"
+                        >
+                          <div
+                            className="w-full bg-gradient-to-t from-blue-600 to-indigo-600 rounded-t-lg transition-all duration-500 hover:from-blue-500 hover:to-indigo-500"
+                            style={{ height: `${value}%` }}
+                          ></div>
+                          <span className="text-xs text-gray-500">
+                            {days[i]}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   <div>
                     <h3 className="text-sm font-medium text-gray-700 mb-3">
                       {t("quickActions")}
@@ -1635,8 +1452,6 @@ export default function Dashboard() {
                         icon={UserPlus}
                         color="from-blue-600 to-indigo-600"
                         onClick={() => handleViewChange("students")}
-                        requiredModule="students"
-                        requiredAction="create"
                       />
                       <QuickActionCard
                         title={t("recordFee")}
@@ -1644,8 +1459,6 @@ export default function Dashboard() {
                         icon={Wallet}
                         color="from-emerald-600 to-teal-600"
                         onClick={() => handleViewChange("fees")}
-                        requiredModule="fees"
-                        requiredAction="create"
                       />
                       <QuickActionCard
                         title={t("addExpense")}
@@ -1653,8 +1466,6 @@ export default function Dashboard() {
                         icon={TrendingDown}
                         color="from-red-600 to-rose-600"
                         onClick={() => handleViewChange("expenses")}
-                        requiredModule="expenses"
-                        requiredAction="create"
                       />
                       <QuickActionCard
                         title={t("viewReports")}
@@ -1662,8 +1473,6 @@ export default function Dashboard() {
                         icon={BarChart3}
                         color="from-purple-600 to-pink-600"
                         onClick={() => handleViewChange("reports")}
-                        requiredModule="reports"
-                        requiredAction="view"
                       />
                       <QuickActionCard
                         title={t("processRefund")}
@@ -1671,20 +1480,7 @@ export default function Dashboard() {
                         icon={X}
                         color="from-orange-600 to-red-600"
                         onClick={() => handleViewChange("fees")}
-                        requiredModule="fees"
-                        requiredAction="create"
                       />
-                      {isAdmin() && (
-                        <QuickActionCard
-                          title={t("manageUsers")}
-                          description={t("manageUsersDesc")}
-                          icon={UsersRound}
-                          color="from-indigo-600 to-purple-600"
-                          onClick={() => handleViewChange("users")}
-                          requiredModule="users"
-                          requiredAction="manage"
-                        />
-                      )}
                     </div>
                   </div>
                 </div>
