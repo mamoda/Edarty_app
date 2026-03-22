@@ -296,7 +296,7 @@ export default function LandingPage() {
             <div className="flex justify-center mt-6">
               <button
                 onClick={() =>
-                  window.open("https://erp.edarty.com/trial", "_blank")
+                  window.open("https://talee-1.onrender.com/", "_blank")
                 }
                 className="group relative px-8 py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 text-white rounded-full font-bold text-lg hover:shadow-2xl hover:shadow-indigo-600/30 transition-all duration-300 transform hover:scale-105 overflow-hidden"
               >
@@ -319,7 +319,7 @@ export default function LandingPage() {
             <div className="text-center mt-4">
               <p className="text-xs text-slate-400 flex items-center justify-center gap-2">
                 <span className="inline-block w-1 h-1 bg-emerald-500 rounded-full"></span>
-                نظام ERP متكامل لإدارة الموارد المؤسسية
+              ERP للطلبة - تجربة مجانية اختبارات في المواد العلمية والتقنية مع تقارير مفصلة لتحليل الأداء.
                 <span className="inline-block w-1 h-1 bg-emerald-500 rounded-full"></span>
               </p>
             </div>
