@@ -896,7 +896,7 @@ export default function LandingPage() {
                 </a>
 
                 <a
-                  href="https://instagram.com"
+                  href="https://www.instagram.com/mahmoud_atia_esd"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center hover:bg-emerald-600 transition-all cursor-pointer"
