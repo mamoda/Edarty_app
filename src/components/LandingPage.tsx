@@ -306,7 +306,7 @@ export default function LandingPage() {
                 {/* محتوى الزر */}
                 <span className="relative z-10 flex items-center gap-3">
                   <Zap className="w-5 h-5 animate-pulse" />
-                  جرب النظام المتكامل ERP
+                  Demo ERP Student test
                   <ExternalLink className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </span>
 
