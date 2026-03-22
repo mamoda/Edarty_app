@@ -276,23 +276,7 @@ export default function LandingPage() {
               خصيصاً لتوفير وقتك وزيادة أرباحك بدقة متناهية.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <button
-                onClick={handleFreeTrial}
-                className="w-full sm:w-auto px-10 py-4 bg-emerald-600 text-white rounded-full font-bold text-lg hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-600/20 transform hover:scale-105 flex items-center justify-center gap-2"
-              >
-                ابدأ الآن مجاناً
-                <ArrowRight className="w-5 h-5 rotate-180" />
-              </button>
-              <button
-                onClick={() => scrollToSection("features")}
-                className="w-full sm:w-auto px-10 py-4 bg-white text-slate-900 border border-slate-200 rounded-full font-bold text-lg hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
-              >
-                <PlayCircle className="w-5 h-5 text-emerald-600" />
-                شاهد العرض
-              </button>
-            </div>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+<div className="flex flex-col sm:flex-row items-center justify-center gap-4">
   <button
     onClick={handleFreeTrial}
     className="w-full sm:w-auto px-10 py-4 bg-emerald-600 text-white rounded-full font-bold text-lg hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-600/20 transform hover:scale-105 flex items-center justify-center gap-2"
@@ -355,7 +339,7 @@ export default function LandingPage() {
     نظام ERP متكامل لإدارة الموارد المؤسسية
     <span className="inline-block w-1 h-1 bg-emerald-500 rounded-full"></span>
   </p>
-</div>
+</div>            
 
             {/* Hero Video - Dashboard */}
             <div className="relative w-full mt-20">
