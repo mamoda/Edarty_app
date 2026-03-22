@@ -25,6 +25,7 @@ import {
   Pause,
   Volume2,
   VolumeX,
+  ExternalLink ,
 } from "lucide-react";
 import logo from "../assets/logo.png";
 import abstractTechBg from "../assets/edarty_abstract_tech_bg.png";
@@ -291,6 +292,70 @@ export default function LandingPage() {
                 شاهد العرض
               </button>
             </div>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+  <button
+    onClick={handleFreeTrial}
+    className="w-full sm:w-auto px-10 py-4 bg-emerald-600 text-white rounded-full font-bold text-lg hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-600/20 transform hover:scale-105 flex items-center justify-center gap-2"
+  >
+    ابدأ الآن مجاناً
+    <ArrowRight className="w-5 h-5 rotate-180" />
+  </button>
+  <button
+    onClick={() => scrollToSection("features")}
+    className="w-full sm:w-auto px-10 py-4 bg-white text-slate-900 border border-slate-200 rounded-full font-bold text-lg hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+  >
+    <PlayCircle className="w-5 h-5 text-emerald-600" />
+    شاهد العرض
+  </button>
+</div>
+
+// واستبدلها بهذا الكود:
+<div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+  <button
+    onClick={handleFreeTrial}
+    className="w-full sm:w-auto px-10 py-4 bg-emerald-600 text-white rounded-full font-bold text-lg hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-600/20 transform hover:scale-105 flex items-center justify-center gap-2"
+  >
+    ابدأ الآن مجاناً
+    <ArrowRight className="w-5 h-5 rotate-180" />
+  </button>
+  <button
+    onClick={() => scrollToSection("features")}
+    className="w-full sm:w-auto px-10 py-4 bg-white text-slate-900 border border-slate-200 rounded-full font-bold text-lg hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+  >
+    <PlayCircle className="w-5 h-5 text-emerald-600" />
+    شاهد العرض
+  </button>
+</div>
+
+{/* زر تجربة ERP المتقدمة - جديد */}
+<div className="flex justify-center mt-6">
+  <button
+    onClick={() => window.open("https://erp.edarty.com/trial", "_blank")}
+    className="group relative px-8 py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 text-white rounded-full font-bold text-lg hover:shadow-2xl hover:shadow-indigo-600/30 transition-all duration-300 transform hover:scale-105 overflow-hidden"
+  >
+    {/* خلفية متحركة */}
+    <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
+    
+    {/* محتوى الزر */}
+    <span className="relative z-10 flex items-center gap-3">
+      <Zap className="w-5 h-5 animate-pulse" />
+      جرب النظام المتكامل ERP
+      <ExternalLink className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+    </span>
+    
+    {/* تأثيرات إضافية */}
+    <div className="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-500/20 to-purple-500/20 blur-xl group-hover:blur-2xl transition-all duration-300"></div>
+  </button>
+</div>
+
+{/* يمكنك أيضاً إضافة هذا النص التوضيحي أسفل الزر */}
+<div className="text-center mt-4">
+  <p className="text-xs text-slate-400 flex items-center justify-center gap-2">
+    <span className="inline-block w-1 h-1 bg-emerald-500 rounded-full"></span>
+    نظام ERP متكامل لإدارة الموارد المؤسسية
+    <span className="inline-block w-1 h-1 bg-emerald-500 rounded-full"></span>
+  </p>
+</div>
 
             {/* Hero Video - Dashboard */}
             <div className="relative w-full mt-20">
