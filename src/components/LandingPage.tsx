@@ -494,7 +494,6 @@ export default function LandingPage() {
                     "حتى 30 عميل",
                     "تقارير أساسية",
                     "دعم عبر البريد الإلكتروني",
-                    "مساحة تخزين 1 جيجابايت",
                     "فواتير غير محدودة",
                   ].map((feature, i) => (
                     <li key={i} className="flex items-center gap-3 text-sm">
@@ -522,7 +521,7 @@ export default function LandingPage() {
               <div className="absolute top-6 left-6">
                 <div className="bg-gradient-to-l from-emerald-500 to-emerald-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1">
                   <Star className="w-3 h-3 fill-white" />
-                  الأكثر شهرة
+                  الأكثر طلبا
                 </div>
               </div>
 
@@ -532,7 +531,7 @@ export default function LandingPage() {
                     احترافية
                   </h3>
                   <span className="text-sm bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full">
-                    الأفضل مبيعاً
+                    الأكثر مبيعاً
                   </span>
                 </div>
 
@@ -558,7 +557,6 @@ export default function LandingPage() {
                     "عملاء غير محدودين",
                     "تقارير متقدمة وتحليلات ذكية",
                     "دعم فني على مدار الساعة",
-                    "مساحة تخزين 50 جيجابايت",
                     "فواتير إلكترونية ضريبية",
                     "صلاحيات متعددة للمستخدمين",
                     "نسخ احتياطي يومي",
@@ -614,11 +612,9 @@ export default function LandingPage() {
                     "كل مميزات الباقة الاحترافية",
                     "API متكامل للتطوير",
                     "تقارير مخصصة",
-                    "مساحة تخزين 200 جيجابايت",
                     "مدير حساب مخصص",
                     "تدريب فريق العمل",
                     "تكامل مع الأنظمة الخارجية",
-                    "ضمان استمرارية الأعمال",
                   ].map((feature, i) => (
                     <li key={i} className="flex items-center gap-3 text-sm">
                       <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
@@ -666,7 +662,6 @@ export default function LandingPage() {
                     "تطويرات مخصصة",
                     "استشارات متقدمة",
                     "تكامل مع أنظمتك الحالية",
-                    "ضمان تشغيلي 99.9%",
                     "تدريب متقدم للفريق",
                   ].map((feature, i) => (
                     <li key={i} className="flex items-center gap-3 text-sm">
@@ -756,13 +751,6 @@ export default function LandingPage() {
                       pro: "24/7",
                       advanced: "24/7",
                       enterprise: "مدير حساب",
-                    },
-                    {
-                      name: "مساحة التخزين",
-                      free: "1 جيجابايت",
-                      pro: "50 جيجابايت",
-                      advanced: "200 جيجابايت",
-                      enterprise: "غير محدود",
                     },
                     {
                       name: "API",
