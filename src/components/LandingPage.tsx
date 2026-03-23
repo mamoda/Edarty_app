@@ -646,7 +646,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* بطاقات إضافية لعرض المشاريع بشكل مصغر تحت السلايدر */}
+          {/* بطاقات إضافية لعرض المشاريع بشكل مصغر تحت السلايدر
           <div className="grid md:grid-cols-3 gap-6 mt-16">
             {projects.map((project, index) => (
               <div
@@ -667,7 +667,7 @@ export default function LandingPage() {
                 <p className="text-sm text-slate-500 line-clamp-2">{project.subtitle}</p>
               </div>
             ))}
-          </div>
+          </div> */}
         </div>
       </section>
 
