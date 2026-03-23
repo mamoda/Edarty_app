@@ -96,7 +96,7 @@ export default function LandingPage() {
         "نظام متكامل لإدارة نقاط البيع، المبيعات، المخزون، والعملاء. يدعم الفروع المتعددة ويقدم تقارير لحظية لأداء المبيعات.",
       icon: <ShoppingBag className="w-8 h-8" />,
       image: posProject,
-      link: "https://edarty-pos.vercel.app", // ✅ رابط خارجي حقيقي
+      link: "https://edarty-pos.vercel.app", 
       features: [
         "نقاط بيع متعددة",
         "إدارة المخزون آلياً",
@@ -115,7 +115,7 @@ export default function LandingPage() {
         "نظام إداري متكامل للمدارس والجامعات والمعاهد. يدير شؤون الطلاب، الرسوم الدراسية، الحضور والغياب، والتقارير الأكاديمية.",
       icon: <School className="w-8 h-8" />,
       image: educationalProject,
-      link: "https://educational.edarty.com", // ✅ رابط خارجي حقيقي
+      link: "https://edarty-app.vercel.app", 
       features: [
         "إدارة الطلاب والموظفين",
         "الرسوم الدراسية والمصروفات",
