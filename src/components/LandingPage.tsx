@@ -42,9 +42,12 @@ import demoVideo from "../assets/videos/kling_20260303_Image_to_Video_Futuristic
 import demoVideoWebm from "../assets/videos/edarty_hero_dashboard.png";
 import demoPoster from "../assets/videos/edarty_hero_dashboard.png";
 
-const medicalProject = "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=1200&h=800&fit=crop";
-const posProject = "https://images.pexels.com/photos/12935048/pexels-photo-12935048.jpeg";
-const educationalProject = "https://images.pexels.com/photos/9052475/pexels-photo-9052475.jpeg";
+const medicalProject =
+  "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=1200&h=800&fit=crop";
+const posProject =
+  "https://images.pexels.com/photos/12935048/pexels-photo-12935048.jpeg";
+const educationalProject =
+  "https://images.pexels.com/photos/9052475/pexels-photo-9052475.jpeg";
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -236,25 +239,29 @@ export default function LandingPage() {
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-8">
-              {["features", "projects", "benefits", "pricing", "testimonials"].map(
-                (item) => (
-                  <button
-                    key={item}
-                    onClick={() => scrollToSection(item)}
-                    className="text-slate-600 hover:text-emerald-600 transition-colors font-medium text-sm uppercase tracking-wide"
-                  >
-                    {item === "features"
-                      ? "المميزات"
-                      : item === "projects"
-                        ? "مشاريعنا"
-                        : item === "benefits"
-                          ? "الفوائد"
-                          : item === "pricing"
-                            ? "الأسعار"
-                            : "آراء العملاء"}
-                  </button>
-                ),
-              )}
+              {[
+                "features",
+                "projects",
+                "benefits",
+                "pricing",
+                "testimonials",
+              ].map((item) => (
+                <button
+                  key={item}
+                  onClick={() => scrollToSection(item)}
+                  className="text-slate-600 hover:text-emerald-600 transition-colors font-medium text-sm uppercase tracking-wide"
+                >
+                  {item === "features"
+                    ? "المميزات"
+                    : item === "projects"
+                      ? "مشاريعنا"
+                      : item === "benefits"
+                        ? "الفوائد"
+                        : item === "pricing"
+                          ? "الأسعار"
+                          : "آراء العملاء"}
+                </button>
+              ))}
             </nav>
 
             {/* CTA Buttons */}
@@ -392,7 +399,8 @@ export default function LandingPage() {
             <div className="text-center mt-4">
               <p className="text-xs text-slate-400 flex items-center justify-center gap-2">
                 <span className="inline-block w-1 h-1 bg-emerald-500 rounded-full"></span>
-                ERP للطلبة - تجربة مجانية اختبارات في المواد العلمية والتقنية مع تقارير مفصلة لتحليل الأداء.
+                ERP للطلبة - تجربة مجانية اختبارات في المواد العلمية والتقنية مع
+                تقارير مفصلة لتحليل الأداء.
                 <span className="inline-block w-1 h-1 bg-emerald-500 rounded-full"></span>
               </p>
             </div>
@@ -505,7 +513,10 @@ export default function LandingPage() {
       </section>
 
       {/* NEW SECTION: Projects Showcase - Full Width Slider */}
-      <section id="projects" className="py-24 bg-gradient-to-b from-slate-50 to-white overflow-hidden">
+      <section
+        id="projects"
+        className="py-24 bg-gradient-to-b from-slate-50 to-white overflow-hidden"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* عنوان القسم */}
           <div className="text-center mb-16">
@@ -523,136 +534,150 @@ export default function LandingPage() {
               على حدة
             </p>
           </div>
-
           {/* السلايدر الرئيسي */}
-{/* السلايدر الرئيسي */}
-<div className="relative">
-  {/* أزرار التنقل */}
-  <button
-    onClick={prevSlide}
-    className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/90 backdrop-blur-md rounded-full p-3 shadow-lg hover:bg-white transition-all duration-300 hover:scale-110 group focus:outline-none"
-    aria-label="السابق"
-  >
-    <ChevronRight className="w-6 h-6 text-slate-700 group-hover:text-emerald-600" />
-  </button>
-  <button
-    onClick={nextSlide}
-    className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/90 backdrop-blur-md rounded-full p-3 shadow-lg hover:bg-white transition-all duration-300 hover:scale-110 group focus:outline-none"
-    aria-label="التالي"
-  >
-    <ChevronLeft className="w-6 h-6 text-slate-700 group-hover:text-emerald-600" />
-  </button>
+          {/* السلايدر الرئيسي */}
+          <div className="relative">
+            {/* أزرار التنقل */}
+            <button
+              onClick={prevSlide}
+              className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/90 backdrop-blur-md rounded-full p-3 shadow-lg hover:bg-white transition-all duration-300 hover:scale-110 group focus:outline-none"
+              aria-label="السابق"
+            >
+              <ChevronRight className="w-6 h-6 text-slate-700 group-hover:text-emerald-600" />
+            </button>
+            <button
+              onClick={nextSlide}
+              className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/90 backdrop-blur-md rounded-full p-3 shadow-lg hover:bg-white transition-all duration-300 hover:scale-110 group focus:outline-none"
+              aria-label="التالي"
+            >
+              <ChevronLeft className="w-6 h-6 text-slate-700 group-hover:text-emerald-600" />
+            </button>
 
-  {/* محتوى السلايدر - تم إضافة overflow-x-auto و snap-mandatory */}
-  <div className="overflow-x-auto snap-x snap-mandatory scroll-smooth">
-    <div className="flex">
-      {projects.map((project) => (
-        <div
-          key={project.id}
-          className="w-full flex-shrink-0 px-4 snap-start"
-        >
-          <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 hover:shadow-3xl transition-all duration-500">
-            <div className="grid lg:grid-cols-2 gap-0">
-              {/* قسم الصورة */}
-              <div className="relative group/image overflow-hidden bg-gradient-to-br from-slate-900 to-slate-800 min-h-[400px]">
-                <img
-                  src={project.image}
-                  alt={project.title}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover/image:scale-110"
-                  onError={(e) => {
-                    // إذا فشل تحميل الصورة، استخدم صورة افتراضية
-                    e.currentTarget.src = "https://placehold.co/1200x800/1e3a8a/ffffff?text=Edarty";
-                  }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300"></div>
-                
-                {/* شارة المشروع */}
-                <div className={`absolute top-6 right-6 bg-gradient-to-r ${project.bgGradient} text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2`}>
-                  {project.icon}
-                  <span className="text-sm font-bold">حل متخصص</span>
-                </div>
-              </div>
+            {/* محتوى السلايدر - تم إضافة overflow-x-auto و snap-mandatory */}
+            <div className="overflow-x-auto snap-x snap-mandatory scroll-smooth">
+              <div className="flex">
+                {projects.map((project) => (
+                  <div
+                    key={project.id}
+                    className="w-full flex-shrink-0 px-4 snap-start"
+                  >
+                    <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 hover:shadow-3xl transition-all duration-500">
+                      <div className="grid lg:grid-cols-2 gap-0">
+                        {/* قسم الصورة */}
+                        <div className="relative group/image overflow-hidden bg-gradient-to-br from-slate-900 to-slate-800 min-h-[400px]">
+                          <img
+                            src={project.image}
+                            alt={project.title}
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover/image:scale-110"
+                            onError={(e) => {
+                              // إذا فشل تحميل الصورة، استخدم صورة افتراضية
+                              e.currentTarget.src =
+                                "https://placehold.co/1200x800/1e3a8a/ffffff?text=Edarty";
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300"></div>
 
-              {/* قسم المحتوى */}
-              <div className="p-8 lg:p-12 flex flex-col justify-between">
-                <div>
-                  <div className={`inline-flex items-center gap-2 bg-gradient-to-r ${project.bgGradient} bg-opacity-10 text-transparent bg-clip-text mb-4`}>
-                    {project.icon}
-                    <h3 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-                      {project.title}
-                    </h3>
-                  </div>
-                  
-                  <p className="text-emerald-600 font-semibold text-sm mb-3">
-                    {project.subtitle}
-                  </p>
-                  
-                  <p className="text-slate-600 leading-relaxed mb-6">
-                    {project.description}
-                  </p>
-
-                  <div className="mb-8">
-                    <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
-                      <CheckCircle className="w-5 h-5 text-emerald-500" />
-                      المميزات الرئيسية
-                    </h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      {project.features.map((feature, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm text-slate-600">
-                          <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                          <span>{feature}</span>
+                          {/* شارة المشروع */}
+                          <div
+                            className={`absolute top-6 right-6 bg-gradient-to-r ${project.bgGradient} text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2`}
+                          >
+                            {project.icon}
+                            <span className="text-sm font-bold">حل متخصص</span>
+                          </div>
                         </div>
-                      ))}
+
+                        {/* قسم المحتوى */}
+                        <div className="p-8 lg:p-12 flex flex-col justify-between">
+                          <div>
+                            <div
+                              className={`inline-flex items-center gap-2 bg-gradient-to-r ${project.bgGradient} bg-opacity-10 text-transparent bg-clip-text mb-4`}
+                            >
+                              {project.icon}
+                              <h3 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+                                {project.title}
+                              </h3>
+                            </div>
+
+                            <p className="text-emerald-600 font-semibold text-sm mb-3">
+                              {project.subtitle}
+                            </p>
+
+                            <p className="text-slate-600 leading-relaxed mb-6">
+                              {project.description}
+                            </p>
+
+                            <div className="mb-8">
+                              <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                <CheckCircle className="w-5 h-5 text-emerald-500" />
+                                المميزات الرئيسية
+                              </h4>
+                              <div className="grid grid-cols-2 gap-3">
+                                {project.features.map((feature, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center gap-2 text-sm text-slate-600"
+                                  >
+                                    <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                                    <span>{feature}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row gap-4 mt-4">
+                            <button
+                              onClick={() =>
+                                window.open(project.link, "_blank")
+                              }
+                              className={`flex-1 ${project.buttonColor} text-white rounded-xl px-6 py-3 font-bold transition-all duration-300 transform hover:scale-105 hover:shadow-xl flex items-center justify-center gap-2 group`}
+                            >
+                              <span>جرب النظام الآن</span>
+                              <ExternalLink className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                            </button>
+                            <button
+                              onClick={handleFreeTrial}
+                              className="flex-1 border-2 border-slate-200 text-slate-700 rounded-xl px-6 py-3 font-bold hover:border-emerald-600 hover:text-emerald-600 transition-all"
+                            >
+                              اطلب عرضاً توضيحياً
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-4 mt-4">
-                  <button
-                    onClick={() => window.open(project.link, "_blank")}
-                    className={`flex-1 ${project.buttonColor} text-white rounded-xl px-6 py-3 font-bold transition-all duration-300 transform hover:scale-105 hover:shadow-xl flex items-center justify-center gap-2 group`}
-                  >
-                    <span>جرب النظام الآن</span>
-                    <ExternalLink className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </button>
-                  <button
-                    onClick={handleFreeTrial}
-                    className="flex-1 border-2 border-slate-200 text-slate-700 rounded-xl px-6 py-3 font-bold hover:border-emerald-600 hover:text-emerald-600 transition-all"
-                  >
-                    اطلب عرضاً توضيحياً
-                  </button>
-                </div>
+                ))}
               </div>
             </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
 
-  {/* مؤشرات السلايدر */}
-  <div className="flex justify-center gap-3 mt-8">
-    {projects.map((_, index) => (
-      <button
-        key={index}
-        onClick={() => {
-          setCurrentSlide(index);
-          // سكرول يدوي للعنصر
-          const element = document.getElementById(`slide-${index}`);
-          if (element) {
-            element.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-          }
-        }}
-        className={`h-2 rounded-full transition-all duration-300 ${
-          currentSlide === index
-            ? "w-8 bg-emerald-600"
-            : "w-2 bg-slate-300 hover:bg-slate-400"
-        }`}
-        aria-label={`انتقل إلى المشروع ${index + 1}`}
-      />
-    ))}
-  </div>
-</div>          {/* بطاقات إضافية لعرض المشاريع بشكل مصغر تحت السلايدر
+            {/* مؤشرات السلايدر */}
+            <div className="flex justify-center gap-3 mt-8">
+              {projects.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => {
+                    setCurrentSlide(index);
+                    // سكرول يدوي للعنصر
+                    const element = document.getElementById(`slide-${index}`);
+                    if (element) {
+                      element.scrollIntoView({
+                        behavior: "smooth",
+                        block: "nearest",
+                        inline: "center",
+                      });
+                    }
+                  }}
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    currentSlide === index
+                      ? "w-8 bg-emerald-600"
+                      : "w-2 bg-slate-300 hover:bg-slate-400"
+                  }`}
+                  aria-label={`انتقل إلى المشروع ${index + 1}`}
+                />
+              ))}
+            </div>
+          </div>{" "}
+          بطاقات إضافية لعرض المشاريع بشكل مصغر تحت السلايدر
           <div className="grid md:grid-cols-3 gap-6 mt-16">
             {projects.map((project, index) => (
               <div
@@ -673,7 +698,7 @@ export default function LandingPage() {
                 <p className="text-sm text-slate-500 line-clamp-2">{project.subtitle}</p>
               </div>
             ))}
-          </div> */}
+          </div>
         </div>
       </section>
 
@@ -711,22 +736,36 @@ export default function LandingPage() {
               <div className="p-8">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-2xl font-bold text-slate-900">مجانية</h3>
-                  <span className="text-sm bg-slate-100 text-slate-600 px-3 py-1 rounded-full">للبدء</span>
+                  <span className="text-sm bg-slate-100 text-slate-600 px-3 py-1 rounded-full">
+                    للبدء
+                  </span>
                 </div>
                 <div className="mb-6">
                   <span className="text-4xl font-black text-slate-900">0</span>
                   <span className="text-slate-400 mr-2">ج.م/شهرياً</span>
                 </div>
-                <p className="text-slate-500 mb-8 line-clamp-2">مثالية للأعمال الصغيرة جداً والبداية</p>
+                <p className="text-slate-500 mb-8 line-clamp-2">
+                  مثالية للأعمال الصغيرة جداً والبداية
+                </p>
                 <ul className="space-y-4 mb-8">
-                  {["حتى 30 عميل", "تقارير أساسية", "دعم عبر البريد الإلكتروني", "فواتير غير محدودة"].map((feature, i) => (
+                  {[
+                    "حتى 30 عميل",
+                    "تقارير أساسية",
+                    "دعم عبر البريد الإلكتروني",
+                    "فواتير غير محدودة",
+                  ].map((feature, i) => (
                     <li key={i} className="flex items-center gap-3 text-sm">
                       <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
                       <span className="text-slate-600">{feature}</span>
                     </li>
                   ))}
                 </ul>
-                <button onClick={handleFreeTrial} className="w-full py-4 border-2 border-slate-200 text-slate-700 rounded-2xl font-bold hover:bg-slate-50 hover:border-emerald-600 hover:text-emerald-600 transition-all group-hover:shadow-lg">ابدأ مجاناً</button>
+                <button
+                  onClick={handleFreeTrial}
+                  className="w-full py-4 border-2 border-slate-200 text-slate-700 rounded-2xl font-bold hover:bg-slate-50 hover:border-emerald-600 hover:text-emerald-600 transition-all group-hover:shadow-lg"
+                >
+                  ابدأ مجاناً
+                </button>
               </div>
             </div>
 
@@ -740,24 +779,49 @@ export default function LandingPage() {
               </div>
               <div className="p-8">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-2xl font-bold text-slate-900">احترافية</h3>
-                  <span className="text-sm bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full">الأكثر مبيعاً</span>
+                  <h3 className="text-2xl font-bold text-slate-900">
+                    احترافية
+                  </h3>
+                  <span className="text-sm bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full">
+                    الأكثر مبيعاً
+                  </span>
                 </div>
                 <div className="mb-2">
-                  <span className="text-5xl font-black text-slate-900">{isAnnual ? "799" : "899"}</span>
+                  <span className="text-5xl font-black text-slate-900">
+                    {isAnnual ? "799" : "899"}
+                  </span>
                   <span className="text-slate-400 mr-2">ج.م/شهرياً</span>
                 </div>
-                {isAnnual && <div className="text-sm text-emerald-600 font-medium mb-4">توفير 1200 ج.م سنوياً</div>}
-                <p className="text-slate-500 mb-8">كل ما تحتاجه لإدارة شركتك بكفاءة عالية</p>
+                {isAnnual && (
+                  <div className="text-sm text-emerald-600 font-medium mb-4">
+                    توفير 1200 ج.م سنوياً
+                  </div>
+                )}
+                <p className="text-slate-500 mb-8">
+                  كل ما تحتاجه لإدارة شركتك بكفاءة عالية
+                </p>
                 <ul className="space-y-4 mb-8">
-                  {["عملاء غير محدودين", "تقارير متقدمة وتحليلات ذكية", "دعم فني على مدار الساعة", "فواتير إلكترونية ضريبية", "صلاحيات متعددة للمستخدمين", "نسخ احتياطي يومي", "نقطة بيع متكاملة"].map((feature, i) => (
+                  {[
+                    "عملاء غير محدودين",
+                    "تقارير متقدمة وتحليلات ذكية",
+                    "دعم فني على مدار الساعة",
+                    "فواتير إلكترونية ضريبية",
+                    "صلاحيات متعددة للمستخدمين",
+                    "نسخ احتياطي يومي",
+                    "نقطة بيع متكاملة",
+                  ].map((feature, i) => (
                     <li key={i} className="flex items-center gap-3 text-sm">
                       <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
                       <span className="text-slate-600">{feature}</span>
                     </li>
                   ))}
                 </ul>
-                <button onClick={handleFreeTrial} className="w-full py-4 bg-gradient-to-l from-emerald-600 to-emerald-500 text-white rounded-2xl font-bold hover:from-emerald-700 hover:to-emerald-600 transition-all shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30 transform hover:-translate-y-0.5">ابدأ تجربتك المجانية</button>
+                <button
+                  onClick={handleFreeTrial}
+                  className="w-full py-4 bg-gradient-to-l from-emerald-600 to-emerald-500 text-white rounded-2xl font-bold hover:from-emerald-700 hover:to-emerald-600 transition-all shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30 transform hover:-translate-y-0.5"
+                >
+                  ابدأ تجربتك المجانية
+                </button>
               </div>
             </div>
 
@@ -767,23 +831,45 @@ export default function LandingPage() {
               <div className="p-8">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-2xl font-bold text-slate-900">متقدمة</h3>
-                  <span className="text-sm bg-slate-100 text-slate-600 px-3 py-1 rounded-full">للشركات</span>
+                  <span className="text-sm bg-slate-100 text-slate-600 px-3 py-1 rounded-full">
+                    للشركات
+                  </span>
                 </div>
                 <div className="mb-2">
-                  <span className="text-5xl font-black text-slate-900">{isAnnual ? "1,599" : "1,799"}</span>
+                  <span className="text-5xl font-black text-slate-900">
+                    {isAnnual ? "1,599" : "1,799"}
+                  </span>
                   <span className="text-slate-400 mr-2">ج.م/شهرياً</span>
                 </div>
-                {isAnnual && <div className="text-sm text-emerald-600 font-medium mb-4">توفير 2400 ج.م سنوياً</div>}
-                <p className="text-slate-500 mb-8">للشركات الكبيرة التي تحتاج حلول متكاملة</p>
+                {isAnnual && (
+                  <div className="text-sm text-emerald-600 font-medium mb-4">
+                    توفير 2400 ج.م سنوياً
+                  </div>
+                )}
+                <p className="text-slate-500 mb-8">
+                  للشركات الكبيرة التي تحتاج حلول متكاملة
+                </p>
                 <ul className="space-y-4 mb-8">
-                  {["كل مميزات الباقة الاحترافية", "API متكامل للتطوير", "تقارير مخصصة", "مدير حساب مخصص", "تدريب فريق العمل", "تكامل مع الأنظمة الخارجية"].map((feature, i) => (
+                  {[
+                    "كل مميزات الباقة الاحترافية",
+                    "API متكامل للتطوير",
+                    "تقارير مخصصة",
+                    "مدير حساب مخصص",
+                    "تدريب فريق العمل",
+                    "تكامل مع الأنظمة الخارجية",
+                  ].map((feature, i) => (
                     <li key={i} className="flex items-center gap-3 text-sm">
                       <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
                       <span className="text-slate-600">{feature}</span>
                     </li>
                   ))}
                 </ul>
-                <button onClick={handleContactSales} className="w-full py-4 border-2 border-slate-200 text-slate-700 rounded-2xl font-bold hover:bg-slate-50 hover:border-emerald-600 hover:text-emerald-600 transition-all">تواصل مع المبيعات</button>
+                <button
+                  onClick={handleContactSales}
+                  className="w-full py-4 border-2 border-slate-200 text-slate-700 rounded-2xl font-bold hover:bg-slate-50 hover:border-emerald-600 hover:text-emerald-600 transition-all"
+                >
+                  تواصل مع المبيعات
+                </button>
               </div>
             </div>
 
@@ -794,56 +880,146 @@ export default function LandingPage() {
               <div className="p-8 relative z-10">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-2xl font-bold text-white">مؤسسات</h3>
-                  <span className="text-sm bg-amber-500/20 text-amber-300 px-3 py-1 rounded-full border border-amber-500/30">حلول مخصصة</span>
+                  <span className="text-sm bg-amber-500/20 text-amber-300 px-3 py-1 rounded-full border border-amber-500/30">
+                    حلول مخصصة
+                  </span>
                 </div>
                 <div className="mb-6">
                   <span className="text-4xl font-black text-white">مخصصة</span>
                 </div>
-                <p className="text-slate-300 mb-8">حلول مصممة خصيصاً لاحتياجات مؤسستك</p>
+                <p className="text-slate-300 mb-8">
+                  حلول مصممة خصيصاً لاحتياجات مؤسستك
+                </p>
                 <ul className="space-y-4 mb-8">
-                  {["كل المميزات السابقة", "خادم خاص مخصص", "دعم فني", "تطويرات مخصصة", "استشارات متقدمة", "تكامل مع أنظمتك الحالية", "تدريب متقدم للفريق"].map((feature, i) => (
+                  {[
+                    "كل المميزات السابقة",
+                    "خادم خاص مخصص",
+                    "دعم فني",
+                    "تطويرات مخصصة",
+                    "استشارات متقدمة",
+                    "تكامل مع أنظمتك الحالية",
+                    "تدريب متقدم للفريق",
+                  ].map((feature, i) => (
                     <li key={i} className="flex items-center gap-3 text-sm">
                       <CheckCircle className="w-5 h-5 text-amber-400 flex-shrink-0" />
                       <span className="text-slate-300">{feature}</span>
                     </li>
                   ))}
                 </ul>
-                <button onClick={handleContactSales} className="w-full py-4 bg-amber-500 text-slate-900 rounded-2xl font-bold hover:bg-amber-400 transition-all shadow-lg shadow-amber-600/20">تواصل معنا</button>
+                <button
+                  onClick={handleContactSales}
+                  className="w-full py-4 bg-amber-500 text-slate-900 rounded-2xl font-bold hover:bg-amber-400 transition-all shadow-lg shadow-amber-600/20"
+                >
+                  تواصل معنا
+                </button>
               </div>
             </div>
           </div>
 
           {/* مقارنة المميزات - تبقى كما هي */}
           <div className="bg-white rounded-3xl shadow-xl p-8 lg:p-12 border border-slate-100">
-            <h3 className="text-2xl font-bold text-slate-900 mb-8 text-center">مقارنة شاملة للمميزات</h3>
+            <h3 className="text-2xl font-bold text-slate-900 mb-8 text-center">
+              مقارنة شاملة للمميزات
+            </h3>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-200">
-                    <th className="text-right py-4 px-6 text-slate-600 font-medium">الميزة</th>
-                    <th className="text-center py-4 px-6 text-slate-600 font-medium">المجانية</th>
-                    <th className="text-center py-4 px-6 text-emerald-600 font-medium bg-emerald-50">الاحترافية</th>
-                    <th className="text-center py-4 px-6 text-slate-600 font-medium">المتقدمة</th>
-                    <th className="text-center py-4 px-6 text-slate-600 font-medium">المؤسسات</th>
+                    <th className="text-right py-4 px-6 text-slate-600 font-medium">
+                      الميزة
+                    </th>
+                    <th className="text-center py-4 px-6 text-slate-600 font-medium">
+                      المجانية
+                    </th>
+                    <th className="text-center py-4 px-6 text-emerald-600 font-medium bg-emerald-50">
+                      الاحترافية
+                    </th>
+                    <th className="text-center py-4 px-6 text-slate-600 font-medium">
+                      المتقدمة
+                    </th>
+                    <th className="text-center py-4 px-6 text-slate-600 font-medium">
+                      المؤسسات
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {[
-                    { name: "عدد العملاء", free: "30", pro: "غير محدود", advanced: "غير محدود", enterprise: "غير محدود" },
-                    { name: "الفواتير", free: "✓", pro: "✓", advanced: "✓", enterprise: "✓" },
-                    { name: "التقارير الأساسية", free: "✓", pro: "✓", advanced: "✓", enterprise: "✓" },
-                    { name: "التقارير المتقدمة", free: "-", pro: "✓", advanced: "✓", enterprise: "✓" },
-                    { name: "صلاحيات المستخدمين", free: "1 مستخدم", pro: "حتى 10", advanced: "حتى 25", enterprise: "غير محدود" },
-                    { name: "الدعم الفني", free: "بريد إلكتروني", pro: "24/7", advanced: "24/7", enterprise: "مدير حساب" },
-                    { name: "API", free: "-", pro: "محدود", advanced: "✓", enterprise: "✓" },
-                    { name: "نسخ احتياطي", free: "أسبوعي", pro: "يومي", advanced: "يومي", enterprise: "فوري" },
+                    {
+                      name: "عدد العملاء",
+                      free: "30",
+                      pro: "غير محدود",
+                      advanced: "غير محدود",
+                      enterprise: "غير محدود",
+                    },
+                    {
+                      name: "الفواتير",
+                      free: "✓",
+                      pro: "✓",
+                      advanced: "✓",
+                      enterprise: "✓",
+                    },
+                    {
+                      name: "التقارير الأساسية",
+                      free: "✓",
+                      pro: "✓",
+                      advanced: "✓",
+                      enterprise: "✓",
+                    },
+                    {
+                      name: "التقارير المتقدمة",
+                      free: "-",
+                      pro: "✓",
+                      advanced: "✓",
+                      enterprise: "✓",
+                    },
+                    {
+                      name: "صلاحيات المستخدمين",
+                      free: "1 مستخدم",
+                      pro: "حتى 10",
+                      advanced: "حتى 25",
+                      enterprise: "غير محدود",
+                    },
+                    {
+                      name: "الدعم الفني",
+                      free: "بريد إلكتروني",
+                      pro: "24/7",
+                      advanced: "24/7",
+                      enterprise: "مدير حساب",
+                    },
+                    {
+                      name: "API",
+                      free: "-",
+                      pro: "محدود",
+                      advanced: "✓",
+                      enterprise: "✓",
+                    },
+                    {
+                      name: "نسخ احتياطي",
+                      free: "أسبوعي",
+                      pro: "يومي",
+                      advanced: "يومي",
+                      enterprise: "فوري",
+                    },
                   ].map((row, i) => (
-                    <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                      <td className="py-4 px-6 text-slate-800 font-medium">{row.name}</td>
-                      <td className="text-center py-4 px-6 text-slate-600">{row.free}</td>
-                      <td className="text-center py-4 px-6 text-emerald-600 font-medium bg-emerald-50/50">{row.pro}</td>
-                      <td className="text-center py-4 px-6 text-slate-600">{row.advanced}</td>
-                      <td className="text-center py-4 px-6 text-slate-600">{row.enterprise}</td>
+                    <tr
+                      key={i}
+                      className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                    >
+                      <td className="py-4 px-6 text-slate-800 font-medium">
+                        {row.name}
+                      </td>
+                      <td className="text-center py-4 px-6 text-slate-600">
+                        {row.free}
+                      </td>
+                      <td className="text-center py-4 px-6 text-emerald-600 font-medium bg-emerald-50/50">
+                        {row.pro}
+                      </td>
+                      <td className="text-center py-4 px-6 text-slate-600">
+                        {row.advanced}
+                      </td>
+                      <td className="text-center py-4 px-6 text-slate-600">
+                        {row.enterprise}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -852,15 +1028,36 @@ export default function LandingPage() {
           </div>
 
           <div className="mt-16 flex flex-wrap items-center justify-center gap-8">
-            <div className="flex items-center gap-2 text-slate-500"><Shield className="w-5 h-5 text-emerald-500" /><span className="text-sm">ضمان استعادة الأموال لمدة 30 يوماً</span></div>
-            <div className="flex items-center gap-2 text-slate-500"><CheckCircle className="w-5 h-5 text-emerald-500" /><span className="text-sm">لا تحتاج بطاقة ائتمان للبدء</span></div>
-            <div className="flex items-center gap-2 text-slate-500"><Clock className="w-5 h-5 text-emerald-500" /><span className="text-sm">إلغاء في أي وقت</span></div>
+            <div className="flex items-center gap-2 text-slate-500">
+              <Shield className="w-5 h-5 text-emerald-500" />
+              <span className="text-sm">
+                ضمان استعادة الأموال لمدة 30 يوماً
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-500">
+              <CheckCircle className="w-5 h-5 text-emerald-500" />
+              <span className="text-sm">لا تحتاج بطاقة ائتمان للبدء</span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-500">
+              <Clock className="w-5 h-5 text-emerald-500" />
+              <span className="text-sm">إلغاء في أي وقت</span>
+            </div>
           </div>
 
           <div className="mt-20 text-center">
-            <h3 className="text-2xl font-bold text-slate-900 mb-4">لديك أسئلة؟</h3>
-            <p className="text-slate-600 mb-6">فريقنا جاهز للإجابة على جميع استفساراتك</p>
-            <button onClick={handleContactSales} className="inline-flex items-center gap-2 text-emerald-600 font-bold hover:text-emerald-700 transition-colors">تواصل مع فريق المبيعات<ArrowRight className="w-4 h-4 rotate-180" /></button>
+            <h3 className="text-2xl font-bold text-slate-900 mb-4">
+              لديك أسئلة؟
+            </h3>
+            <p className="text-slate-600 mb-6">
+              فريقنا جاهز للإجابة على جميع استفساراتك
+            </p>
+            <button
+              onClick={handleContactSales}
+              className="inline-flex items-center gap-2 text-emerald-600 font-bold hover:text-emerald-700 transition-colors"
+            >
+              تواصل مع فريق المبيعات
+              <ArrowRight className="w-4 h-4 rotate-180" />
+            </button>
           </div>
         </div>
       </section>
@@ -871,34 +1068,98 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-4 gap-12 mb-16">
             <div className="col-span-2">
               <div className="flex items-center gap-3 mb-8">
-                <img src={logo} alt="Logo" className="h-10 w-auto brightness-0 invert" />
-                <span className="text-2xl font-black tracking-tight">إدارتــي</span>
+                <img
+                  src={logo}
+                  alt="Logo"
+                  className="h-10 w-auto brightness-0 invert"
+                />
+                <span className="text-2xl font-black tracking-tight">
+                  إدارتــي
+                </span>
               </div>
-              <p className="text-slate-400 text-lg max-w-md leading-relaxed">نحن هنا لنغير مفهوم الإدارة المحاسبية. انضم إلى آلاف الشركات التي تثق في إدارتي لتطوير أعمالها.</p>
+              <p className="text-slate-400 text-lg max-w-md leading-relaxed">
+                نحن هنا لنغير مفهوم الإدارة المحاسبية. انضم إلى آلاف الشركات
+                التي تثق في إدارتي لتطوير أعمالها.
+              </p>
             </div>
             <div>
               <h4 className="font-bold text-lg mb-6">روابط سريعة</h4>
               <ul className="space-y-4">
-                <li><button onClick={() => scrollToSection("features")} className="text-slate-400 hover:text-emerald-400 transition-colors">المميزات</button></li>
-                <li><button onClick={() => scrollToSection("projects")} className="text-slate-400 hover:text-emerald-400 transition-colors">مشاريعنا</button></li>
-                <li><button onClick={() => scrollToSection("pricing")} className="text-slate-400 hover:text-emerald-400 transition-colors">الأسعار</button></li>
-                <li><button onClick={handleContactSales} className="text-slate-400 hover:text-emerald-400 transition-colors">تواصل معنا</button></li>
+                <li>
+                  <button
+                    onClick={() => scrollToSection("features")}
+                    className="text-slate-400 hover:text-emerald-400 transition-colors"
+                  >
+                    المميزات
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => scrollToSection("projects")}
+                    className="text-slate-400 hover:text-emerald-400 transition-colors"
+                  >
+                    مشاريعنا
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => scrollToSection("pricing")}
+                    className="text-slate-400 hover:text-emerald-400 transition-colors"
+                  >
+                    الأسعار
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={handleContactSales}
+                    className="text-slate-400 hover:text-emerald-400 transition-colors"
+                  >
+                    تواصل معنا
+                  </button>
+                </li>
               </ul>
             </div>
             <div>
               <h4 className="font-bold text-lg mb-6">تابعنا</h4>
               <div className="flex gap-4">
-                <a href="https://www.facebook.com/profile.php?id=100087746733220" target="_blank" rel="noopener noreferrer" className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center hover:bg-emerald-600 transition-all cursor-pointer"><Facebook className="w-5 h-5 text-white" /></a>
-                <a href="https://www.instagram.com/mahmoud_atia_esd" target="_blank" rel="noopener noreferrer" className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center hover:bg-emerald-600 transition-all cursor-pointer"><Instagram className="w-5 h-5 text-white" /></a>
-                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center hover:bg-emerald-600 transition-all cursor-pointer"><Linkedin className="w-5 h-5 text-white" /></a>
+                <a
+                  href="https://www.facebook.com/profile.php?id=100087746733220"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center hover:bg-emerald-600 transition-all cursor-pointer"
+                >
+                  <Facebook className="w-5 h-5 text-white" />
+                </a>
+                <a
+                  href="https://www.instagram.com/mahmoud_atia_esd"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center hover:bg-emerald-600 transition-all cursor-pointer"
+                >
+                  <Instagram className="w-5 h-5 text-white" />
+                </a>
+                <a
+                  href="https://linkedin.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center hover:bg-emerald-600 transition-all cursor-pointer"
+                >
+                  <Linkedin className="w-5 h-5 text-white" />
+                </a>
               </div>
             </div>
           </div>
           <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-slate-500 text-sm">© 2026 إدارتــي Edarty. جميع الحقوق محفوظة</p>
+            <p className="text-slate-500 text-sm">
+              © 2026 إدارتــي Edarty. جميع الحقوق محفوظة
+            </p>
             <div className="flex gap-8">
-              <button className="text-slate-500 hover:text-white text-sm">سياسة الخصوصية</button>
-              <button className="text-slate-500 hover:text-white text-sm">الشروط والأحكام</button>
+              <button className="text-slate-500 hover:text-white text-sm">
+                سياسة الخصوصية
+              </button>
+              <button className="text-slate-500 hover:text-white text-sm">
+                الشروط والأحكام
+              </button>
             </div>
           </div>
         </div>
