@@ -71,7 +71,7 @@ export default function LandingPage() {
         "نظام محاسبي متخصص للقطاع الطبي يدير حسابات المرضى، الفواتير الطبية، التأمينات، والمخزون الدوائي بدقة واحترافية.",
       icon: <Stethoscope className="w-8 h-8" />,
       image: medicalProject,
-      link: "https://medical.edarty.com", // ✅ رابط خارجي حقيقي
+      link: "https://edarty-clinic.vercel.app", // ✅ رابط خارجي حقيقي
       features: [
         "إدارة ملفات المرضى",
         "فواتير طبية إلكترونية",
@@ -90,7 +90,7 @@ export default function LandingPage() {
         "نظام متكامل لإدارة نقاط البيع، المبيعات، المخزون، والعملاء. يدعم الفروع المتعددة ويقدم تقارير لحظية لأداء المبيعات.",
       icon: <ShoppingBag className="w-8 h-8" />,
       image: posProject,
-      link: "https://pos.edarty.com", // ✅ رابط خارجي حقيقي
+      link: "https://edarty-pos.vercel.app", // ✅ رابط خارجي حقيقي
       features: [
         "نقاط بيع متعددة",
         "إدارة المخزون آلياً",
