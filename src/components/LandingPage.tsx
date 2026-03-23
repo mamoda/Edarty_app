@@ -513,195 +513,162 @@ export default function LandingPage() {
       </section>
 
       {/* NEW SECTION: Projects Showcase - Full Width Slider */}
-      <section
-        id="projects"
-        className="py-24 bg-gradient-to-b from-slate-50 to-white overflow-hidden"
+<section
+  id="projects"
+  className="py-24 bg-gradient-to-b from-slate-50 to-white overflow-hidden"
+>
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    {/* عنوان القسم */}
+    <div className="text-center mb-16">
+      <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-50 to-blue-50 text-emerald-700 px-4 py-1.5 rounded-full mb-6 border border-emerald-100">
+        <TrendingUp className="w-4 h-4" />
+        <span className="text-xs font-bold uppercase tracking-wider">
+          حلول متخصصة لكل قطاع
+        </span>
+      </div>
+      <h2 className="text-4xl lg:text-5xl font-black text-slate-900 mb-4">
+        اكتشف مشاريعنا المتخصصة
+      </h2>
+      <p className="text-xl text-slate-600 max-w-2xl mx-auto">
+        نقدم حلولاً محاسبية متكاملة مصممة خصيصاً لتلبية احتياجات كل قطاع
+        على حدة
+      </p>
+    </div>
+
+    {/* السلايدر الرئيسي */}
+    <div className="relative">
+      {/* أزرار التنقل */}
+      <button
+        onClick={prevSlide}
+        className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/90 backdrop-blur-md rounded-full p-3 shadow-lg hover:bg-white transition-all duration-300 hover:scale-110 group focus:outline-none"
+        aria-label="السابق"
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* عنوان القسم */}
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-50 to-blue-50 text-emerald-700 px-4 py-1.5 rounded-full mb-6 border border-emerald-100">
-              <TrendingUp className="w-4 h-4" />
-              <span className="text-xs font-bold uppercase tracking-wider">
-                حلول متخصصة لكل قطاع
-              </span>
-            </div>
-            <h2 className="text-4xl lg:text-5xl font-black text-slate-900 mb-4">
-              اكتشف مشاريعنا المتخصصة
-            </h2>
-            <p className="text-xl text-slate-600 max-w-2xl mx-auto">
-              نقدم حلولاً محاسبية متكاملة مصممة خصيصاً لتلبية احتياجات كل قطاع
-              على حدة
-            </p>
-          </div>
-          {/* السلايدر الرئيسي */}
-          {/* السلايدر الرئيسي */}
-          <div className="relative">
-            {/* أزرار التنقل */}
-            <button
-              onClick={prevSlide}
-              className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/90 backdrop-blur-md rounded-full p-3 shadow-lg hover:bg-white transition-all duration-300 hover:scale-110 group focus:outline-none"
-              aria-label="السابق"
+        <ChevronRight className="w-6 h-6 text-slate-700 group-hover:text-emerald-600" />
+      </button>
+      <button
+        onClick={nextSlide}
+        className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/90 backdrop-blur-md rounded-full p-3 shadow-lg hover:bg-white transition-all duration-300 hover:scale-110 group focus:outline-none"
+        aria-label="التالي"
+      >
+        <ChevronLeft className="w-6 h-6 text-slate-700 group-hover:text-emerald-600" />
+      </button>
+
+      {/* محتوى السلايدر - بدون scrollbar */}
+      <div className="overflow-hidden">
+        <div
+          className="flex transition-transform duration-500 ease-out"
+          style={{ transform: `translateX(${currentSlide * -100}%)` }}
+        >
+          {projects.map((project, index) => (
+            <div
+              key={project.id}
+              id={`slide-${index}`}
+              className="w-full flex-shrink-0 px-4"
             >
-              <ChevronRight className="w-6 h-6 text-slate-700 group-hover:text-emerald-600" />
-            </button>
-            <button
-              onClick={nextSlide}
-              className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/90 backdrop-blur-md rounded-full p-3 shadow-lg hover:bg-white transition-all duration-300 hover:scale-110 group focus:outline-none"
-              aria-label="التالي"
-            >
-              <ChevronLeft className="w-6 h-6 text-slate-700 group-hover:text-emerald-600" />
-            </button>
+              <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 hover:shadow-3xl transition-all duration-500">
+                <div className="grid lg:grid-cols-2 gap-0">
+                  {/* قسم الصورة */}
+                  <div className="relative group/image overflow-hidden bg-gradient-to-br from-slate-900 to-slate-800 min-h-[400px]">
+                    <img
+                      src={project.image}
+                      alt={project.title}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover/image:scale-110"
+                      onError={(e) => {
+                        e.currentTarget.src =
+                          "https://placehold.co/1200x800/1e3a8a/ffffff?text=Edarty";
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300"></div>
 
-            {/* محتوى السلايدر - تم إضافة overflow-x-auto و snap-mandatory */}
-            <div className="overflow-x-auto snap-x snap-mandatory scroll-smooth">
-              <div className="flex">
-                {projects.map((project) => (
-                  <div
-                    key={project.id}
-                    className="w-full flex-shrink-0 px-4 snap-start"
-                  >
-                    <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 hover:shadow-3xl transition-all duration-500">
-                      <div className="grid lg:grid-cols-2 gap-0">
-                        {/* قسم الصورة */}
-                        <div className="relative group/image overflow-hidden bg-gradient-to-br from-slate-900 to-slate-800 min-h-[400px]">
-                          <img
-                            src={project.image}
-                            alt={project.title}
-                            className="w-full h-full object-cover transition-transform duration-700 group-hover/image:scale-110"
-                            onError={(e) => {
-                              // إذا فشل تحميل الصورة، استخدم صورة افتراضية
-                              e.currentTarget.src =
-                                "https://placehold.co/1200x800/1e3a8a/ffffff?text=Edarty";
-                            }}
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300"></div>
+                    {/* شارة المشروع */}
+                    <div
+                      className={`absolute top-6 right-6 bg-gradient-to-r ${project.bgGradient} text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2`}
+                    >
+                      {project.icon}
+                      <span className="text-sm font-bold">حل متخصص</span>
+                    </div>
+                  </div>
 
-                          {/* شارة المشروع */}
-                          <div
-                            className={`absolute top-6 right-6 bg-gradient-to-r ${project.bgGradient} text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2`}
-                          >
-                            {project.icon}
-                            <span className="text-sm font-bold">حل متخصص</span>
-                          </div>
-                        </div>
+                  {/* قسم المحتوى */}
+                  <div className="p-8 lg:p-12 flex flex-col justify-between">
+                    <div>
+                      <div
+                        className={`inline-flex items-center gap-2 bg-gradient-to-r ${project.bgGradient} bg-opacity-10 text-transparent bg-clip-text mb-4`}
+                      >
+                        {project.icon}
+                        <h3 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+                          {project.title}
+                        </h3>
+                      </div>
 
-                        {/* قسم المحتوى */}
-                        <div className="p-8 lg:p-12 flex flex-col justify-between">
-                          <div>
+                      <p className="text-emerald-600 font-semibold text-sm mb-3">
+                        {project.subtitle}
+                      </p>
+
+                      <p className="text-slate-600 leading-relaxed mb-6">
+                        {project.description}
+                      </p>
+
+                      <div className="mb-8">
+                        <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                          <CheckCircle className="w-5 h-5 text-emerald-500" />
+                          المميزات الرئيسية
+                        </h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          {project.features.map((feature, idx) => (
                             <div
-                              className={`inline-flex items-center gap-2 bg-gradient-to-r ${project.bgGradient} bg-opacity-10 text-transparent bg-clip-text mb-4`}
+                              key={idx}
+                              className="flex items-center gap-2 text-sm text-slate-600"
                             >
-                              {project.icon}
-                              <h3 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-                                {project.title}
-                              </h3>
+                              <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                              <span>{feature}</span>
                             </div>
-
-                            <p className="text-emerald-600 font-semibold text-sm mb-3">
-                              {project.subtitle}
-                            </p>
-
-                            <p className="text-slate-600 leading-relaxed mb-6">
-                              {project.description}
-                            </p>
-
-                            <div className="mb-8">
-                              <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
-                                <CheckCircle className="w-5 h-5 text-emerald-500" />
-                                المميزات الرئيسية
-                              </h4>
-                              <div className="grid grid-cols-2 gap-3">
-                                {project.features.map((feature, idx) => (
-                                  <div
-                                    key={idx}
-                                    className="flex items-center gap-2 text-sm text-slate-600"
-                                  >
-                                    <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                                    <span>{feature}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-col sm:flex-row gap-4 mt-4">
-                            <button
-                              onClick={() =>
-                                window.open(project.link, "_blank")
-                              }
-                              className={`flex-1 ${project.buttonColor} text-white rounded-xl px-6 py-3 font-bold transition-all duration-300 transform hover:scale-105 hover:shadow-xl flex items-center justify-center gap-2 group`}
-                            >
-                              <span>جرب النظام الآن</span>
-                              <ExternalLink className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                            </button>
-                            <button
-                              onClick={handleFreeTrial}
-                              className="flex-1 border-2 border-slate-200 text-slate-700 rounded-xl px-6 py-3 font-bold hover:border-emerald-600 hover:text-emerald-600 transition-all"
-                            >
-                              اطلب عرضاً توضيحياً
-                            </button>
-                          </div>
+                          ))}
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
 
-            {/* مؤشرات السلايدر */}
-            <div className="flex justify-center gap-3 mt-8">
-              {projects.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => {
-                    setCurrentSlide(index);
-                    // سكرول يدوي للعنصر
-                    const element = document.getElementById(`slide-${index}`);
-                    if (element) {
-                      element.scrollIntoView({
-                        behavior: "smooth",
-                        block: "nearest",
-                        inline: "center",
-                      });
-                    }
-                  }}
-                  className={`h-2 rounded-full transition-all duration-300 ${
-                    currentSlide === index
-                      ? "w-8 bg-emerald-600"
-                      : "w-2 bg-slate-300 hover:bg-slate-400"
-                  }`}
-                  aria-label={`انتقل إلى المشروع ${index + 1}`}
-                />
-              ))}
-            </div>
-          </div>{" "}
-          بطاقات إضافية لعرض المشاريع بشكل مصغر تحت السلايدر
-          <div className="grid md:grid-cols-3 gap-6 mt-16">
-            {projects.map((project, index) => (
-              <div
-                key={project.id}
-                onClick={() => goToSlide(index)}
-                className={`group cursor-pointer rounded-2xl p-6 transition-all duration-300 border ${
-                  currentSlide === index
-                    ? "bg-gradient-to-r from-emerald-50 to-blue-50 border-emerald-200 shadow-lg"
-                    : "bg-white border-slate-100 hover:shadow-xl hover:border-emerald-200"
-                }`}
-              >
-                <div className={`inline-flex p-3 rounded-xl bg-gradient-to-r ${project.bgGradient} bg-opacity-10 mb-4`}>
-                  <div className={`text-transparent bg-clip-text bg-gradient-to-r ${project.bgGradient}`}>
-                    {project.icon}
+                    <div className="flex flex-col sm:flex-row gap-4 mt-4">
+                      <button
+                        onClick={() => window.open(project.link, "_blank")}
+                        className={`flex-1 ${project.buttonColor} text-white rounded-xl px-6 py-3 font-bold transition-all duration-300 transform hover:scale-105 hover:shadow-xl flex items-center justify-center gap-2 group`}
+                      >
+                        <span>جرب النظام الآن</span>
+                        <ExternalLink className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </button>
+                      <button
+                        onClick={handleFreeTrial}
+                        className="flex-1 border-2 border-slate-200 text-slate-700 rounded-xl px-6 py-3 font-bold hover:border-emerald-600 hover:text-emerald-600 transition-all"
+                      >
+                        اطلب عرضاً توضيحياً
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <h3 className="font-bold text-slate-900 mb-2">{project.title}</h3>
-                <p className="text-sm text-slate-500 line-clamp-2">{project.subtitle}</p>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
-      </section>
+      </div>
 
+      {/* مؤشرات السلايدر فقط - بدون بطاقات مصغرة */}
+      <div className="flex justify-center gap-3 mt-8">
+        {projects.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => goToSlide(index)}
+            className={`h-2 rounded-full transition-all duration-300 ${
+              currentSlide === index
+                ? "w-8 bg-emerald-600"
+                : "w-2 bg-slate-300 hover:bg-slate-400"
+            }`}
+            aria-label={`انتقل إلى المشروع ${index + 1}`}
+          />
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
       {/* Pricing Section - يبقى كما هو */}
       <section
         id="pricing"
