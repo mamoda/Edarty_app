@@ -133,7 +133,7 @@ export default function Login() {
 <div
   className="min-h-screen bg-cover bg-center flex items-center justify-center p-4"
   dir="rtl"
-  style={{ backgroundImage: "url('/assets/background-wave.png')" }}
+  style={{ backgroundImage: "url('../assets/background-wave.png')" }}
 >      <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="flex flex-col items-center mb-8">
