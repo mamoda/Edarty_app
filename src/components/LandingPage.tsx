@@ -461,30 +461,6 @@ export default function LandingPage() {
               مجانية ودعم فني.
             </p>
 
-            {/* تبديل سنوي/شهري */}
-            <div className="flex items-center justify-center gap-4 mt-10">
-              <span
-                className={`text-sm font-medium transition-colors ${!isAnnual ? "text-emerald-600" : "text-slate-400"}`}
-              >
-                شهري
-              </span>
-              <button
-                onClick={() => setIsAnnual(!isAnnual)}
-                className="relative w-16 h-8 bg-slate-200 rounded-full p-1 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
-              >
-                <div
-                  className={`absolute w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-300 ${isAnnual ? "translate-x-8" : "translate-x-0"}`}
-                ></div>
-              </button>
-              <span
-                className={`text-sm font-medium transition-colors ${isAnnual ? "text-emerald-600" : "text-slate-400"}`}
-              >
-                سنوي
-                <span className="mr-2 text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
-                  وفر 20%
-                </span>
-              </span>
-            </div>
           </div>
 
           {/* بطاقات الأسعار */}
