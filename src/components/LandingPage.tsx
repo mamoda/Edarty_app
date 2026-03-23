@@ -543,7 +543,7 @@ export default function LandingPage() {
             </button>
 
             {/* محتوى السلايدر */}
-            <div className="overflow-hidden">
+            <div className="overflow-x-auto snap-x snap-mandatory scroll-smooth">
               <div
                 className="flex transition-transform duration-500 ease-out"
                 style={{ transform: `translateX(${currentSlide * -100}%)` }}
