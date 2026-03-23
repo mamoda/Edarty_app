@@ -42,10 +42,9 @@ import demoVideo from "../assets/videos/kling_20260303_Image_to_Video_Futuristic
 import demoVideoWebm from "../assets/videos/edarty_hero_dashboard.png";
 import demoPoster from "../assets/videos/edarty_hero_dashboard.png";
 
-// ✅ استخدم URLs مباشرة بدلاً من الصور المحلية
 const medicalProject = "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=1200&h=800&fit=crop";
-const posProject = "https://images.unsplash.com/photo-1556742044-3c52d6e88c62?w=1200&h=800&fit=crop";
-const educationalProject = "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=1200&h=800&fit=crop";
+const posProject = "https://images.pexels.com/photos/12935048/pexels-photo-12935048.jpeg";
+const educationalProject = "https://images.pexels.com/photos/9052475/pexels-photo-9052475.jpeg";
 
 export default function LandingPage() {
   const navigate = useNavigate();
