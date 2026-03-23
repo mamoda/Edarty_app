@@ -71,7 +71,7 @@ export default function LandingPage() {
         "نظام محاسبي متخصص للقطاع الطبي يدير حسابات المرضى، الفواتير الطبية، التأمينات، والمخزون الدوائي بدقة واحترافية.",
       icon: <Stethoscope className="w-8 h-8" />,
       image: medicalProject,
-      link: "https://medical.edarty.com", // استبدل بالرابط الفعلي
+      link: "../assets/projects/medical-project.png", // استبدل بالرابط الفعلي
       features: [
         "إدارة ملفات المرضى",
         "فواتير طبية إلكترونية",
@@ -90,7 +90,7 @@ export default function LandingPage() {
         "نظام متكامل لإدارة نقاط البيع، المبيعات، المخزون، والعملاء. يدعم الفروع المتعددة ويقدم تقارير لحظية لأداء المبيعات.",
       icon: <ShoppingBag className="w-8 h-8" />,
       image: posProject,
-      link: "https://pos.edarty.com", // استبدل بالرابط الفعلي
+      link: "../assets/projects/pos-project.png", // استبدل بالرابط الفعلي
       features: [
         "نقاط بيع متعددة",
         "إدارة المخزون آلياً",
@@ -109,7 +109,7 @@ export default function LandingPage() {
         "نظام إداري متكامل للمدارس والجامعات والمعاهد. يدير شؤون الطلاب، الرسوم الدراسية، الحضور والغياب، والتقارير الأكاديمية.",
       icon: <School className="w-8 h-8" />,
       image: educationalProject,
-      link: "https://educational.edarty.com", // استبدل بالرابط الفعلي
+      link: "../assets/projects/educational-project.png", // استبدل بالرابط الفعلي
       features: [
         "إدارة الطلاب والموظفين",
         "الرسوم الدراسية والمصروفات",
