@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase'; // 👈 أضف هذا السطر
 import { School, Lock, MapPin, Phone, CreditCard, User, Mail, Eye, EyeOff } from 'lucide-react';
 import logo from '../assets/logo.png';
+import bg from '../assets/background-wave.png';
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
@@ -133,8 +134,9 @@ export default function Login() {
 <div
   className="min-h-screen bg-cover bg-center flex items-center justify-center p-4"
   dir="rtl"
-  style={{ backgroundImage: "url('../assets/background-wave.png')" }}
->      <div className="w-full max-w-md">
+  style={{ backgroundImage: `url(${bg})` }}
+>
+<div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="flex flex-col items-center mb-8">
             <img
