@@ -207,18 +207,18 @@ useEffect(() => {
   };
 
   // دوال التحكم في السلايدر
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % projects.length);
-  };
+// دوال التحكم في السلايدر
+const nextSlide = () => {
+  setCurrentSlide((prev) => (prev + 1) % projects.length);
+};
 
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + projects.length) % projects.length);
-  };
+const prevSlide = () => {
+  setCurrentSlide((prev) => (prev - 1 + projects.length) % projects.length);
+};
 
-  const goToSlide = (index: number) => {
-    setCurrentSlide(index);
-  };
-
+const goToSlide = (index: number) => {
+  setCurrentSlide(index);
+};
   return (
     <div
       className="min-h-screen bg-slate-50 font-sans selection:bg-emerald-100 selection:text-emerald-900"
