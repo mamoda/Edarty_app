@@ -124,6 +124,15 @@ export default function LandingPage() {
     },
   ];
 
+  // Auto-slide effect
+useEffect(() => {
+  const interval = setInterval(() => {
+    setCurrentSlide((prev) => (prev + 1) % projects.length);
+  }, 5000); // يتغير كل 5 ثواني
+
+  return () => clearInterval(interval);
+}, [projects.length]);
+
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 50);
