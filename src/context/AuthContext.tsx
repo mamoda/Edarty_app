@@ -1,4 +1,4 @@
-// src/context/AuthContext.tsx - النسخة النهائية
+// src/context/AuthContext.tsx - مع timeout
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { CustomUser, UserSchoolRole, School } from '../types/database';
@@ -25,60 +25,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentSchool, setCurrentSchool] = useState<School | null>(null);
   const [currentRole, setCurrentRole] = useState<string | null>(null);
 
-  // جلب بيانات المستخدم الكاملة
-// جلب بيانات المستخدم الكاملة
-const fetchUserProfile = async (supabaseUser: any): Promise<CustomUser> => {
-  console.log('🔍 fetchUserProfile started for:', supabaseUser.id);
-  try {
-    const { data: profile, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', supabaseUser.id)
-      .maybeSingle();
+  // جلب بيانات المستخدم الكاملة مع timeout
+  const fetchUserProfile = async (supabaseUser: any): Promise<CustomUser> => {
+    console.log('🔍 fetchUserProfile started for:', supabaseUser.id);
+    
+    try {
+      // إضافة timeout للاستعلام
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout fetching user profile')), 10000)
+      );
+      
+      const queryPromise = supabase
+        .from('users')
+        .select('*')
+        .eq('id', supabaseUser.id)
+        .maybeSingle();
+      
+      const { data: profile, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
+      
+      console.log('📊 Profile query result:', { profile, error });
 
-    console.log('📊 Profile query result:', { profile, error });
+      if (error) {
+        console.error('Error fetching profile:', error);
+      }
 
-    if (error) {
-      console.error('Error fetching profile:', error);
+      return {
+        ...supabaseUser,
+        school_id: profile?.school_id,
+        full_name: profile?.full_name || supabaseUser.user_metadata?.full_name,
+        schoolName: profile?.school_name,
+        schoolAddress: profile?.school_address,
+        schoolPhone: profile?.school_phone,
+        taxNumber: profile?.tax_number,
+      } as CustomUser;
+    } catch (error) {
+      console.error('Error in fetchUserProfile:', error);
+      return supabaseUser as CustomUser;
     }
+  };
 
-    return {
-      ...supabaseUser,
-      school_id: profile?.school_id,
-      full_name: profile?.full_name || supabaseUser.user_metadata?.full_name,
-      schoolName: profile?.school_name,
-      schoolAddress: profile?.school_address,
-      schoolPhone: profile?.school_phone,
-      taxNumber: profile?.tax_number,
-    } as CustomUser;
-  } catch (error) {
-    console.error('Error in fetchUserProfile:', error);
-    return supabaseUser as CustomUser;
-  }
-};
-
-// جلب أدوار المستخدم
-const fetchUserRoles = async (userId: string): Promise<UserSchoolRole[]> => {
-  console.log('🔍 fetchUserRoles started for:', userId);
-  try {
-    const { data, error } = await supabase
-      .from('user_school_roles')
-      .select('*, school:schools(*)')
-      .eq('user_id', userId);
+  // جلب أدوار المستخدم مع timeout
+  const fetchUserRoles = async (userId: string): Promise<UserSchoolRole[]> => {
+    console.log('🔍 fetchUserRoles started for:', userId);
     
-    console.log('📊 Roles query result:', { data: data?.length, error });
-    
-    if (error) {
-      console.error('Error fetching user roles:', error);
+    try {
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout fetching user roles')), 10000)
+      );
+      
+      const queryPromise = supabase
+        .from('user_school_roles')
+        .select('*, school:schools(*)')
+        .eq('user_id', userId);
+      
+      const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
+      
+      console.log('📊 Roles query result:', { data: data?.length, error });
+      
+      if (error) {
+        console.error('Error fetching user roles:', error);
+        return [];
+      }
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error in fetchUserRoles:', error);
       return [];
     }
-    
-    return data || [];
-  } catch (error) {
-    console.error('Error in fetchUserRoles:', error);
-    return [];
-  }
-};
+  };
+
   // تحديد المدرسة الحالية
   const getCurrentSchoolFromRoles = (roles: UserSchoolRole[]) => {
     const primaryRole = roles.find(r => r.is_primary);
@@ -97,21 +112,29 @@ const fetchUserRoles = async (userId: string): Promise<UserSchoolRole[]> => {
   const loadUserData = async (supabaseUser: any) => {
     console.log('📥 Loading user data for:', supabaseUser.email);
     
-    const enhancedUser = await fetchUserProfile(supabaseUser);
-    setUser(enhancedUser);
-    
-    const roles = await fetchUserRoles(supabaseUser.id);
-    setUserRoles(roles);
-    
-    const { school, role } = getCurrentSchoolFromRoles(roles);
-    setCurrentSchool(school);
-    setCurrentRole(role);
-    
-    console.log('✅ User data loaded:', { 
-      school: school?.name, 
-      role, 
-      rolesCount: roles.length 
-    });
+    try {
+      const enhancedUser = await fetchUserProfile(supabaseUser);
+      setUser(enhancedUser);
+      
+      const roles = await fetchUserRoles(supabaseUser.id);
+      setUserRoles(roles);
+      
+      const { school, role } = getCurrentSchoolFromRoles(roles);
+      setCurrentSchool(school);
+      setCurrentRole(role);
+      
+      console.log('✅ User data loaded:', { 
+        school: school?.name, 
+        role, 
+        rolesCount: roles.length 
+      });
+    } catch (error) {
+      console.error('❌ Error loading user data:', error);
+      // حتى في حالة الخطأ، نكمل
+      setUser(supabaseUser as CustomUser);
+      setCurrentSchool(null);
+      setCurrentRole(null);
+    }
   };
 
   useEffect(() => {
