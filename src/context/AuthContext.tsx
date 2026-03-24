@@ -1,4 +1,4 @@
-// src/context/AuthContext.tsx - النسخة النهائية السريعة
+// src/context/AuthContext.tsx - إضافة timeout أمان
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { CustomUser, UserSchoolRole, School } from '../types/database';
@@ -25,15 +25,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentSchool, setCurrentSchool] = useState<School | null>(null);
   const [currentRole, setCurrentRole] = useState<string | null>(null);
 
-  // جلب بيانات المستخدم الكاملة - بدون timeout
+  // جلب بيانات المستخدم الكاملة
   const fetchUserProfile = async (supabaseUser: any): Promise<CustomUser> => {
+    console.log('🔍 fetchUserProfile started for:', supabaseUser.id);
     try {
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', supabaseUser.id)
         .maybeSingle();
 
+      if (error) {
+        console.error('Profile fetch error:', error);
+      }
+
+      console.log('📊 Profile query result:', profile);
+      
       return {
         ...supabaseUser,
         school_id: profile?.school_id,
@@ -44,13 +51,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         taxNumber: profile?.tax_number,
       } as CustomUser;
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      console.error('Error in fetchUserProfile:', error);
       return supabaseUser as CustomUser;
     }
   };
 
-  // جلب أدوار المستخدم - بدون timeout
+  // جلب أدوار المستخدم
   const fetchUserRoles = async (userId: string): Promise<UserSchoolRole[]> => {
+    console.log('🔍 fetchUserRoles started for:', userId);
     try {
       const { data, error } = await supabase
         .from('user_school_roles')
@@ -58,10 +66,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('user_id', userId);
       
       if (error) {
-        console.error('Error fetching user roles:', error);
+        console.error('Roles fetch error:', error);
         return [];
       }
       
+      console.log('📊 Roles query result:', data?.length || 0);
       return data || [];
     } catch (error) {
       console.error('Error in fetchUserRoles:', error);
@@ -86,50 +95,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // دالة تحميل البيانات الرئيسية
   const loadUserData = async (supabaseUser: any) => {
     try {
-      const [enhancedUser, roles] = await Promise.all([
-        fetchUserProfile(supabaseUser),
-        fetchUserRoles(supabaseUser.id)
-      ]);
+      console.log('📥 Loading user data for:', supabaseUser.email);
       
+      const enhancedUser = await fetchUserProfile(supabaseUser);
       setUser(enhancedUser);
+      
+      const roles = await fetchUserRoles(supabaseUser.id);
       setUserRoles(roles);
       
       const { school, role } = getCurrentSchoolFromRoles(roles);
       setCurrentSchool(school);
       setCurrentRole(role);
+      
+      console.log('✅ User data loaded:', { 
+        school: school?.name, 
+        role, 
+        rolesCount: roles.length 
+      });
     } catch (error) {
-      console.error('Error loading user data:', error);
+      console.error('❌ Error loading user data:', error);
+      // في حالة الخطأ، نضع مستخدم أساسي
       setUser(supabaseUser as CustomUser);
     }
   };
 
   useEffect(() => {
     let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
 
     const initializeAuth = async () => {
       try {
         console.log('🔐 Initializing auth...');
         
+        // جلب الجلسة الحالية
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user && isMounted) {
           await loadUserData(session.user);
+        } else {
+          console.log('ℹ️ No session found');
         }
         
         if (isMounted) {
           setLoading(false);
+          console.log('✅ Loading complete');
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
+
+    // ✅ إضافة timeout أمان: بعد 5 ثواني، قم بإيقاف التحميل مهما حدث
+    timeoutId = setTimeout(() => {
+      if (isMounted && loading) {
+        console.warn('⚠️ Auth loading timeout - forcing loading to false');
+        setLoading(false);
+      }
+    }, 5000);
 
     initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         if (!isMounted) return;
+        
+        console.log('🔄 Auth state changed:', _event);
         
         if (session?.user) {
           await loadUserData(session.user);
@@ -139,12 +172,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setCurrentSchool(null);
           setCurrentRole(null);
         }
+        
         setLoading(false);
       }
     );
 
     return () => {
       isMounted = false;
+      clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, []);
