@@ -724,8 +724,8 @@ export default function Dashboard() {
   const [currentBackground, setCurrentBackground] = useState(0);
   const [dataError, setDataError] = useState<string | null>(null);
   
-  // ✅ منع التحميل المزدوج
-  const hasLoadedRef = useRef(false);
+  // ✅ منع التحميل المزدوج - مع إعادة تعيين عند تغيير المدرسة
+  const hasLoadedRef = useRef<string | null>(null);
 
   // مجموعة الخلفيات المتاحة
   const backgrounds = [
@@ -751,18 +751,33 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ تحميل البيانات مرة واحدة فقط
+  // ✅ إعادة تعيين hasLoadedRef عند تغيير المدرسة
   useEffect(() => {
-    if (user && currentSchool && !hasLoadedRef.current) {
-      console.log("👤 User authenticated, loading statistics for school:", currentSchool.name);
-      hasLoadedRef.current = true;
-      loadStatistics();
+    hasLoadedRef.current = null;
+    setLoading(true);
+  }, [currentSchool?.id]);
+
+  // ✅ تحميل البيانات مرة واحدة لكل مدرسة
+  useEffect(() => {
+    if (user && currentSchool) {
+      const schoolId = currentSchool.id;
+      
+      // إذا لم يتم تحميل هذه المدرسة من قبل
+      if (hasLoadedRef.current !== schoolId) {
+        console.log("👤 Loading statistics for school:", currentSchool.name);
+        hasLoadedRef.current = schoolId;
+        loadStatistics();
+      } else {
+        console.log("⏩ School already loaded, skipping...");
+        setLoading(false);
+      }
     }
   }, [user, currentSchool]);
 
   const loadStatistics = async () => {
     if (!user || !currentSchool) {
       console.log("⏳ No user or school yet, skipping data load");
+      setLoading(false);
       return;
     }
 
@@ -947,7 +962,6 @@ export default function Dashboard() {
       setLoading(false);
     }
   };
-
   const handleViewChange = (view: View) => {
     setCurrentView(view);
     if (view === "dashboard") {
