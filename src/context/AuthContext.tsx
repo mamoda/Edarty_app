@@ -1,13 +1,19 @@
+// src/context/AuthContext.tsx
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
-import { CustomUser } from '../types/database';
+import { CustomUser, UserSchoolRole, School } from '../types/database';
 
 interface AuthContextType {
   user: CustomUser | null;
   loading: boolean;
+  currentSchool: School | null;
+  currentRole: string | null;
+  userRoles: UserSchoolRole[];
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  switchSchool: (schoolId: string) => Promise<void>;
+  hasPermission: (permission: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -15,102 +21,144 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CustomUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userRoles, setUserRoles] = useState<UserSchoolRole[]>([]);
+  const [currentSchool, setCurrentSchool] = useState<School | null>(null);
+  const [currentRole, setCurrentRole] = useState<string | null>(null);
 
-  // دالة لجلب المستخدم من localStorage مباشرة (أسرع طريقة)
-  const getUserFromStorage = (): CustomUser | null => {
-    try {
-      // البحث عن مفتاح الجلسة في localStorage
-      const storageKey = Object.keys(localStorage).find(key => 
-        key.startsWith('sb-') && key.includes('-auth-token')
-      );
-      
-      if (!storageKey) return null;
-      
-      const sessionStr = localStorage.getItem(storageKey);
-      if (!sessionStr) return null;
-      
-      const sessionData = JSON.parse(sessionStr);
-      const supabaseUser = sessionData?.user;
-      
-      if (!supabaseUser) return null;
-
-      // إرجاع المستخدم مباشرة بدون الانتظار
-      return {
-        ...supabaseUser,
-        schoolName: 'مدرستي',
-        full_name: supabaseUser.email?.split('@')[0],
-      } as CustomUser;
-      
-    } catch (e) {
-      return null;
-    }
-  };
-
-  // دالة لجلب بيانات المستخدم الكاملة من جدول users
+  // جلب بيانات المستخدم الكاملة من جدول users مع school_id
   const fetchUserProfile = async (supabaseUser: any): Promise<CustomUser> => {
     try {
       const { data: profile } = await supabase
         .from('users')
-        .select('*')
+        .select('*, school:schools(*)')
         .eq('id', supabaseUser.id)
         .maybeSingle();
 
       return {
         ...supabaseUser,
-        schoolName: profile?.school_name || 'مدرستي',
-        schoolAddress: profile?.school_address,
-        schoolPhone: profile?.school_phone,
-        taxNumber: profile?.tax_number,
+        school_id: profile?.school_id,
         full_name: profile?.full_name || supabaseUser.user_metadata?.full_name,
+        school: profile?.school,
       } as CustomUser;
     } catch {
       return supabaseUser as CustomUser;
     }
   };
 
-  useEffect(() => {
-    // 1. أول حاجة: جرب تجيب المستخدم من localStorage (سريع جداً)
-    const storedUser = getUserFromStorage();
-    
-    if (storedUser) {
-      console.log('✅ User from localStorage:', storedUser.email);
-      setUser(storedUser);
-      setLoading(false);
+  // جلب أدوار المستخدم في المدارس
+  const fetchUserRoles = async (userId: string): Promise<UserSchoolRole[]> => {
+    try {
+      const { data } = await supabase
+        .from('user_school_roles')
+        .select('*, school:schools(*)')
+        .eq('user_id', userId);
       
-      // 2. بعدين في الخلفية، حدث البيانات من Supabase
-      supabase.auth.getSession().then(async ({ data: { session } }) => {
-        if (session?.user) {
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching user roles:', error);
+      return [];
+    }
+  };
+
+  // تحديد المدرسة الحالية
+  const getCurrentSchool = async (userId: string, roles: UserSchoolRole[]) => {
+    // 1. نجيب المدرسة المحفوظة في localStorage
+    const savedSchoolId = localStorage.getItem(`current_school_${userId}`);
+    
+    if (savedSchoolId) {
+      const role = roles.find(r => r.school_id === savedSchoolId);
+      if (role) {
+        return { school: role.school, role: role.role };
+      }
+    }
+    
+    // 2. نجيب المدرسة الأساسية (is_primary = true)
+    const primaryRole = roles.find(r => r.is_primary);
+    if (primaryRole) {
+      return { school: primaryRole.school, role: primaryRole.role };
+    }
+    
+    // 3. أول مدرسة في القائمة
+    if (roles[0]) {
+      return { school: roles[0].school, role: roles[0].role };
+    }
+    
+    return { school: null, role: null };
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const initializeAuth = async () => {
+      try {
+        // 1. جلب المستخدم من Supabase
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user && isMounted) {
           const enhancedUser = await fetchUserProfile(session.user);
           setUser(enhancedUser);
+          
+          // جلب الأدوار
+          const roles = await fetchUserRoles(session.user.id);
+          setUserRoles(roles);
+          
+          // تحديد المدرسة الحالية
+          const { school, role } = await getCurrentSchool(session.user.id, roles);
+          setCurrentSchool(school);
+          setCurrentRole(role);
+          
+          // حفظ المدرسة الحالية
+          if (school) {
+            localStorage.setItem(`current_school_${session.user.id}`, school.id);
+          }
         }
-      });
-      
-      return;
-    }
-
-    // 3. إذا ما لقيناش في localStorage، نستنى Supabase
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const enhancedUser = await fetchUserProfile(session.user);
-        setUser(enhancedUser);
+        
+        if (isMounted) {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
-      setLoading(false);
-    });
+    };
+
+    initializeAuth();
 
     // الاستماع لتغييرات المصادقة
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (_event, session) => {
+        if (!isMounted) return;
+        
         if (session?.user) {
           const enhancedUser = await fetchUserProfile(session.user);
           setUser(enhancedUser);
+          
+          const roles = await fetchUserRoles(session.user.id);
+          setUserRoles(roles);
+          
+          const { school, role } = await getCurrentSchool(session.user.id, roles);
+          setCurrentSchool(school);
+          setCurrentRole(role);
+          
+          if (school) {
+            localStorage.setItem(`current_school_${session.user.id}`, school.id);
+          }
         } else {
           setUser(null);
+          setUserRoles([]);
+          setCurrentSchool(null);
+          setCurrentRole(null);
         }
         setLoading(false);
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -118,6 +166,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!error && data.user) {
       const enhancedUser = await fetchUserProfile(data.user);
       setUser(enhancedUser);
+      
+      const roles = await fetchUserRoles(data.user.id);
+      setUserRoles(roles);
+      
+      const { school, role } = await getCurrentSchool(data.user.id, roles);
+      setCurrentSchool(school);
+      setCurrentRole(role);
+      
+      if (school) {
+        localStorage.setItem(`current_school_${data.user.id}`, school.id);
+      }
     }
     return { error };
   };
@@ -150,10 +209,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setUserRoles([]);
+    setCurrentSchool(null);
+    setCurrentRole(null);
+  };
+
+  const switchSchool = async (schoolId: string) => {
+    const role = userRoles.find(r => r.school_id === schoolId);
+    if (role && user) {
+      setCurrentSchool(role.school || null);
+      setCurrentRole(role.role);
+      localStorage.setItem(`current_school_${user.id}`, schoolId);
+    }
+  };
+
+  const hasPermission = (permission: string): boolean => {
+    // Admin لديه كل الصلاحيات
+    if (currentRole === 'admin') return true;
+    
+    // صلاحيات خاصة لكل دور
+    const rolePermissions: Record<string, string[]> = {
+      accountant: ['view_financials', 'manage_fees', 'manage_expenses', 'view_reports'],
+      moderator: ['view_students', 'view_teachers', 'edit_students', 'edit_teachers'],
+    };
+    
+    const permissions = rolePermissions[currentRole || ''] || [];
+    return permissions.includes(permission);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      currentSchool,
+      currentRole,
+      userRoles,
+      signIn, 
+      signUp, 
+      signOut,
+      switchSchool,
+      hasPermission
+    }}>
       {children}
     </AuthContext.Provider>
   );

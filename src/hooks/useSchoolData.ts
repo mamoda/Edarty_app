@@ -1,40 +1,18 @@
+// src/hooks/useSchoolData.ts
 import { useAuth } from "../context/AuthContext";
 import { SchoolData } from "../types/database";
 
 export const useSchoolData = (): SchoolData => {
-  const { user } = useAuth();
+  const { currentSchool, user } = useAuth();
   
-  const getSchoolName = (): string => {
-    if (!user) return "المدرسة";
-    return (user as any).schoolName || user.email?.split("@")[0] || "المدرسة";
-  };
-
-  const getSchoolEmail = (): string => {
-    return user?.email || "";
-  };
-
-  const getSchoolIdentifier = (): string => {
-    return user?.email?.split("@")[0] || "school";
-  };
-
-  const getSchoolAddress = (): string => {
-    return (user as any).schoolAddress || "العنوان غير محدد";
-  };
-
-  const getSchoolPhone = (): string => {
-    return (user as any).schoolPhone || "رقم الهاتف غير محدد";
-  };
-
-  const getSchoolTaxNumber = (): string => {
-    return (user as any).taxNumber || "000-000-000";
-  };
-
   return {
-    schoolName: getSchoolName(),
-    schoolEmail: getSchoolEmail(),
-    schoolIdentifier: getSchoolIdentifier(),
-    schoolAddress: getSchoolAddress(),
-    schoolPhone: getSchoolPhone(),
-    schoolTaxNumber: getSchoolTaxNumber(),
+    id: currentSchool?.id || '',                                    // ✅ إضافة
+    schoolId: currentSchool?.id || '',                              // ✅ إضافة
+    schoolName: currentSchool?.name || user?.email?.split("@")[0] || "المدرسة",
+    schoolEmail: currentSchool?.email || user?.email || "",
+    schoolIdentifier: currentSchool?.subdomain || user?.email?.split("@")[0] || "school",
+    schoolAddress: currentSchool?.address || "العنوان غير محدد",
+    schoolPhone: currentSchool?.phone || "رقم الهاتف غير محدد",
+    schoolTaxNumber: currentSchool?.tax_number || "000-000-000",
   };
 };

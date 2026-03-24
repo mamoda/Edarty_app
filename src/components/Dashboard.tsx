@@ -383,12 +383,6 @@ const ModernHeader: React.FC<HeaderProps> = ({
               />
             </div>
 
-            {/* اسم المدرسة بجانب الشعار */}
-            <div className="hidden md:block">
-              {/* <p className="text-sm font-medium text-gray-900">{schoolName}</p> */}
-              {/* <p className="text-xs text-gray-500">{schoolIdentifier}</p> */}
-            </div>
-
             <div className="h-6 w-px bg-gray-200"></div>
             <nav className="hidden md:flex items-center gap-1">
               <button
@@ -694,7 +688,7 @@ const ViewRenderer: React.FC<{
 };
 
 export default function Dashboard() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, currentSchool, currentRole } = useAuth();
   const { schoolName, schoolEmail, schoolIdentifier } = useSchoolData();
   const { language, toggleLanguage, t } = useLanguage();
 
@@ -753,19 +747,19 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // تحميل البيانات فقط عندما يكون المستخدم موجوداً
+  // تحميل البيانات فقط عندما يكون المستخدم والمدرسة موجودين
   useEffect(() => {
-    if (user) {
-      console.log("👤 User authenticated, loading statistics...");
+    if (user && currentSchool) {
+      console.log("👤 User authenticated, loading statistics for school:", currentSchool.name);
       loadStatistics();
     } else {
-      console.log("⏳ Waiting for user...");
+      console.log("⏳ Waiting for user and school...");
     }
-  }, [user]); // يعتمد على user
+  }, [user, currentSchool]);
 
   const loadStatistics = async () => {
-    if (!user) {
-      console.log("⏳ No user yet, skipping data load");
+    if (!user || !currentSchool) {
+      console.log("⏳ No user or school yet, skipping data load");
       return;
     }
 
@@ -773,20 +767,18 @@ export default function Dashboard() {
     setDataError(null);
 
     try {
-      console.log(`📊 Loading statistics for ${schoolName} (user: ${user.id})`);
+      console.log(`📊 Loading statistics for school: ${currentSchool.name} (ID: ${currentSchool.id})`);
 
-      // جلب جميع البيانات المطلوبة مع معالجة الأخطاء
       const results = await Promise.allSettled([
-        supabase.from("students").select("*").eq("user_id", user.id),
+        supabase.from("students").select("*").eq("school_id", currentSchool.id),
         supabase
           .from("fees")
           .select("*, student:students(*)")
-          .eq("user_id", user.id),
-        supabase.from("expenses").select("amount").eq("user_id", user.id),
-        supabase.from("teachers").select("*").eq("user_id", user.id),
+          .eq("school_id", currentSchool.id),
+        supabase.from("expenses").select("amount").eq("school_id", currentSchool.id),
+        supabase.from("teachers").select("*").eq("school_id", currentSchool.id),
       ]);
 
-      // معالجة النتائج
       const [studentsRes, feesRes, expensesRes, teachersRes] = results.map(
         (result) =>
           result.status === "fulfilled"
@@ -802,12 +794,10 @@ export default function Dashboard() {
       if (teachersRes.error)
         console.error("Teachers error:", teachersRes.error);
 
-      // الإحصائيات الأساسية
       const totalStudents = studentsRes.data?.length ?? 0;
       const activeStudents =
         studentsRes.data?.filter((s: any) => s.status === "active").length ?? 0;
 
-      // حساب المدفوعات والاستردادات
       const fees = feesRes.data ?? [];
       const totalPayments = fees
         .filter((f: any) => f.amount > 0)
@@ -820,14 +810,12 @@ export default function Dashboard() {
         );
       const netRevenue = totalPayments - totalRefunds;
 
-      // حساب المصروفات
       const totalExpenses =
         expensesRes.data?.reduce(
           (sum: number, exp: any) => sum + Number(exp.amount),
           0,
         ) ?? 0;
 
-      // إحصائيات المعلمين
       const totalTeachers = teachersRes.data?.length ?? 0;
       const activeTeachers =
         teachersRes.data?.filter((t: any) => t.status === "active").length ?? 0;
@@ -836,7 +824,6 @@ export default function Dashboard() {
           ?.filter((t: any) => t.status === "active")
           .reduce((sum: number, t: any) => sum + Number(t.salary), 0) ?? 0;
 
-      // حساب حالات سداد الطلاب
       let paidStudents = 0;
       let partialPaidStudents = 0;
       let unpaidStudents = 0;
@@ -862,7 +849,6 @@ export default function Dashboard() {
         }
       });
 
-      // حساب طرق الدفع
       let cashPayments = 0,
         cardPayments = 0,
         bankPayments = 0,
@@ -885,7 +871,6 @@ export default function Dashboard() {
         }
       });
 
-      // حساب تحصيلات اليوم
       const today = new Date().toISOString().split("T")[0];
       const todayPayments = fees
         .filter((f: any) => f.payment_date === today && f.amount > 0)
@@ -895,7 +880,6 @@ export default function Dashboard() {
         .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
       const todayCollections = todayPayments - todayRefunds;
 
-      // حساب تحصيلات هذا الأسبوع
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
       const weekPayments = fees
@@ -910,7 +894,6 @@ export default function Dashboard() {
         .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
       const thisWeekCollections = weekPayments - weekRefunds;
 
-      // حساب تحصيلات هذا الشهر
       const oneMonthAgo = new Date();
       oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
       const monthPayments = fees
@@ -925,7 +908,6 @@ export default function Dashboard() {
         .reduce((sum: number, f: any) => sum + Math.abs(f.amount), 0);
       const thisMonthCollections = monthPayments - monthRefunds;
 
-      // نسبة التحصيل
       const expectedRevenue = activeStudents * 5000;
       const collectionRate =
         expectedRevenue > 0 ? (netRevenue / expectedRevenue) * 100 : 0;
@@ -1042,9 +1024,7 @@ export default function Dashboard() {
         <div className="relative border-b border-gray-200/50 bg-white/40 backdrop-blur-xl">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between py-2.5">
-              {/* الجهة اليمنى */}
               <div className="flex items-center gap-4">
-                {/* شارة المدرسة */}
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 bg-gradient-to-br from-blue-600/10 to-indigo-600/10 rounded-lg">
                     <School className="w-4 h-4 text-blue-600" />
@@ -1053,17 +1033,16 @@ export default function Dashboard() {
                     <span className="text-sm font-semibold text-gray-900">
                       {schoolName}
                     </span>
-                    {/* <span className="text-[10px] text-gray-400 mr-2">
-                      {" "}
-                      {schoolIdentifier}
-                    </span> */}
+                    {currentRole && (
+                      <span className="text-xs text-gray-500 mr-2">
+                        ({currentRole === 'admin' ? 'مدير' : currentRole === 'accountant' ? 'محاسب' : 'مشرف'})
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                {/* فواصل نقطية */}
                 <span className="text-gray-300 text-lg leading-none">•</span>
 
-                {/* الطلاب النشطين */}
                 <div className="flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-gray-500" />
                   <span className="text-xs text-gray-600">
@@ -1076,7 +1055,6 @@ export default function Dashboard() {
 
                 <span className="text-gray-300 text-lg leading-none">•</span>
 
-                {/* البريد الإلكتروني */}
                 <div className="flex items-center gap-1.5">
                   <Mail className="w-3.5 h-3.5 text-gray-500" />
                   <span className="text-xs text-gray-600 truncate max-w-[180px]">
@@ -1085,7 +1063,6 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* الجهة اليسرى - نسبة التحصيل */}
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500">نسبة التحصيل</span>
@@ -1102,7 +1079,6 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* حالة الاتصال */}
                 <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 rounded-full border border-green-100">
                   <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
                   <span className="text-[10px] font-medium text-green-700">
@@ -1335,7 +1311,6 @@ export default function Dashboard() {
                         />
                       </div>
 
-                      {/* بطاقة معلومات المدرسة */}
                       <div className="grid grid-cols-1 md:grid-cols-2 xlg:grid-cols-4 gap-4">
                         <ModernStatCard
                           title={t("collectionRate")}
