@@ -29,6 +29,7 @@ export interface User {
   id: string;
   email: string | null;
   full_name: string | null;
+  school_id: string; // إضافة
   school_name: string | null;
   school_address: string | null;
   school_phone: string | null;
@@ -45,6 +46,7 @@ export interface User {
 export interface Student {
   id: string;
   user_id: string;
+  school_id: string; // إضافة
   full_name: string;
   grade: string;
   parent_name: string;
