@@ -1,4 +1,4 @@
-// src/context/AuthContext.tsx - النسخة النهائية
+// src/context/AuthContext.tsx - إصلاح الأخطاء
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { CustomUser, UserSchoolRole, School } from '../types/database';
@@ -33,7 +33,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         console.log('🔐 Initializing auth...');
         
-        const { data: { session } } = await supabase.auth.getSession();
+        console.log('📡 Getting session...');
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+        }
         
         if (!session?.user) {
           console.log('ℹ️ No session found');
@@ -42,19 +47,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         
         console.log('✅ User found:', session.user.email);
+        console.log('🆔 User ID:', session.user.id);
         
         // جلب بيانات المستخدم من جدول users
-        const { data: profile } = await supabase
+        console.log('📊 Fetching user profile from users table...');
+        const { data: profile, error: profileError } = await supabase
           .from('users')
           .select('*')
           .eq('id', session.user.id)
           .maybeSingle();
         
+        if (profileError) {
+          console.error('Profile error:', profileError);
+        }
+        console.log('📋 Profile data:', profile);
+        
         // جلب أدوار المستخدم
-        const { data: roles } = await supabase
+        console.log('👥 Fetching user roles from user_school_roles...');
+        const { data: roles, error: rolesError } = await supabase
           .from('user_school_roles')
           .select('*, school:schools(*)')
           .eq('user_id', session.user.id);
+        
+        if (rolesError) {
+          console.error('Roles error:', rolesError);
+        }
+        console.log('📊 Roles data:', roles?.length || 0, roles);
         
         if (!isMounted) return;
         
@@ -68,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           schoolPhone: profile?.school_phone,
           taxNumber: profile?.tax_number,
         };
+        console.log('👤 Custom user set:', { email: customUser.email, school_id: customUser.school_id });
         setUser(customUser);
         
         // تعيين الأدوار
@@ -81,16 +100,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (primaryRole?.school) {
           school = primaryRole.school;
           role = primaryRole.role;
+          console.log('🏫 Primary school found:', school?.name); // ✅ التحقق من null
         } else if (roles?.[0]?.school) {
           school = roles[0].school;
           role = roles[0].role;
+          console.log('🏫 First school found:', school?.name); // ✅ التحقق من null
+        } else {
+          console.log('⚠️ No school found in roles!');
         }
         
         setCurrentSchool(school);
         setCurrentRole(role);
         
         console.log('✅ User data loaded:', { 
-          school: school?.name, 
+          school: school?.name || 'No school', // ✅ التحقق من null
           role, 
           rolesCount: roles?.length || 0 
         });
@@ -101,7 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        console.error('❌ Error initializing auth:', error);
         if (isMounted) setLoading(false);
       }
     };
@@ -122,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('🔄 Auth state changed:', _event);
         
         if (session?.user) {
+          console.log('📥 Loading data after auth change...');
           const { data: profile } = await supabase
             .from('users')
             .select('*')
@@ -150,6 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setCurrentRole(roles[0].role);
           }
         } else {
+          console.log('👋 User logged out');
           setUser(null);
           setUserRoles([]);
           setCurrentSchool(null);
@@ -182,39 +207,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-// تعديل signUp في AuthContext لإضافة school_id مؤقت
-const signUp = async (email: string, password: string, fullName?: string): Promise<{ error: Error | null; data?: any }> => {
-  setLoading(true);
-  try {
-    const { data, error } = await supabase.auth.signUp({ 
-      email, 
-      password,
-      options: { data: { full_name: fullName } }
-    });
-    
-    if (!error && data.user) {
-      // إنشاء مستخدم في جدول users مع school_id مؤقت
-      await supabase
-        .from('users')
-        .upsert([{ 
-          id: data.user.id, 
-          email, 
-          full_name: fullName,
-          school_id: null, // ✅ مؤقتاً null
-          created_at: new Date().toISOString()
-        }], { onConflict: 'id' });
+  const signUp = async (email: string, password: string, fullName?: string): Promise<{ error: Error | null; data?: any }> => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: { data: { full_name: fullName } }
+      });
+      
+      if (!error && data.user) {
+        await supabase
+          .from('users')
+          .upsert([{ 
+            id: data.user.id, 
+            email, 
+            full_name: fullName,
+            school_id: null,
+            created_at: new Date().toISOString()
+          }], { onConflict: 'id' });
+      }
+      
+      setLoading(false);
+      if (error) {
+        return { error: new Error(error.message), data: null };
+      }
+      return { error: null, data };
+    } catch (err) {
+      setLoading(false);
+      return { error: err instanceof Error ? err : new Error('Unknown error'), data: null };
     }
-    
-    setLoading(false);
-    if (error) {
-      return { error: new Error(error.message), data: null };
-    }
-    return { error: null, data };
-  } catch (err) {
-    setLoading(false);
-    return { error: err instanceof Error ? err : new Error('Unknown error'), data: null };
-  }
-};
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
