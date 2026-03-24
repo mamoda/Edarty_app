@@ -1,4 +1,4 @@
-// src/context/AuthContext.tsx - النسخة النهائية المصححة
+// src/context/AuthContext.tsx - النسخة النهائية
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { CustomUser, UserSchoolRole, School } from '../types/database';
@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentSchool, setCurrentSchool] = useState<School | null>(null);
   const [currentRole, setCurrentRole] = useState<string | null>(null);
 
-  // جلب بيانات المستخدم الكاملة من جدول users
+  // جلب بيانات المستخدم الكاملة
   const fetchUserProfile = async (supabaseUser: any): Promise<CustomUser> => {
     try {
       const { data: profile } = await supabase
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // جلب أدوار المستخدم في المدارس
+  // جلب أدوار المستخدم
   const fetchUserRoles = async (userId: string): Promise<UserSchoolRole[]> => {
     try {
       const { data, error } = await supabase
@@ -69,20 +69,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // تحديد المدرسة الحالية من الأدوار
+  // تحديد المدرسة الحالية
   const getCurrentSchoolFromRoles = (roles: UserSchoolRole[]) => {
-    // 1. نجيب المدرسة الأساسية (is_primary = true)
     const primaryRole = roles.find(r => r.is_primary);
     if (primaryRole && primaryRole.school) {
       return { school: primaryRole.school, role: primaryRole.role };
     }
     
-    // 2. أول مدرسة في القائمة
     if (roles[0] && roles[0].school) {
       return { school: roles[0].school, role: roles[0].role };
     }
     
     return { school: null, role: null };
+  };
+
+  // دالة تحميل جميع البيانات
+  const loadUserData = async (supabaseUser: any) => {
+    console.log('📥 Loading user data for:', supabaseUser.email);
+    
+    const enhancedUser = await fetchUserProfile(supabaseUser);
+    setUser(enhancedUser);
+    
+    const roles = await fetchUserRoles(supabaseUser.id);
+    setUserRoles(roles);
+    
+    const { school, role } = getCurrentSchoolFromRoles(roles);
+    setCurrentSchool(school);
+    setCurrentRole(role);
+    
+    console.log('✅ User data loaded:', { 
+      school: school?.name, 
+      role, 
+      rolesCount: roles.length 
+    });
   };
 
   useEffect(() => {
@@ -93,45 +112,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('🔐 Initializing auth...');
         
         // جلب الجلسة الحالية
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Session error:', sessionError);
-        }
+        const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user && isMounted) {
-          console.log('✅ User found:', session.user.email);
-          
-          // جلب بيانات المستخدم
-          const enhancedUser = await fetchUserProfile(session.user);
-          if (isMounted) setUser(enhancedUser);
-          
-          // جلب أدوار المستخدم
-          const roles = await fetchUserRoles(session.user.id);
-          if (isMounted) setUserRoles(roles);
-          
-          // تحديد المدرسة الحالية
-          const { school, role } = getCurrentSchoolFromRoles(roles);
-          if (isMounted) {
-            setCurrentSchool(school);
-            setCurrentRole(role);
-            console.log('🏫 Current school:', school?.name || 'No school');
-            console.log('👤 Current role:', role || 'No role');
-            console.log('📊 Total roles found:', roles.length);
-          }
+          await loadUserData(session.user);
         } else {
-          console.log('ℹ️ No user session found');
+          console.log('ℹ️ No session found');
         }
         
         if (isMounted) {
           setLoading(false);
-          console.log('✅ Loading set to false');
+          console.log('✅ Loading complete');
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
         if (isMounted) {
           setLoading(false);
-          console.log('✅ Loading set to false after error');
         }
       }
     };
@@ -146,32 +142,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('🔄 Auth state changed:', _event);
         
         if (session?.user) {
-          console.log('✅ User logged in:', session.user.email);
-          
-          const enhancedUser = await fetchUserProfile(session.user);
-          if (isMounted) setUser(enhancedUser);
-          
-          const roles = await fetchUserRoles(session.user.id);
-          if (isMounted) setUserRoles(roles);
-          
-          const { school, role } = getCurrentSchoolFromRoles(roles);
-          if (isMounted) {
-            setCurrentSchool(school);
-            setCurrentRole(role);
-          }
+          await loadUserData(session.user);
         } else {
-          console.log('👋 User logged out');
-          if (isMounted) {
-            setUser(null);
-            setUserRoles([]);
-            setCurrentSchool(null);
-            setCurrentRole(null);
-          }
+          setUser(null);
+          setUserRoles([]);
+          setCurrentSchool(null);
+          setCurrentRole(null);
         }
         
-        if (isMounted) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     );
 
@@ -182,24 +161,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    console.log('🔑 Signing in...');
     setLoading(true);
-    
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     
     if (!error && data.user) {
-      console.log('✅ Sign in successful');
-      const enhancedUser = await fetchUserProfile(data.user);
-      setUser(enhancedUser);
-      
-      const roles = await fetchUserRoles(data.user.id);
-      setUserRoles(roles);
-      
-      const { school, role } = getCurrentSchoolFromRoles(roles);
-      setCurrentSchool(school);
-      setCurrentRole(role);
-    } else if (error) {
-      console.error('❌ Sign in error:', error);
+      await loadUserData(data.user);
     }
     
     setLoading(false);
@@ -207,7 +173,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, fullName?: string) => {
-    console.log('📝 Signing up...');
     setLoading(true);
     
     const { data, error } = await supabase.auth.signUp({ 
@@ -217,8 +182,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     
     if (!error && data.user) {
-      console.log('✅ Sign up successful');
-      
       await supabase
         .from('users')
         .upsert([{ 
@@ -228,10 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           created_at: new Date().toISOString()
         }], { onConflict: 'id' });
       
-      const enhancedUser = await fetchUserProfile(data.user);
-      setUser(enhancedUser);
-    } else if (error) {
-      console.error('❌ Sign up error:', error);
+      await loadUserData(data.user);
     }
     
     setLoading(false);
@@ -239,13 +199,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    console.log('🚪 Signing out...');
     await supabase.auth.signOut();
     setUser(null);
     setUserRoles([]);
     setCurrentSchool(null);
     setCurrentRole(null);
-    setLoading(false);
   };
 
   const switchSchool = async (schoolId: string) => {
