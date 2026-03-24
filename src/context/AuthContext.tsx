@@ -26,25 +26,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentRole, setCurrentRole] = useState<string | null>(null);
 
   // جلب بيانات المستخدم الكاملة من جدول users مع school_id
-  const fetchUserProfile = async (supabaseUser: any): Promise<CustomUser> => {
-    try {
-      const { data: profile } = await supabase
-        .from('users')
-        .select('*, school:schools(*)')
-        .eq('id', supabaseUser.id)
-        .maybeSingle();
+const fetchUserProfile = async (supabaseUser: any): Promise<CustomUser> => {
+  try {
+    const { data: profile, error } = await supabase
+      .from('users')
+      .select('*, school:schools(*)')
+      .eq('id', supabaseUser.id)
+      .maybeSingle();
 
-      return {
-        ...supabaseUser,
-        school_id: profile?.school_id,
-        full_name: profile?.full_name || supabaseUser.user_metadata?.full_name,
-        school: profile?.school,
-      } as CustomUser;
-    } catch {
-      return supabaseUser as CustomUser;
+    console.log('📋 User profile:', profile);
+    console.log('🏫 School from profile:', profile?.school);
+    console.log('🔑 school_id:', profile?.school_id);
+
+    if (error) {
+      console.error('Error fetching profile:', error);
     }
-  };
 
+    return {
+      ...supabaseUser,
+      school_id: profile?.school_id,
+      full_name: profile?.full_name || supabaseUser.user_metadata?.full_name,
+      school: profile?.school,
+    } as CustomUser;
+  } catch (error) {
+    console.error('Error in fetchUserProfile:', error);
+    return supabaseUser as CustomUser;
+  }
+};
   // جلب أدوار المستخدم في المدارس
   const fetchUserRoles = async (userId: string): Promise<UserSchoolRole[]> => {
     try {
