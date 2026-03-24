@@ -1,3 +1,4 @@
+// src/components/StudentsManager.tsx
 import { useState, useEffect } from "react";
 import {
   UserPlus,
@@ -18,7 +19,7 @@ interface StudentsManagerProps {
 }
 
 export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
-  const { user } = useAuth();
+  const { user, currentSchool, hasPermission } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -36,17 +37,20 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
 
   useEffect(() => {
     loadStudents();
-  }, []);
+  }, [currentSchool]); // ✅ إضافة currentSchool كـ dependency
 
   const loadStudents = async () => {
-    if (!user) return;
+    if (!currentSchool) {
+      console.log("⏳ No school selected, skipping load");
+      return;
+    }
 
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from("students")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("school_id", currentSchool.id) // ✅ استخدام school_id بدلاً من user_id
         .order("grade", { ascending: true })
         .order("full_name", { ascending: true });
 
@@ -65,20 +69,25 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !currentSchool) return;
 
     try {
       if (editingStudent) {
         const { error } = await supabase
           .from("students")
           .update({ ...formData, updated_at: new Date().toISOString() })
-          .eq("id", editingStudent.id);
+          .eq("id", editingStudent.id)
+          .eq("school_id", currentSchool.id); // ✅ التأكد من المدرسة
 
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from("students")
-          .insert([{ ...formData, user_id: user.id }]);
+          .insert([{ 
+            ...formData, 
+            user_id: user.id,
+            school_id: currentSchool.id // ✅ إضافة school_id
+          }]);
 
         if (error) throw error;
       }
@@ -93,10 +102,19 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
   };
 
   const handleDelete = async (id: string) => {
+    if (!hasPermission('delete_students')) {
+      alert("ليس لديك صلاحية لحذف الطلاب");
+      return;
+    }
+    
     if (!confirm("هل أنت متأكد من حذف هذا الطالب؟")) return;
 
     try {
-      const { error } = await supabase.from("students").delete().eq("id", id);
+      const { error } = await supabase
+        .from("students")
+        .delete()
+        .eq("id", id)
+        .eq("school_id", currentSchool?.id); // ✅ التأكد من المدرسة
 
       if (error) throw error;
       loadStudents();
@@ -108,6 +126,11 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
   };
 
   const handleEdit = (student: Student) => {
+    if (!hasPermission('edit_students')) {
+      alert("ليس لديك صلاحية لتعديل الطلاب");
+      return;
+    }
+    
     setEditingStudent(student);
     setFormData({
       full_name: student.full_name,
@@ -173,7 +196,7 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
     }))
     .sort((a, b) => a.grade.localeCompare(b.grade, "ar"));
 
-  // Filter students by search term (تحسين وظيفة البحث)
+  // Filter students by search term
   const filterStudentsBySearch = (studentList: Student[]) => {
     if (!searchTerm.trim()) return studentList;
     
@@ -182,24 +205,22 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
       (student) =>
         student.full_name.toLowerCase().includes(term) ||
         student.parent_name.toLowerCase().includes(term) ||
-        student.parent_phone.includes(term) || // البحث برقم الهاتف
-        student.grade.toLowerCase().includes(term) // البحث بالصف
+        student.parent_phone.includes(term) ||
+        student.grade.toLowerCase().includes(term)
     );
   };
 
   // Filter students by search term and selected grade
   const getFilteredStudents = () => {
     if (selectedGrade) {
-      // إذا تم اختيار صف محدد
       const gradeStudents = studentsByGrade[selectedGrade] || [];
       return filterStudentsBySearch(gradeStudents);
     } else {
-      // إذا لم يتم اختيار صف، نبحث في جميع الطلاب
       return filterStudentsBySearch(students);
     }
   };
 
-  // إنشاء كائن studentsByGrade مع التصفية
+  // Create filtered students by grade object
   const getFilteredStudentsByGrade = () => {
     const filtered: Record<string, Student[]> = {};
     
@@ -221,18 +242,23 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
   const totalActive = students.filter((s) => s.status === "active").length;
   const totalInactive = students.filter((s) => s.status === "inactive").length;
 
+  // التحقق من صلاحية إضافة الطلاب
+  const canAddStudent = hasPermission('edit_students') || hasPermission('add_students');
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h2 className="text-2xl font-bold text-gray-900">إدارة الطلاب</h2>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all shadow-md w-full sm:w-auto justify-center"
-        >
-          <UserPlus className="w-5 h-5" />
-          <span>إضافة طالب</span>
-        </button>
+        {canAddStudent && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all shadow-md w-full sm:w-auto justify-center"
+          >
+            <UserPlus className="w-5 h-5" />
+            <span>إضافة طالب</span>
+          </button>
+        )}
       </div>
 
       {/* Statistics Cards */}
@@ -374,12 +400,14 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
             لا توجد بيانات
           </h3>
           <p className="text-gray-600 mb-6">لم يتم إضافة أي طلاب بعد</p>
-          <button
-            onClick={() => setShowForm(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-all"
-          >
-            إضافة أول طالب
-          </button>
+          {canAddStudent && (
+            <button
+              onClick={() => setShowForm(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-all"
+            >
+              إضافة أول طالب
+            </button>
+          )}
         </div>
       ) : selectedGrade ? (
         // Single Grade View
@@ -410,6 +438,7 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
               students={filteredStudents}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              hasPermission={hasPermission}
             />
           ) : (
             <div className="bg-white rounded-xl p-8 text-center">
@@ -485,6 +514,7 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
                       students={gradeStudents}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
+                      hasPermission={hasPermission}
                     />
                   </div>
                 )}
@@ -512,7 +542,7 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
         </div>
       )}
 
-      {/* Add/Edit Student Modal (نفس الكود بدون تغيير) */}
+      {/* Add/Edit Student Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
@@ -644,11 +674,16 @@ function StudentList({
   students,
   onEdit,
   onDelete,
+  hasPermission,
 }: {
   students: Student[];
   onEdit: (student: Student) => void;
   onDelete: (id: string) => void;
+  hasPermission: (permission: string) => boolean;
 }) {
+  const canEdit = hasPermission('edit_students');
+  const canDelete = hasPermission('delete_students');
+
   if (students.length === 0) {
     return (
       <div className="text-center py-8">
@@ -694,20 +729,24 @@ function StudentList({
               </div>
             </div>
             <div className="flex gap-1 mr-4">
-              <button
-                onClick={() => onEdit(student)}
-                className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-all"
-                title="تعديل"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => onDelete(student.id)}
-                className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-all"
-                title="حذف"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              {canEdit && (
+                <button
+                  onClick={() => onEdit(student)}
+                  className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-all"
+                  title="تعديل"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+              )}
+              {canDelete && (
+                <button
+                  onClick={() => onDelete(student.id)}
+                  className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-all"
+                  title="حذف"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
         </div>

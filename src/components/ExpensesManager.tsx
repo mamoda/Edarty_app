@@ -1,3 +1,4 @@
+// src/components/ExpensesManager.tsx
 import { useState, useEffect } from "react";
 import { TrendingDown, Plus, Edit2, Trash2, Search, X, Calendar } from "lucide-react";
 import { supabase } from "../lib/supabase";
@@ -9,7 +10,7 @@ interface ExpensesManagerProps {
 }
 
 export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
-  const { user } = useAuth();
+  const { user, currentSchool, hasPermission } = useAuth();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -27,7 +28,7 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
 
   useEffect(() => {
     loadExpenses();
-  }, [selectedMonth, selectedYear]);
+  }, [selectedMonth, selectedYear, currentSchool]); // ✅ إضافة currentSchool
 
   const formatNumber = (num: number, fractionDigits: number = 2) => {
     return Number(num).toLocaleString("ar-EG", {
@@ -45,7 +46,10 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
   };
 
   const loadExpenses = async () => {
-    if (!user) return;
+    if (!currentSchool) {
+      console.log("⏳ No school selected, skipping load");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -56,7 +60,7 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
       const { data, error } = await supabase
         .from("expenses")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("school_id", currentSchool.id) // ✅ استخدام school_id بدلاً من user_id
         .gte("expense_date", startDate)
         .lte("expense_date", endDate)
         .order("expense_date", { ascending: false });
@@ -72,7 +76,7 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !currentSchool) return;
 
     try {
       const expenseData = {
@@ -82,17 +86,21 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
         expense_date: formData.expense_date,
         notes: formData.notes,
         user_id: user.id,
+        school_id: currentSchool.id, // ✅ إضافة school_id
       };
 
       if (editingExpense) {
         const { error } = await supabase
           .from("expenses")
           .update(expenseData)
-          .eq("id", editingExpense.id);
+          .eq("id", editingExpense.id)
+          .eq("school_id", currentSchool.id); // ✅ التأكد من المدرسة
 
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("expenses").insert([expenseData]);
+        const { error } = await supabase
+          .from("expenses")
+          .insert([expenseData]);
 
         if (error) throw error;
       }
@@ -107,10 +115,19 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
   };
 
   const handleDelete = async (id: string) => {
+    if (!hasPermission('delete_expenses')) {
+      alert("ليس لديك صلاحية لحذف المصروفات");
+      return;
+    }
+    
     if (!confirm("هل أنت متأكد من حذف هذا المصروف؟")) return;
 
     try {
-      const { error } = await supabase.from("expenses").delete().eq("id", id);
+      const { error } = await supabase
+        .from("expenses")
+        .delete()
+        .eq("id", id)
+        .eq("school_id", currentSchool?.id); // ✅ التأكد من المدرسة
 
       if (error) throw error;
       loadExpenses();
@@ -122,6 +139,11 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
   };
 
   const handleEdit = (expense: Expense) => {
+    if (!hasPermission('edit_expenses')) {
+      alert("ليس لديك صلاحية لتعديل المصروفات");
+      return;
+    }
+    
     setEditingExpense(expense);
     setFormData({
       category: expense.category,
@@ -176,19 +198,24 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
         .reduce((sum, e) => sum + Number(e.amount), 0),
     }))
     .filter((c) => c.total > 0)
-    .sort((a, b) => b.total - a.total); // ترتيب تنازلي
+    .sort((a, b) => b.total - a.total);
+
+  // التحقق من صلاحية إضافة المصروفات
+  const canAddExpense = hasPermission('add_expenses') || hasPermission('edit_expenses');
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">إدارة التكاليف</h2>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-all shadow-md"
-        >
-          <Plus className="w-5 h-5" />
-          <span>إضافة مصروف</span>
-        </button>
+        {canAddExpense && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-all shadow-md"
+          >
+            <Plus className="w-5 h-5" />
+            <span>إضافة مصروف</span>
+          </button>
+        )}
       </div>
 
       {/* فلتر الشهر والسنة */}
@@ -434,12 +461,14 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
           <p className="text-gray-600 mb-6">
             {searchTerm ? "لا توجد نتائج للبحث" : `لم يتم تسجيل أي مصروفات لشهر ${getMonthName(selectedMonth)} ${selectedYear}`}
           </p>
-          <button
-            onClick={() => setShowForm(true)}
-            className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-all"
-          >
-            إضافة أول مصروف
-          </button>
+          {canAddExpense && (
+            <button
+              onClick={() => setShowForm(true)}
+              className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-all"
+            >
+              إضافة أول مصروف
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid gap-4">
@@ -487,18 +516,22 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => handleEdit(expense)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                  >
-                    <Edit2 className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(expense.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+                  {hasPermission('edit_expenses') && (
+                    <button
+                      onClick={() => handleEdit(expense)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                    >
+                      <Edit2 className="w-5 h-5" />
+                    </button>
+                  )}
+                  {hasPermission('delete_expenses') && (
+                    <button
+                      onClick={() => handleDelete(expense.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
