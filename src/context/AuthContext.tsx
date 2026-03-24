@@ -1,4 +1,4 @@
-// src/context/AuthContext.tsx - النسخة النهائية المصححة
+// src/context/AuthContext.tsx
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { CustomUser, UserSchoolRole, School } from '../types/database';
@@ -28,11 +28,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // جلب بيانات المستخدم الكاملة من جدول users
   const fetchUserProfile = async (supabaseUser: any): Promise<CustomUser> => {
     try {
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', supabaseUser.id)
         .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+      }
+
+      console.log('📋 User profile:', profile);
+      console.log('🏫 User school_id:', profile?.school_id);
 
       return {
         ...supabaseUser,
@@ -44,33 +51,81 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         taxNumber: profile?.tax_number,
       } as CustomUser;
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      console.error('Error in fetchUserProfile:', error);
       return supabaseUser as CustomUser;
     }
   };
 
-  // جلب أدوار المستخدم في المدارس مع بيانات المدرسة
-  const fetchUserRoles = async (userId: string): Promise<UserSchoolRole[]> => {
+  // جلب أدوار المستخدم في المدارس
+  const fetchUserRoles = async (userId: string, userSchoolId?: string): Promise<UserSchoolRole[]> => {
     try {
-      const { data, error } = await supabase
+      let roles: UserSchoolRole[] = [];
+      
+      // 1. جلب الأدوار من جدول user_school_roles (للمستخدمين الذين يديرون مدارس متعددة)
+      const { data: roleData, error: roleError } = await supabase
         .from('user_school_roles')
         .select('*, school:schools(*)')
         .eq('user_id', userId);
       
-      if (error) {
-        console.error('Error fetching user roles:', error);
-        return [];
+      if (roleError) {
+        console.error('Error fetching user roles:', roleError);
+      } else if (roleData && roleData.length > 0) {
+        roles = roleData;
+        console.log('✅ Found roles from user_school_roles:', roles.length);
       }
       
-      return data || [];
+      // 2. إذا كان المستخدم لديه school_id في جدول users ولم يوجد في الأدوار
+      if (userSchoolId && roles.length === 0) {
+        console.log('📌 User has school_id but no roles, fetching school...');
+        
+        // جلب بيانات المدرسة
+        const { data: school, error: schoolError } = await supabase
+          .from('schools')
+          .select('*')
+          .eq('id', userSchoolId)
+          .single();
+        
+        if (schoolError) {
+          console.error('Error fetching school:', schoolError);
+        } else if (school) {
+          // إنشاء دور افتراضي للمستخدم
+          const defaultRole: UserSchoolRole = {
+            id: crypto.randomUUID(),
+            user_id: userId,
+            school_id: userSchoolId,
+            role: 'admin',
+            permissions: [],
+            is_primary: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            school: school
+          };
+          
+          roles = [defaultRole];
+          
+          // حفظ الدور في قاعدة البيانات (اختياري)
+          await supabase
+            .from('user_school_roles')
+            .upsert([{
+              user_id: userId,
+              school_id: userSchoolId,
+              role: 'admin',
+              is_primary: true
+            }], { onConflict: 'user_id, school_id' });
+          
+          console.log('✅ Created default role for user');
+        }
+      }
+      
+      return roles;
     } catch (error) {
       console.error('Error in fetchUserRoles:', error);
       return [];
     }
   };
 
-  // تحديد المدرسة الحالية
-  const getCurrentSchool = (roles: UserSchoolRole[]) => {
+  // تحديد المدرسة الحالية من الأدوار
+  const getCurrentSchoolFromRoles = (roles: UserSchoolRole[]) => {
     // 1. نجيب المدرسة الأساسية (is_primary = true)
     const primaryRole = roles.find(r => r.is_primary);
     if (primaryRole && primaryRole.school) {
@@ -93,11 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('🔐 Initializing auth...');
         
         // جلب الجلسة الحالية
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Session error:', sessionError);
-        }
+        const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user && isMounted) {
           console.log('✅ User found:', session.user.email);
@@ -106,17 +157,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const enhancedUser = await fetchUserProfile(session.user);
           setUser(enhancedUser);
           
-          // جلب أدوار المستخدم
-          const roles = await fetchUserRoles(session.user.id);
+          // جلب أدوار المستخدم - نمرر school_id من المستخدم
+          const roles = await fetchUserRoles(session.user.id, enhancedUser.school_id);
           setUserRoles(roles);
           
           // تحديد المدرسة الحالية
-          const { school, role } = getCurrentSchool(roles);
+          const { school, role } = getCurrentSchoolFromRoles(roles);
           setCurrentSchool(school);
           setCurrentRole(role);
           
           console.log('🏫 Current school:', school?.name || 'No school');
           console.log('👤 Current role:', role || 'No role');
+          console.log('📊 Total roles found:', roles.length);
         } else {
           console.log('ℹ️ No user session found');
         }
@@ -147,10 +199,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const enhancedUser = await fetchUserProfile(session.user);
           setUser(enhancedUser);
           
-          const roles = await fetchUserRoles(session.user.id);
+          const roles = await fetchUserRoles(session.user.id, enhancedUser.school_id);
           setUserRoles(roles);
           
-          const { school, role } = getCurrentSchool(roles);
+          const { school, role } = getCurrentSchoolFromRoles(roles);
           setCurrentSchool(school);
           setCurrentRole(role);
         } else {
@@ -182,10 +234,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const enhancedUser = await fetchUserProfile(data.user);
       setUser(enhancedUser);
       
-      const roles = await fetchUserRoles(data.user.id);
+      const roles = await fetchUserRoles(data.user.id, enhancedUser.school_id);
       setUserRoles(roles);
       
-      const { school, role } = getCurrentSchool(roles);
+      const { school, role } = getCurrentSchoolFromRoles(roles);
       setCurrentSchool(school);
       setCurrentRole(role);
     } else if (error) {
