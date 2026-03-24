@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+// src/components/Dashboard.tsx
+import React, { useState, useEffect, useRef } from "react";
 import {
   Users,
   TrendingDown,
@@ -722,6 +723,9 @@ export default function Dashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState("month");
   const [currentBackground, setCurrentBackground] = useState(0);
   const [dataError, setDataError] = useState<string | null>(null);
+  
+  // ✅ منع التحميل المزدوج
+  const hasLoadedRef = useRef(false);
 
   // مجموعة الخلفيات المتاحة
   const backgrounds = [
@@ -747,13 +751,12 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // تحميل البيانات فقط عندما يكون المستخدم والمدرسة موجودين
+  // ✅ تحميل البيانات مرة واحدة فقط
   useEffect(() => {
-    if (user && currentSchool) {
+    if (user && currentSchool && !hasLoadedRef.current) {
       console.log("👤 User authenticated, loading statistics for school:", currentSchool.name);
+      hasLoadedRef.current = true;
       loadStatistics();
-    } else {
-      console.log("⏳ Waiting for user and school...");
     }
   }, [user, currentSchool]);
 
