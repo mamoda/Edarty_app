@@ -6,8 +6,8 @@ export const useSchoolData = (): SchoolData => {
   const { currentSchool, user } = useAuth();
   
   return {
-    id: currentSchool?.id || '',                                    // ✅ إضافة
-    schoolId: currentSchool?.id || '',                              // ✅ إضافة
+    id: currentSchool?.id || '',                                   
+    schoolId: currentSchool?.id || '',                             
     schoolName: currentSchool?.name || user?.email?.split("@")[0] || "المدرسة",
     schoolEmail: currentSchool?.email || user?.email || "",
     schoolIdentifier: currentSchool?.subdomain || user?.email?.split("@")[0] || "school",

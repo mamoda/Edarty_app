@@ -9,8 +9,8 @@ interface AuthContextType {
   currentSchool: School | null;
   currentRole: string | null;
   userRoles: UserSchoolRole[];
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null; data?: any }>;
+  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null; data?: any }>;
   signOut: () => Promise<void>;
   switchSchool: (schoolId: string) => Promise<void>;
   hasPermission: (permission: string) => boolean;
@@ -33,7 +33,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         console.log('🔐 Initializing auth...');
         
-        // جلب الجلسة
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session?.user) {
@@ -45,29 +44,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('✅ User found:', session.user.email);
         
         // جلب بيانات المستخدم من جدول users
-        console.log('🔍 Fetching user profile...');
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile } = await supabase
           .from('users')
           .select('*')
           .eq('id', session.user.id)
           .maybeSingle();
         
-        if (profileError) {
-          console.error('Profile error:', profileError);
-        }
-        console.log('📊 Profile:', profile);
-        
         // جلب أدوار المستخدم
-        console.log('🔍 Fetching user roles...');
-        const { data: roles, error: rolesError } = await supabase
+        const { data: roles } = await supabase
           .from('user_school_roles')
           .select('*, school:schools(*)')
           .eq('user_id', session.user.id);
-        
-        if (rolesError) {
-          console.error('Roles error:', rolesError);
-        }
-        console.log('📊 Roles found:', roles?.length || 0);
         
         if (!isMounted) return;
         
@@ -119,7 +106,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    // Timeout أمان
     timeoutId = setTimeout(() => {
       if (isMounted && loading) {
         console.warn('⚠️ Auth loading timeout - forcing loading to false');
@@ -136,7 +122,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('🔄 Auth state changed:', _event);
         
         if (session?.user) {
-          // إعادة تحميل البيانات عند تغيير المستخدم
           const { data: profile } = await supabase
             .from('users')
             .select('*')
@@ -182,35 +167,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string): Promise<{ error: Error | null; data?: any }> => {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    return { error };
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      setLoading(false);
+      if (error) {
+        return { error: new Error(error.message), data: null };
+      }
+      return { error: null, data };
+    } catch (err) {
+      setLoading(false);
+      return { error: err instanceof Error ? err : new Error('Unknown error'), data: null };
+    }
   };
 
-  const signUp = async (email: string, password: string, fullName?: string) => {
+  const signUp = async (email: string, password: string, fullName?: string): Promise<{ error: Error | null; data?: any }> => {
     setLoading(true);
-    
-    const { data, error } = await supabase.auth.signUp({ 
-      email, 
-      password,
-      options: { data: { full_name: fullName } }
-    });
-    
-    if (!error && data.user) {
-      await supabase
-        .from('users')
-        .upsert([{ 
-          id: data.user.id, 
-          email, 
-          full_name: fullName,
-          created_at: new Date().toISOString()
-        }], { onConflict: 'id' });
+    try {
+      const { data, error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: { data: { full_name: fullName } }
+      });
+      
+      if (!error && data.user) {
+        // إنشاء مستخدم في جدول users
+        await supabase
+          .from('users')
+          .upsert([{ 
+            id: data.user.id, 
+            email, 
+            full_name: fullName,
+            created_at: new Date().toISOString()
+          }], { onConflict: 'id' });
+      }
+      
+      setLoading(false);
+      if (error) {
+        return { error: new Error(error.message), data: null };
+      }
+      return { error: null, data };
+    } catch (err) {
+      setLoading(false);
+      return { error: err instanceof Error ? err : new Error('Unknown error'), data: null };
     }
-    
-    setLoading(false);
-    return { error };
   };
 
   const signOut = async () => {

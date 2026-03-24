@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabase'; // 👈 أضف هذا السطر
+import { supabase } from '../lib/supabase';
 import { School, Lock, MapPin, Phone, CreditCard, User, Mail, Eye, EyeOff } from 'lucide-react';
 import logo from '../assets/logo.png';
 import bg from '../assets/background-wave.png';
@@ -28,77 +28,90 @@ export default function Login() {
   const { signIn, signUp } = useAuth();
   const ADMIN_SECRET_CODE = 'Mahmoud17237ESD@';
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+// نسخة مبسطة من handleSubmit
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError('');
+  setLoading(true);
 
-    try {
-      if (isLogin) {
-        // تسجيل الدخول
-        const { error } = await signIn(email, password);
-        if (error) {
-          setError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
-        }
-      } else {
-        // إنشاء حساب جديد
-        if (!schoolData.fullName || !schoolData.schoolName) {
-          setError('يرجى إكمال جميع البيانات المطلوبة');
-          setLoading(false);
-          return;
-        }
+  try {
+    if (isLogin) {
+      const { error } = await signIn(email, password);
+      if (error) {
+        setError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
+      }
+    } else {
+      if (!schoolData.fullName || !schoolData.schoolName) {
+        setError('يرجى إكمال جميع البيانات المطلوبة');
+        setLoading(false);
+        return;
+      }
 
-        const { error } = await signUp(email, password, schoolData.fullName);
-        
-        if (error) {
-          setError('فشل في إنشاء الحساب. البريد الإلكتروني قد يكون مستخدماً بالفعل');
-        } else {
-          // حفظ بيانات المدرسة في جدول users
-          try {
-            const { error: profileError } = await supabase
+      const { data: authData, error: signUpError } = await signUp(email, password, schoolData.fullName);
+      
+      if (signUpError) {
+        setError('فشل في إنشاء الحساب. البريد الإلكتروني قد يكون مستخدماً بالفعل');
+      } else if (authData?.user) {
+        // إنشاء مدرسة جديدة
+        const { data: newSchool } = await supabase
+          .from('schools')
+          .insert({
+            name: schoolData.schoolName,
+            address: schoolData.schoolAddress,
+            phone: schoolData.schoolPhone,
+            email: email,
+            tax_number: schoolData.taxNumber,
+            status: 'active'
+          })
+          .select()
+          .single();
+
+        if (newSchool) {
+          // تحديث المستخدم وإضافة الدور في نفس الوقت
+          await Promise.all([
+            supabase
               .from('users')
               .update({
+                school_id: newSchool.id,
                 school_name: schoolData.schoolName,
                 school_address: schoolData.schoolAddress,
                 school_phone: schoolData.schoolPhone,
                 tax_number: schoolData.taxNumber,
                 full_name: schoolData.fullName,
+                role: 'admin'
               })
-              .eq('email', email);
-
-            if (profileError) {
-              console.error('Error updating school data:', profileError);
-            } else {
-              console.log('✅ School data saved successfully');
-            }
-          } catch (err) {
-            console.error('Error saving school data:', err);
-          }
-
-          // إعادة تعيين النموذج
-          setCurrentStep(1);
-          setEmail('');
-          setPassword('');
-          setSchoolData({
-            fullName: '',
-            schoolName: '',
-            schoolAddress: '',
-            schoolPhone: '',
-            taxNumber: '',
-          });
-          
-          alert('✅ تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول');
-          setIsLogin(true);
+              .eq('id', authData.user.id),
+            supabase
+              .from('user_school_roles')
+              .insert({
+                user_id: authData.user.id,
+                school_id: newSchool.id,
+                role: 'admin',
+                is_primary: true
+              })
+          ]);
         }
-      }
-    } catch (err) {
-      setError('حدث خطأ. يرجى المحاولة مرة أخرى');
-      console.error('Submit error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
+        alert('✅ تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول');
+        setIsLogin(true);
+        setCurrentStep(1);
+        setEmail('');
+        setPassword('');
+        setSchoolData({
+          fullName: '',
+          schoolName: '',
+          schoolAddress: '',
+          schoolPhone: '',
+          taxNumber: '',
+        });
+      }
+    }
+  } catch (err) {
+    setError('حدث خطأ. يرجى المحاولة مرة أخرى');
+  } finally {
+    setLoading(false);
+  }
+};
   const handleAdminAccess = () => {
     if (adminCode === ADMIN_SECRET_CODE) {
       setShowAdminPanel(true);
@@ -131,12 +144,12 @@ export default function Login() {
   };
 
   return (
-<div
-  className="min-h-screen bg-cover bg-center flex items-center justify-center p-4"
-  dir="rtl"
-  style={{ backgroundImage: `url(${bg})` }}
->
-<div className="w-full max-w-md">
+    <div
+      className="min-h-screen bg-cover bg-center flex items-center justify-center p-4"
+      dir="rtl"
+      style={{ backgroundImage: `url(${bg})` }}
+    >
+      <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="flex flex-col items-center mb-8">
             <img
@@ -250,6 +263,14 @@ export default function Login() {
                     </button>
                   </div>
                 </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                >
+                  {loading ? 'جارٍ التحميل...' : 'تسجيل الدخول'}
+                </button>
               </>
             ) : (
               /* نموذج إنشاء حساب جديد متعدد الخطوات */
@@ -438,16 +459,6 @@ export default function Login() {
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
                 {error}
               </div>
-            )}
-
-            {isLogin && (
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
-              >
-                {loading ? 'جارٍ التحميل...' : 'تسجيل الدخول'}
-              </button>
             )}
           </form>
 
