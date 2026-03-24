@@ -1,4 +1,4 @@
-// src/context/AuthContext.tsx - إصلاح الأخطاء
+// src/context/AuthContext.tsx - إصلاح getSession
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { CustomUser, UserSchoolRole, School } from '../types/database';
@@ -33,28 +33,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         console.log('🔐 Initializing auth...');
         
-        console.log('📡 Getting session...');
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        // ✅ طريقة بديلة للحصول على المستخدم - استخدام getUser بدلاً من getSession
+        console.log('📡 Getting user...');
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
         
-        if (sessionError) {
-          console.error('Session error:', sessionError);
+        if (userError) {
+          console.error('User error:', userError);
         }
         
-        if (!session?.user) {
-          console.log('ℹ️ No session found');
+        if (!user) {
+          console.log('ℹ️ No user found');
           if (isMounted) setLoading(false);
           return;
         }
         
-        console.log('✅ User found:', session.user.email);
-        console.log('🆔 User ID:', session.user.id);
+        console.log('✅ User found:', user.email);
+        console.log('🆔 User ID:', user.id);
         
         // جلب بيانات المستخدم من جدول users
         console.log('📊 Fetching user profile from users table...');
         const { data: profile, error: profileError } = await supabase
           .from('users')
           .select('*')
-          .eq('id', session.user.id)
+          .eq('id', user.id)
           .maybeSingle();
         
         if (profileError) {
@@ -67,20 +68,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: roles, error: rolesError } = await supabase
           .from('user_school_roles')
           .select('*, school:schools(*)')
-          .eq('user_id', session.user.id);
+          .eq('user_id', user.id);
         
         if (rolesError) {
           console.error('Roles error:', rolesError);
         }
-        console.log('📊 Roles data:', roles?.length || 0, roles);
+        console.log('📊 Roles data:', roles?.length || 0);
         
         if (!isMounted) return;
         
         // تعيين المستخدم
         const customUser: CustomUser = {
-          ...session.user,
+          ...user,
           school_id: profile?.school_id,
-          full_name: profile?.full_name || session.user.user_metadata?.full_name,
+          full_name: profile?.full_name || user.user_metadata?.full_name,
           schoolName: profile?.school_name,
           schoolAddress: profile?.school_address,
           schoolPhone: profile?.school_phone,
@@ -100,11 +101,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (primaryRole?.school) {
           school = primaryRole.school;
           role = primaryRole.role;
-          console.log('🏫 Primary school found:', school?.name); // ✅ التحقق من null
+          console.log('🏫 Primary school found:', school?.name);
         } else if (roles?.[0]?.school) {
           school = roles[0].school;
           role = roles[0].role;
-          console.log('🏫 First school found:', school?.name); // ✅ التحقق من null
+          console.log('🏫 First school found:', school?.name);
         } else {
           console.log('⚠️ No school found in roles!');
         }
@@ -113,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setCurrentRole(role);
         
         console.log('✅ User data loaded:', { 
-          school: school?.name || 'No school', // ✅ التحقق من null
+          school: school?.name || 'No school', 
           role, 
           rolesCount: roles?.length || 0 
         });
