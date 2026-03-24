@@ -67,19 +67,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (savedSchoolId) {
       const role = roles.find(r => r.school_id === savedSchoolId);
-      if (role) {
+      if (role && role.school) {
         return { school: role.school, role: role.role };
       }
     }
     
     // 2. نجيب المدرسة الأساسية (is_primary = true)
     const primaryRole = roles.find(r => r.is_primary);
-    if (primaryRole) {
+    if (primaryRole && primaryRole.school) {
       return { school: primaryRole.school, role: primaryRole.role };
     }
     
     // 3. أول مدرسة في القائمة
-    if (roles[0]) {
+    if (roles[0] && roles[0].school) {
       return { school: roles[0].school, role: roles[0].role };
     }
     
@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           // تحديد المدرسة الحالية
           const { school, role } = await getCurrentSchool(session.user.id, roles);
-          setCurrentSchool(school);
+          setCurrentSchool(school); // school هو School | null
           setCurrentRole(role);
           
           // حفظ المدرسة الحالية
@@ -139,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUserRoles(roles);
           
           const { school, role } = await getCurrentSchool(session.user.id, roles);
-          setCurrentSchool(school);
+          setCurrentSchool(school); // school هو School | null
           setCurrentRole(role);
           
           if (school) {
@@ -171,7 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUserRoles(roles);
       
       const { school, role } = await getCurrentSchool(data.user.id, roles);
-      setCurrentSchool(school);
+      setCurrentSchool(school); // school هو School | null
       setCurrentRole(role);
       
       if (school) {
@@ -216,8 +216,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const switchSchool = async (schoolId: string) => {
     const role = userRoles.find(r => r.school_id === schoolId);
-    if (role && user) {
-      setCurrentSchool(role.school || null);
+    if (role && role.school && user) {
+      setCurrentSchool(role.school); // role.school هو School
       setCurrentRole(role.role);
       localStorage.setItem(`current_school_${user.id}`, schoolId);
     }
