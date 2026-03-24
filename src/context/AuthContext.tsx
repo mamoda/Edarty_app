@@ -182,38 +182,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, fullName?: string): Promise<{ error: Error | null; data?: any }> => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.auth.signUp({ 
-        email, 
-        password,
-        options: { data: { full_name: fullName } }
-      });
-      
-      if (!error && data.user) {
-        // إنشاء مستخدم في جدول users
-        await supabase
-          .from('users')
-          .upsert([{ 
-            id: data.user.id, 
-            email, 
-            full_name: fullName,
-            created_at: new Date().toISOString()
-          }], { onConflict: 'id' });
-      }
-      
-      setLoading(false);
-      if (error) {
-        return { error: new Error(error.message), data: null };
-      }
-      return { error: null, data };
-    } catch (err) {
-      setLoading(false);
-      return { error: err instanceof Error ? err : new Error('Unknown error'), data: null };
+// تعديل signUp في AuthContext لإضافة school_id مؤقت
+const signUp = async (email: string, password: string, fullName?: string): Promise<{ error: Error | null; data?: any }> => {
+  setLoading(true);
+  try {
+    const { data, error } = await supabase.auth.signUp({ 
+      email, 
+      password,
+      options: { data: { full_name: fullName } }
+    });
+    
+    if (!error && data.user) {
+      // إنشاء مستخدم في جدول users مع school_id مؤقت
+      await supabase
+        .from('users')
+        .upsert([{ 
+          id: data.user.id, 
+          email, 
+          full_name: fullName,
+          school_id: null, // ✅ مؤقتاً null
+          created_at: new Date().toISOString()
+        }], { onConflict: 'id' });
     }
-  };
-
+    
+    setLoading(false);
+    if (error) {
+      return { error: new Error(error.message), data: null };
+    }
+    return { error: null, data };
+  } catch (err) {
+    setLoading(false);
+    return { error: err instanceof Error ? err : new Error('Unknown error'), data: null };
+  }
+};
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
