@@ -35,7 +35,6 @@ import {
   Mail,
   AlertCircle,
   Shield,
-  UserCog,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -695,7 +694,7 @@ const ViewRenderer: React.FC<{
 };
 
 export default function Dashboard() {
-  const { user, signOut, currentSchool, currentRole, hasPermission } = useAuth();
+  const { user, signOut, currentSchool, currentRole } = useAuth();
   const { schoolName, schoolEmail, schoolIdentifier } = useSchoolData();
   const { language, toggleLanguage, t } = useLanguage();
 
@@ -731,7 +730,8 @@ export default function Dashboard() {
   const [dataError, setDataError] = useState<string | null>(null);
   
   // منع التحميل المزدوج
-  const hasLoadedRef = useRef<string | null>(null);
+  const hasLoadedStatsRef = useRef(false);
+  const isLoadingRef = useRef(false);
 
   // مجموعة الخلفيات المتاحة
   const backgrounds = [
@@ -757,35 +757,21 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // إعادة تعيين hasLoadedRef عند تغيير المدرسة
-  useEffect(() => {
-    hasLoadedRef.current = null;
-    setLoading(true);
-  }, [currentSchool?.id]);
-
-  // تحميل البيانات مرة واحدة لكل مدرسة
-  useEffect(() => {
-    if (user && currentSchool) {
-      const schoolId = currentSchool.id;
-      
-      if (hasLoadedRef.current !== schoolId) {
-        console.log("👤 Loading statistics for school:", currentSchool.name);
-        hasLoadedRef.current = schoolId;
-        loadStatistics();
-      } else {
-        console.log("⏩ School already loaded, skipping...");
-        setLoading(false);
-      }
-    }
-  }, [user, currentSchool]);
-
+  // تحميل البيانات مرة واحدة
   const loadStatistics = async () => {
+    // منع التحميل المتزامن
+    if (isLoadingRef.current) {
+      console.log("⏳ Statistics already loading, skipping...");
+      return;
+    }
+    
     if (!user || !currentSchool) {
       console.log("⏳ No user or school yet, skipping data load");
       setLoading(false);
       return;
     }
 
+    isLoadingRef.current = true;
     setLoading(true);
     setDataError(null);
 
@@ -960,19 +946,32 @@ export default function Dashboard() {
       });
 
       console.log("✅ Statistics loaded successfully");
+      hasLoadedStatsRef.current = true;
     } catch (error: any) {
       console.error(`❌ Error loading statistics:`, error);
       setDataError(error?.message || "حدث خطأ في تحميل البيانات");
     } finally {
       setLoading(false);
+      isLoadingRef.current = false;
     }
   };
-  
-  const handleViewChange = (view: View) => {
-    setCurrentView(view);
-    if (view === "dashboard") {
+
+  // تحميل الإحصائيات مرة واحدة عند تحميل الصفحة
+  useEffect(() => {
+    if (user && currentSchool && !hasLoadedStatsRef.current && !isLoadingRef.current) {
       loadStatistics();
     }
+  }, [user, currentSchool]);
+
+  const handleViewChange = (view: View) => {
+    setCurrentView(view);
+    // ✅ لا نعيد تحميل الإحصائيات هنا
+  };
+
+  // زر التحديث اليدوي
+  const handleRefresh = () => {
+    hasLoadedStatsRef.current = false;
+    loadStatistics();
   };
 
   const revenueData = [65, 45, 75, 55, 85, 95, 70];
@@ -1251,7 +1250,7 @@ export default function Dashboard() {
 
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={loadStatistics}
+                        onClick={handleRefresh}
                         className="p-2 hover:bg-gray-100/80 rounded-lg transition-all duration-200"
                         title={t("refresh")}
                       >
@@ -1287,7 +1286,7 @@ export default function Dashboard() {
                       <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
                       <p className="text-sm text-red-700">{dataError}</p>
                       <button
-                        onClick={loadStatistics}
+                        onClick={handleRefresh}
                         className="mr-auto text-sm bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700"
                       >
                         إعادة المحاولة
@@ -1496,7 +1495,7 @@ export default function Dashboard() {
               ) : (
                 <ViewRenderer
                   view={currentView}
-                  onUpdate={loadStatistics}
+                  onUpdate={handleRefresh}
                   loading={loading}
                 />
               )}
