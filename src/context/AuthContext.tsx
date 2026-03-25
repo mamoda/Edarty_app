@@ -7,9 +7,10 @@ import {
   ReactNode,
   useCallback,
   useMemo,
+  useRef,
 } from "react";
 import { supabase } from "../lib/supabase";
-import { CustomUser, UserSchoolRole, School, Plan } from "../types/database";
+import { CustomUser, UserSchoolRole, School } from "../types/database";
 
 interface AuthContextType {
   user: CustomUser | null;
@@ -50,8 +51,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [subscriptionPlan, setSubscriptionPlan] = useState<string | null>(null);
   const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<string | null>(null);
   const [schoolFeatures, setSchoolFeatures] = useState<string[]>([]);
+  
+  // منع التحميل المتكرر
+  const isLoadingRef = useRef(false);
+  const initializedRef = useRef(false);
 
-  // ✅ تحميل بيانات المدرسة الحالية (بما فيها الاشتراك)
+  // ✅ تحميل بيانات المدرسة الحالية
   const loadCurrentSchoolData = useCallback(async (schoolId: string) => {
     if (!schoolId) return;
 
@@ -77,26 +82,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // ✅ تحميل بيانات المستخدم
   const loadUserData = useCallback(async (supabaseUser: any) => {
-    if (!supabaseUser) return;
+    if (!supabaseUser || isLoadingRef.current) return;
+
+    isLoadingRef.current = true;
 
     try {
       console.log("📥 Loading user data for:", supabaseUser.email);
 
-      const [{ data: profile, error: profileError }, { data: roles, error: rolesError }] =
-        await Promise.all([
-          supabase
-            .from("users")
-            .select("*")
-            .eq("id", supabaseUser.id)
-            .maybeSingle(),
-          supabase
-            .from("user_school_roles")
-            .select("*, school:schools(*)")
-            .eq("user_id", supabaseUser.id),
-        ]);
+      // تحميل الملف الشخصي والأدوار في نفس الوقت
+      const [profileResult, rolesResult] = await Promise.allSettled([
+        supabase
+          .from("users")
+          .select("*")
+          .eq("id", supabaseUser.id)
+          .maybeSingle(),
+        supabase
+          .from("user_school_roles")
+          .select("*, school:schools(*)")
+          .eq("user_id", supabaseUser.id),
+      ]);
 
-      if (profileError) console.error("Profile error:", profileError);
-      if (rolesError) console.error("Roles error:", rolesError);
+      const profile = profileResult.status === "fulfilled" ? profileResult.value.data : null;
+      const roles = rolesResult.status === "fulfilled" ? rolesResult.value.data : [];
+
+      if (profileResult.status === "rejected") {
+        console.error("Profile error:", profileResult.reason);
+      }
+      if (rolesResult.status === "rejected") {
+        console.error("Roles error:", rolesResult.reason);
+      }
 
       const customUser: CustomUser = {
         ...supabaseUser,
@@ -113,13 +127,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (roles && roles.length > 0) {
         setUserRoles(roles);
 
+        // استرجاع المدرسة المحفوظة من localStorage
         const savedSchoolId = localStorage.getItem(
           `current_school_${supabaseUser.id}`
         );
 
         const selectedRole =
-          roles.find((r) => r.school_id === savedSchoolId) ||
-          roles.find((r) => r.is_primary) ||
+          roles.find((r: any) => r.school_id === savedSchoolId) ||
+          roles.find((r: any) => r.is_primary) ||
           roles[0];
 
         if (selectedRole?.school) {
@@ -131,13 +146,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         setUserRoles([]);
-        setCurrentSchool(null);
-        setCurrentRole(null);
       }
 
       console.log("✅ User data loaded");
     } catch (error) {
       console.error("Error loading user data:", error);
+    } finally {
+      isLoadingRef.current = false;
     }
   }, []);
 
@@ -151,10 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ✅ التحقق من الميزات (Feature Gating)
   const hasFeature = useCallback(
     (feature: string): boolean => {
-      // Super admin لديه كل الميزات
       if (currentRole === "super_admin") return true;
-      
-      // التحقق من الميزات المتاحة للمدرسة
       return schoolFeatures.includes(feature);
     },
     [currentRole, schoolFeatures]
@@ -192,34 +204,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [getLimits]
   );
 
-  // ✅ تسجيل النشاطات (Audit Log)
-  const logActivity = useCallback(async (
-    action: string,
-    entityType: string,
-    entityId: string,
-    oldData: any = null,
-    newData: any = null
-  ) => {
-    if (!user || !currentSchool) return;
-
-    try {
-      await supabase.from("activity_logs").insert({
-        user_id: user.id,
-        school_id: currentSchool.id,
-        action,
-        entity_type: entityType,
-        entity_id: entityId,
-        old_data: oldData,
-        new_data: newData,
-        ip_address: null, // يمكن إضافة IP من request
-        user_agent: navigator.userAgent,
-      });
-    } catch (error) {
-      console.error("Error logging activity:", error);
-    }
-  }, [user, currentSchool]);
-
+  // ✅ تهيئة المصادقة مرة واحدة فقط
   useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
     let isMounted = true;
 
     const initializeAuth = async () => {
@@ -233,9 +222,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (error) console.error("Session error:", error);
 
-        if (session?.user) {
+        if (session?.user && isMounted) {
           await loadUserData(session.user);
-        } else {
+        } else if (isMounted) {
           setUser(null);
           setUserRoles([]);
           setCurrentSchool(null);
@@ -250,6 +239,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initializeAuth();
 
+    // الاستماع لتغيرات المصادقة
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -261,10 +251,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(true);
         await loadUserData(session.user);
         setLoading(false);
-      } else if (
-        event === "SIGNED_OUT" ||
-        (event === "TOKEN_REFRESHED" && !session)
-      ) {
+      } else if (event === "SIGNED_OUT") {
         setUser(null);
         setUserRoles([]);
         setCurrentSchool(null);
@@ -308,7 +295,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             id: data.user.id,
             email,
             full_name: fullName,
-            school_id: null,
             created_at: new Date().toISOString(),
           },
         ],
@@ -348,8 +334,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const hasPermission = (permission: string): boolean => {
     if (!currentRole) return false;
-    if (currentRole === "super_admin") return true;
-    if (currentRole === "admin") return true;
+    if (currentRole === "super_admin" || currentRole === "admin") return true;
 
     const rolePermissions: Record<string, string[]> = {
       accountant: [
