@@ -1,5 +1,5 @@
 // src/components/Login.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react'; // ✅ أضف useRef هنا
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -19,7 +19,8 @@ import bg from '../assets/background-wave.png';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { signIn, signUp, isAuthenticated, loading: authLoading } = useAuth();
+  const { signIn, signUp, isAuthenticated } = useAuth(); // ✅ إزالة authLoading غير المستخدمة
+  const hasRedirected = useRef(false); // ✅ إضافة useRef
   
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -41,21 +42,22 @@ export default function Login() {
 
   const ADMIN_SECRET_CODE = 'Mahmoud17237ESD@';
 
-  // ✅ التوجيه التلقائي عند تسجيل الدخول
-useEffect(() => {
-  let timeoutId: NodeJS.Timeout;
-  
-  if (isAuthenticated) {
-    // تأخير بسيط لتجنب throttle
-    timeoutId = setTimeout(() => {
-      navigate('/dashboard', { replace: true });
-    }, 50);
-  }
-  
-  return () => {
-    if (timeoutId) clearTimeout(timeoutId);
-  };
-}, [isAuthenticated, navigate]);
+  // ✅ التوجيه التلقائي عند تسجيل الدخول - مع منع التكرار
+  useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    
+    if (isAuthenticated && !hasRedirected.current) {
+      hasRedirected.current = true;
+      timeoutId = setTimeout(() => {
+        navigate('/dashboard', { replace: true });
+      }, 100);
+    }
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [isAuthenticated, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -72,11 +74,9 @@ useEffect(() => {
           setLoading(false);
         } else {
           console.log("✅ Login successful, waiting for redirect...");
-          // لا نحتاج لـ navigate هنا لأن useEffect سيتولى الأمر
           setLoading(false);
         }
       } else {
-        // تسجيل مستخدم جديد
         if (!schoolData.fullName || !schoolData.schoolName) {
           setError('يرجى إكمال جميع البيانات المطلوبة');
           setLoading(false);
@@ -92,12 +92,10 @@ useEffect(() => {
           return;
         }
         
-        // الحصول على المستخدم بعد التسجيل
         const { data: { session } } = await supabase.auth.getSession();
         const userId = session?.user?.id;
         
         if (userId) {
-          // إنشاء مدرسة جديدة
           const { data: newSchool } = await supabase
             .from('schools')
             .insert({
@@ -113,7 +111,6 @@ useEffect(() => {
             .single();
 
           if (newSchool) {
-            // تحديث المستخدم
             await supabase
               .from('users')
               .update({
@@ -127,7 +124,6 @@ useEffect(() => {
               })
               .eq('id', userId);
             
-            // إضافة دور المستخدم
             await supabase
               .from('user_school_roles')
               .insert({
@@ -211,7 +207,6 @@ useEffect(() => {
             </p>
           </div>
 
-          {/* أزرار التبديل */}
           {!showAdminPanel && (
             <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-lg">
               <button
@@ -228,7 +223,6 @@ useEffect(() => {
             </div>
           )}
 
-          {/* لوحة المسؤول */}
           {showAdminPanel && (
             <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <div className="flex items-center gap-2 mb-3">
@@ -270,15 +264,16 @@ useEffect(() => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {isLogin ? (
-              /* نموذج تسجيل الدخول */
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                     البريد الإلكتروني
                   </label>
                   <div className="relative">
                     <Mail className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                     <input
+                      id="email"
+                      name="email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -290,12 +285,14 @@ useEffect(() => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                     كلمة المرور
                   </label>
                   <div className="relative">
                     <Lock className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                     <input
+                      id="password"
+                      name="password"
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -322,7 +319,6 @@ useEffect(() => {
                 </button>
               </>
             ) : (
-              /* نموذج إنشاء حساب جديد */
               <>
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-2">
@@ -345,12 +341,14 @@ useEffect(() => {
                 {currentStep === 1 ? (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
                         الاسم الكامل
                       </label>
                       <div className="relative">
                         <User className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                         <input
+                          id="fullName"
+                          name="fullName"
                           type="text"
                           value={schoolData.fullName}
                           onChange={(e) => setSchoolData({...schoolData, fullName: e.target.value})}
@@ -362,12 +360,14 @@ useEffect(() => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="signupEmail" className="block text-sm font-medium text-gray-700 mb-2">
                         البريد الإلكتروني
                       </label>
                       <div className="relative">
                         <Mail className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                         <input
+                          id="signupEmail"
+                          name="signupEmail"
                           type="email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
@@ -379,12 +379,14 @@ useEffect(() => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="signupPassword" className="block text-sm font-medium text-gray-700 mb-2">
                         كلمة المرور
                       </label>
                       <div className="relative">
                         <Lock className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                         <input
+                          id="signupPassword"
+                          name="signupPassword"
                           type={showPassword ? "text" : "password"}
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
@@ -415,12 +417,14 @@ useEffect(() => {
                 ) : (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="schoolName" className="block text-sm font-medium text-gray-700 mb-2">
                         اسم المدرسة <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
                         <School className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                         <input
+                          id="schoolName"
+                          name="schoolName"
                           type="text"
                           value={schoolData.schoolName}
                           onChange={(e) => setSchoolData({...schoolData, schoolName: e.target.value})}
@@ -432,12 +436,14 @@ useEffect(() => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="schoolAddress" className="block text-sm font-medium text-gray-700 mb-2">
                         عنوان المدرسة
                       </label>
                       <div className="relative">
                         <MapPin className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                         <input
+                          id="schoolAddress"
+                          name="schoolAddress"
                           type="text"
                           value={schoolData.schoolAddress}
                           onChange={(e) => setSchoolData({...schoolData, schoolAddress: e.target.value})}
@@ -448,12 +454,14 @@ useEffect(() => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="schoolPhone" className="block text-sm font-medium text-gray-700 mb-2">
                         هاتف المدرسة
                       </label>
                       <div className="relative">
                         <Phone className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                         <input
+                          id="schoolPhone"
+                          name="schoolPhone"
                           type="tel"
                           value={schoolData.schoolPhone}
                           onChange={(e) => setSchoolData({...schoolData, schoolPhone: e.target.value})}
@@ -465,12 +473,14 @@ useEffect(() => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="taxNumber" className="block text-sm font-medium text-gray-700 mb-2">
                         الرقم الضريبي (اختياري)
                       </label>
                       <div className="relative">
                         <CreditCard className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                         <input
+                          id="taxNumber"
+                          name="taxNumber"
                           type="text"
                           value={schoolData.taxNumber}
                           onChange={(e) => setSchoolData({...schoolData, taxNumber: e.target.value})}
@@ -512,6 +522,8 @@ useEffect(() => {
             <div className="mt-4">
               <div className="relative">
                 <input
+                  id="adminCode"
+                  name="adminCode"
                   type="password"
                   value={adminCode}
                   onChange={(e) => setAdminCode(e.target.value)}
