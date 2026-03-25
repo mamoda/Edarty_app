@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [schoolFeatures, setSchoolFeatures] = useState<string[]>([]);
 
   const initializedRef = useRef(false);
-  const isProcessingRef = useRef(false);
+  const dataLoadedRef = useRef(false); // ✅ منع إعادة التحميل بعد تحميل البيانات
 
   const isAuthenticated = useMemo(() => !!authUser, [authUser]);
 
@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // ============================================
-  // Load User Data - بسيطة وواضحة
+  // Load User Data - مرة واحدة فقط في عمر التطبيق
   // ============================================
   const loadUserData = async (user: any) => {
     if (!user) {
@@ -81,13 +81,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (isProcessingRef.current) {
-      console.log("⏳ Already processing, skipping");
+    // ✅ منع إعادة التحميل إذا كانت البيانات محملة بالفعل
+    if (dataLoadedRef.current) {
+      console.log("⏩ Data already loaded, skipping");
+      setLoading(false);
       return;
     }
 
-    isProcessingRef.current = true;
     console.log("📥 Loading user data for:", user.email);
+    dataLoadedRef.current = true;
 
     try {
       // 1. auth user
@@ -131,14 +133,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("✅ User data loaded");
     } catch (error) {
       console.error("loadUserData error:", error);
+      dataLoadedRef.current = false; // لو فشل، نسمح بمحاولة تانية
     } finally {
       setLoading(false);
-      isProcessingRef.current = false;
     }
   };
 
   // ============================================
-  // Auth Init
+  // Auth Init - مرة واحدة فقط
   // ============================================
   useEffect(() => {
     if (initializedRef.current) return;
@@ -149,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const init = async () => {
       try {
         const { data } = await supabase.auth.getSession();
-        if (data.session?.user && isMounted) {
+        if (data.session?.user && isMounted && !dataLoadedRef.current) {
           await loadUserData(data.session.user);
         } else if (isMounted) {
           setLoading(false);
@@ -166,16 +168,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         if (!isMounted) return;
 
-        if (event === "SIGNED_IN" && session?.user) {
-          // ✅ تأخير صغير لمنع التكرار
-          setTimeout(() => {
-            if (isMounted && !isProcessingRef.current) {
-              loadUserData(session.user);
-            }
-          }, 100);
+        // ✅ SIGNED_IN: نحمل البيانات مرة واحدة فقط
+        if (event === "SIGNED_IN" && session?.user && !dataLoadedRef.current) {
+          await loadUserData(session.user);
         }
 
+        // ✅ SIGNED_OUT: نعيد تعيين الـ flag عشان نقدر نحمل تاني بعد تسجيل الدخول الجديد
         if (event === "SIGNED_OUT") {
+          dataLoadedRef.current = false;
           setAuthUser(null);
           setProfile(null);
           setUserRoles([]);
@@ -185,7 +185,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSubscriptionExpiresAt(null);
           setSchoolFeatures([]);
           setLoading(false);
-          isProcessingRef.current = false;
         }
       }
     );
