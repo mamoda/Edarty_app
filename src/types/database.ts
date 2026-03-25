@@ -2,7 +2,7 @@
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
 // ============================================
-// أنواع المستخدم والمدرسة (Core SaaS)
+// أنواع متوافقة مع Schema قاعدة البيانات
 // ============================================
 
 export interface School {
@@ -25,6 +25,145 @@ export interface School {
   features: string[];
   created_at: string;
   updated_at: string;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  school_id: string | null;
+  school_name: string | null;
+  school_address: string | null;
+  school_phone: string | null;
+  tax_number: string | null;
+  role: string | null;
+  permissions: any;
+  last_login: string | null;
+  is_active: boolean;
+  avatar_url: string | null;
+  department: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserSchoolRole {
+  id: string;
+  user_id: string;
+  school_id: string;
+  role: 'admin' | 'accountant' | 'moderator' | 'teacher' | 'parent';
+  permissions: string[];
+  is_primary: boolean;
+  created_at: string;
+  updated_at: string;
+  school?: School;
+  user?: CustomUser;
+}
+
+// ✅ إصلاح CustomUser - إزالة role لأن Supabase User لا يحتوي عليها
+export interface CustomUser extends SupabaseUser {
+  school_id?: string;
+  full_name?: string;
+  school_name?: string | null;
+  school_address?: string | null;
+  school_phone?: string | null;
+  tax_number?: string | null;
+}
+
+export interface SchoolData {
+  id?: string;
+  schoolId?: string;
+  schoolName: string;
+  schoolEmail: string;
+  schoolIdentifier: string;
+  schoolAddress?: string;
+  schoolPhone?: string;
+  schoolTaxNumber?: string;
+  subscriptionPlan?: string;
+  subscriptionExpiresAt?: string;
+  features?: string[];
+}
+
+// ============================================
+// أنواع الجداول الأخرى
+// ============================================
+
+export interface Student {
+  id: string;
+  user_id: string;
+  school_id: string;
+  full_name: string;
+  grade: string;
+  parent_name: string;
+  parent_phone: string;
+  enrollment_date: string;
+  status: 'active' | 'inactive';
+  created_at: string;
+  updated_at: string;
+  school?: School;
+}
+
+export interface Teacher {
+  id: string;
+  user_id: string;
+  school_id: string;
+  name: string;
+  phone: string;
+  email: string;
+  specialization: string;
+  salary: number;
+  hire_date: string;
+  status: 'active' | 'inactive';
+  address?: string | null;
+  qualifications?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  school?: School;
+}
+
+export interface Fee {
+  id: string;
+  user_id: string;
+  student_id: string;
+  school_id: string;
+  amount: number;
+  payment_type: string;
+  payment_date: string;
+  academic_year: string;
+  notes: string;
+  created_at: string;
+  student?: Student;
+  school?: School;
+}
+
+export interface Expense {
+  id: string;
+  user_id: string;
+  school_id: string;
+  category: string;
+  amount: number;
+  description: string;
+  expense_date: string;
+  notes: string;
+  created_at: string;
+  teacher_id?: string | null;
+  school?: School;
+}
+
+export interface ActivityLog {
+  id: string;
+  user_id: string;
+  school_id: string;
+  action: string;
+  entity_type: string;
+  entity_id: string;
+  old_data: Record<string, any> | null;
+  new_data: Record<string, any> | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  created_at: string;
+  user?: CustomUser;
+  school?: School;
 }
 
 export interface Subscription {
@@ -74,146 +213,6 @@ export interface Plan {
   created_at: string;
 }
 
-export interface UserSchoolRole {
-  id: string;
-  user_id: string;
-  school_id: string;
-  role: 'super_admin' | 'admin' | 'accountant' | 'moderator' | 'teacher' | 'parent';
-  permissions: string[];
-  is_primary: boolean;
-  created_at: string;
-  updated_at: string;
-  school?: School;
-  user?: CustomUser;
-}
-
-export interface CustomUser extends SupabaseUser {
-  school_id?: string;
-  schoolName?: string;
-  schoolAddress?: string;
-  schoolPhone?: string;
-  taxNumber?: string;
-  full_name?: string;
-  school?: School;
-}
-
-export interface SchoolData {
-  id?: string;
-  schoolId?: string;
-  schoolName: string;
-  schoolEmail: string;
-  schoolIdentifier: string;
-  schoolAddress?: string;
-  schoolPhone?: string;
-  schoolTaxNumber?: string;
-  subscriptionPlan?: string;
-  subscriptionExpiresAt?: string;
-  features?: string[];
-}
-
-// ============================================
-// أنواع السجلات (Audit Logs)
-// ============================================
-
-export interface ActivityLog {
-  id: string;
-  user_id: string;
-  school_id: string;
-  action: string;
-  entity_type: string;
-  entity_id: string;
-  old_data: Record<string, any> | null;
-  new_data: Record<string, any> | null;
-  ip_address: string | null;
-  user_agent: string | null;
-  created_at: string;
-  user?: CustomUser;
-  school?: School;
-}
-
-// ============================================
-// أنواع الطلاب (Students)
-// ============================================
-
-export interface Student {
-  id: string;
-  user_id: string;
-  school_id: string;
-  full_name: string;
-  grade: string;
-  parent_name: string;
-  parent_phone: string;
-  enrollment_date: string;
-  status: 'active' | 'inactive';
-  created_at: string;
-  updated_at: string;
-  school?: School;
-}
-
-// ============================================
-// أنواع الرسوم (Fees)
-// ============================================
-
-export interface Fee {
-  id: string;
-  user_id: string;
-  student_id: string;
-  school_id: string;
-  amount: number;
-  payment_type: string;
-  payment_date: string;
-  academic_year: string;
-  notes: string;
-  created_at: string;
-  student?: Student;
-  school?: School;
-}
-
-// ============================================
-// أنواع المصروفات (Expenses)
-// ============================================
-
-export interface Expense {
-  id: string;
-  user_id: string;
-  school_id: string;
-  category: string;
-  amount: number;
-  description: string;
-  expense_date: string;
-  notes: string;
-  created_at: string;
-  teacher_id?: string | null;
-  school?: School;
-}
-
-// ============================================
-// أنواع المعلمين (Teachers)
-// ============================================
-
-export interface Teacher {
-  id: string;
-  user_id: string;
-  school_id: string;
-  name: string;
-  phone: string;
-  email: string;
-  specialization: string;
-  salary: number;
-  hire_date: string;
-  status: 'active' | 'inactive';
-  address?: string | null;
-  qualifications?: string | null;
-  notes?: string | null;
-  created_at: string;
-  updated_at: string;
-  school?: School;
-}
-
-// ============================================
-// أنواع الإحصائيات (Statistics)
-// ============================================
-
 export interface Statistics {
   totalStudents: number;
   activeStudents: number;
@@ -223,9 +222,6 @@ export interface Statistics {
   totalTeachers?: number;
   activeTeachers?: number;
   totalSalaries?: number;
-  pendingSalaries?: number;
-  paidSalaries?: number;
-  monthlySalaryCost?: number;
   totalRefunds?: number;
   netRevenue?: number;
   paidStudents?: number;
@@ -242,22 +238,13 @@ export interface Statistics {
 }
 
 // ============================================
-// أنواع التحقق من الميزات (Feature Gating)
+// أنواع مساعدة
 // ============================================
 
-export interface FeatureCheck {
-  hasFeature: (feature: string) => boolean;
-  getLimits: () => {
-    maxStudents: number;
-    maxTeachers: number;
-    maxUsers: number;
-  };
-  canAccess: (resource: string) => boolean;
-}
-
-// ============================================
-// أنواع مساعدة (Utility Types)
-// ============================================
+export type UserProfileRow = UserProfile;
+export type UserSchoolRoleWithSchool = UserSchoolRole & { school: School };
+export type UserProfileResponse = UserProfileRow | null;
+export type UserRolesResponse = UserSchoolRoleWithSchool[];
 
 export interface LoadingState {
   loading: boolean;
@@ -282,33 +269,7 @@ export interface SortOptions {
   field: string;
   direction: 'asc' | 'desc';
 }
-// src/types/database.ts - أضف ده في آخر الملف
 
-// ============================================
-// أنواع مخصصة لـ Supabase Queries
-// ============================================
-
-export type UserProfileRow = {
-  id: string;
-  email: string | null;
-  full_name: string | null;
-  school_id: string | null;
-  school_name: string | null;
-  school_address: string | null;
-  school_phone: string | null;
-  tax_number: string | null;
-  role: string | null;
-  created_at: string;
-  updated_at: string;
-  is_active: boolean;
-};
-
-export type UserSchoolRoleWithSchool = UserSchoolRole & {
-  school: School;
-};
-
-export type UserProfileResponse = UserProfileRow | null;
-export type UserRolesResponse = UserSchoolRoleWithSchool[];
 // ============================================
 // دوال مساعدة للأنواع (Type Guards)
 // ============================================

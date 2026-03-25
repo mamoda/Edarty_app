@@ -133,15 +133,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       console.log("✅ Roles fetched:", roles?.length || 0, "roles found");
 
-      // 3. بناء المستخدم المخصص
+      // 3. بناء المستخدم المخصص - متوافق مع الأنواع الجديدة
       const customUser: CustomUser = {
         ...supabaseUser,
         school_id: profile?.school_id,
         full_name: profile?.full_name || supabaseUser.user_metadata?.full_name,
-        schoolName: profile?.school_name || undefined,
-        schoolAddress: profile?.school_address || undefined,
-        schoolPhone: profile?.school_phone || undefined,
-        taxNumber: profile?.tax_number || undefined,
+        school_name: profile?.school_name,
+        school_address: profile?.school_address,
+        school_phone: profile?.school_phone,
+        tax_number: profile?.tax_number,
       };
 
       setUser(customUser);
