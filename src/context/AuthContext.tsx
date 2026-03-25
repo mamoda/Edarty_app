@@ -5,7 +5,6 @@ import {
   useEffect,
   useState,
   ReactNode,
-  useCallback,
   useMemo,
   useRef,
 } from "react";
@@ -50,7 +49,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<string | null>(null);
   const [schoolFeatures, setSchoolFeatures] = useState<string[]>([]);
 
-  // منع التكرار
   const initializedRef = useRef(false);
   const loadingPromiseRef = useRef<Promise<void> | null>(null);
 
@@ -59,8 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ============================================
   // Load School Data
   // ============================================
-
-  const loadCurrentSchoolData = useCallback(async (schoolId: string) => {
+  const loadCurrentSchoolData = async (schoolId: string) => {
     const { data, error } = await supabase
       .from("schools")
       .select("*")
@@ -73,25 +70,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSubscriptionExpiresAt(data.subscription_expires_at);
       setSchoolFeatures(data.features || []);
     }
-  }, []);
+  };
 
   // ============================================
-  // Load User Data - نهائي بدون تكرار
+  // Load User Data - مرة واحدة فقط
   // ============================================
-
-  const loadUserData = useCallback(async (user: any): Promise<void> => {
-    // إذا كان هناك promise قيد التنفيذ، انتظره
-    if (loadingPromiseRef.current) {
-      console.log("⏳ Waiting for existing load...");
-      return loadingPromiseRef.current;
-    }
-
+  const loadUserData = async (user: any): Promise<void> => {
     if (!user) {
       setLoading(false);
       return;
     }
 
-    // إنشاء promise جديد
+    // منع التكرار
+    if (loadingPromiseRef.current) {
+      return loadingPromiseRef.current;
+    }
+
     loadingPromiseRef.current = (async () => {
       console.log("📥 Loading user data for:", user.email);
 
@@ -99,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // 1. auth user
         setAuthUser({ id: user.id, email: user.email });
 
-        // 2. profile (public.users)
+        // 2. profile
         const { data: profileData } = await supabase
           .from("users")
           .select("*")
@@ -108,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setProfile(profileData || null);
 
-        // 3. roles + schools
+        // 3. roles
         const { data: roles } = await supabase
           .from("user_school_roles")
           .select("*, school:schools(*)")
@@ -132,9 +126,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setSubscriptionExpiresAt(selectedRole.school.subscription_expires_at);
             setSchoolFeatures(selectedRole.school.features || []);
           }
-        } else {
-          setCurrentSchool(null);
-          setCurrentRole(null);
         }
 
         console.log("✅ User data loaded");
@@ -147,12 +138,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })();
 
     return loadingPromiseRef.current;
-  }, []);
+  };
 
   // ============================================
   // Auth Init - مرة واحدة فقط
   // ============================================
-
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
@@ -175,7 +165,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         if (!isMounted) return;
 
-        // فقط معالجة SIGNED_OUT بشكل فوري
         if (event === "SIGNED_OUT") {
           setAuthUser(null);
           setProfile(null);
@@ -187,17 +176,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSchoolFeatures([]);
           setLoading(false);
           loadingPromiseRef.current = null;
-          return;
         }
 
-        // لحدث SIGNED_IN، ننتظر قليلاً للتأكد من استقرار الجلسة
         if (event === "SIGNED_IN" && session?.user) {
-          // تأخير بسيط لتجنب التكرار
-          setTimeout(() => {
-            if (isMounted) {
-              loadUserData(session.user);
-            }
-          }, 100);
+          await loadUserData(session.user);
         }
       }
     );
@@ -206,12 +188,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isMounted = false;
       listener.subscription.unsubscribe();
     };
-  }, [loadUserData]);
+  }, []); // ✅ بدون dependencies
 
   // ============================================
   // Actions
   // ============================================
-
   const signIn = async (email: string, password: string) => {
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
