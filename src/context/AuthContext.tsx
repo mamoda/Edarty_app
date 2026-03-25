@@ -66,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!schoolId) return;
 
     try {
+      console.log("🏫 Loading school data for:", schoolId);
       const { data: school, error } = await supabase
         .from("schools")
         .select("*")
@@ -90,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // ✅ تحميل بيانات المستخدم - النسخة المستقرة
+  // ✅ تحميل بيانات المستخدم - النسخة المستقرة مع logs للتتبع
   const loadUserData = useCallback(async (supabaseUser: any) => {
     if (!supabaseUser) {
       console.log("No user to load");
@@ -108,6 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       // 1. تحميل الملف الشخصي
+      console.log("🔍 Step 1: Fetching profile...");
       const { data: profile, error: profileError } = await supabase
         .from("users")
         .select("*")
@@ -117,8 +119,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (profileError) {
         console.error("Profile error:", profileError);
       }
+      console.log("✅ Profile fetched:", profile ? profile.full_name : "not found");
 
       // 2. تحميل الأدوار مع المدارس
+      console.log("🔍 Step 2: Fetching roles...");
       const { data: roles, error: rolesError } = await supabase
         .from("user_school_roles")
         .select("*, school:schools(*)")
@@ -127,6 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (rolesError) {
         console.error("Roles error:", rolesError);
       }
+      console.log("✅ Roles fetched:", roles?.length || 0, "roles found");
 
       // 3. بناء المستخدم المخصص
       const customUser: CustomUser = {
@@ -140,16 +145,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
 
       setUser(customUser);
+      console.log("✅ User set");
 
       // 4. معالجة الأدوار
       const rolesData = roles || [];
       setUserRoles(rolesData);
+      console.log("✅ User roles set:", rolesData.length);
 
       if (rolesData.length > 0) {
         const savedSchoolId = localStorage.getItem(`current_school_${supabaseUser.id}`);
+        console.log("Saved school ID:", savedSchoolId);
+        
         const selectedRole = savedSchoolId 
           ? rolesData.find((r: any) => r.school_id === savedSchoolId) 
           : rolesData.find((r: any) => r.is_primary) || rolesData[0];
+
+        console.log("Selected role:", selectedRole?.role, "school:", selectedRole?.school?.name);
 
         if (selectedRole?.school) {
           const schoolData = selectedRole.school;
@@ -229,6 +240,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) {
           console.error("Session error:", error);
         }
+
+        console.log("Session user:", session?.user?.email || "none");
 
         if (session?.user && isMounted) {
           await loadUserData(session.user);
