@@ -50,8 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [schoolFeatures, setSchoolFeatures] = useState<string[]>([]);
 
   const initializedRef = useRef(false);
-  const loadingPromiseRef = useRef<Promise<void> | null>(null);
-  const isProcessingRef = useRef(false); // ✅ منع التكرار
+  const isProcessingRef = useRef(false);
 
   const isAuthenticated = useMemo(() => !!authUser, [authUser]);
 
@@ -74,102 +73,90 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // ============================================
-  // Load User Data - مرة واحدة فقط
+  // Load User Data - بسيطة وواضحة
   // ============================================
-  const loadUserData = async (user: any): Promise<void> => {
+  const loadUserData = async (user: any) => {
     if (!user) {
       setLoading(false);
       return;
     }
 
-    // ✅ منع التكرار - لو في تحميل جاري، ارجع
-    if (loadingPromiseRef.current) {
-      return loadingPromiseRef.current;
-    }
-
-    // ✅ منع التكرار - لو نفس المستخدم تم تحميله
-    if (authUser?.id === user.id && userRoles.length > 0) {
-      console.log("⏩ User already loaded, skipping");
-      setLoading(false);
+    if (isProcessingRef.current) {
+      console.log("⏳ Already processing, skipping");
       return;
     }
 
-    loadingPromiseRef.current = (async () => {
-      if (isProcessingRef.current) return;
-      isProcessingRef.current = true;
+    isProcessingRef.current = true;
+    console.log("📥 Loading user data for:", user.email);
 
-      console.log("📥 Loading user data for:", user.email);
+    try {
+      // 1. auth user
+      setAuthUser({ id: user.id, email: user.email });
 
-      try {
-        // 1. auth user
-        setAuthUser({ id: user.id, email: user.email });
+      // 2. profile
+      const { data: profileData } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
 
-        // 2. profile
-        const { data: profileData } = await supabase
-          .from("users")
-          .select("*")
-          .eq("id", user.id)
-          .maybeSingle();
+      setProfile(profileData || null);
 
-        setProfile(profileData || null);
+      // 3. roles
+      const { data: roles } = await supabase
+        .from("user_school_roles")
+        .select("*, school:schools(*)")
+        .eq("user_id", user.id);
 
-        // 3. roles
-        const { data: roles } = await supabase
-          .from("user_school_roles")
-          .select("*, school:schools(*)")
-          .eq("user_id", user.id);
+      const rolesData = roles || [];
+      setUserRoles(rolesData);
 
-        const rolesData = roles || [];
-        setUserRoles(rolesData);
+      // 4. select school
+      if (rolesData.length > 0) {
+        const savedSchoolId = localStorage.getItem(`current_school_${user.id}`);
+        const selectedRole =
+          rolesData.find((r: any) => r.school_id === savedSchoolId) ||
+          rolesData.find((r: any) => r.is_primary) ||
+          rolesData[0];
 
-        // 4. select school
-        if (rolesData.length > 0) {
-          const savedSchoolId = localStorage.getItem(`current_school_${user.id}`);
-          const selectedRole =
-            rolesData.find((r: any) => r.school_id === savedSchoolId) ||
-            rolesData.find((r: any) => r.is_primary) ||
-            rolesData[0];
-
-          if (selectedRole?.school) {
-            setCurrentSchool(selectedRole.school);
-            setCurrentRole(selectedRole.role);
-            setSubscriptionPlan(selectedRole.school.subscription_plan);
-            setSubscriptionExpiresAt(selectedRole.school.subscription_expires_at);
-            setSchoolFeatures(selectedRole.school.features || []);
-          }
+        if (selectedRole?.school) {
+          setCurrentSchool(selectedRole.school);
+          setCurrentRole(selectedRole.role);
+          setSubscriptionPlan(selectedRole.school.subscription_plan);
+          setSubscriptionExpiresAt(selectedRole.school.subscription_expires_at);
+          setSchoolFeatures(selectedRole.school.features || []);
         }
-
-        console.log("✅ User data loaded");
-      } catch (error) {
-        console.error("loadUserData error:", error);
-      } finally {
-        setLoading(false);
-        loadingPromiseRef.current = null;
-        isProcessingRef.current = false;
       }
-    })();
 
-    return loadingPromiseRef.current;
+      console.log("✅ User data loaded");
+    } catch (error) {
+      console.error("loadUserData error:", error);
+    } finally {
+      setLoading(false);
+      isProcessingRef.current = false;
+    }
   };
 
   // ============================================
-  // Auth Init - مرة واحدة فقط
+  // Auth Init
   // ============================================
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
     let isMounted = true;
-    let authHandled = false; // ✅ منع معالجة الحدث أكثر من مرة
 
     const init = async () => {
-      const { data } = await supabase.auth.getSession();
-
-      if (data.session?.user && isMounted && !authHandled) {
-        authHandled = true;
-        await loadUserData(data.session.user);
-      } else if (isMounted) {
-        setLoading(false);
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data.session?.user && isMounted) {
+          await loadUserData(data.session.user);
+        } else if (isMounted) {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Init error:", error);
+        if (isMounted) setLoading(false);
       }
     };
 
@@ -179,14 +166,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         if (!isMounted) return;
 
-        // ✅ تجاهل الأحداث المتكررة
-        if (event === "SIGNED_IN" && session?.user && !authHandled) {
-          authHandled = true;
-          await loadUserData(session.user);
+        if (event === "SIGNED_IN" && session?.user) {
+          // ✅ تأخير صغير لمنع التكرار
+          setTimeout(() => {
+            if (isMounted && !isProcessingRef.current) {
+              loadUserData(session.user);
+            }
+          }, 100);
         }
 
         if (event === "SIGNED_OUT") {
-          authHandled = false;
           setAuthUser(null);
           setProfile(null);
           setUserRoles([]);
@@ -196,7 +185,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSubscriptionExpiresAt(null);
           setSchoolFeatures([]);
           setLoading(false);
-          loadingPromiseRef.current = null;
           isProcessingRef.current = false;
         }
       }
@@ -213,8 +201,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ============================================
   const signIn = async (email: string, password: string) => {
     setLoading(true);
-    // ✅ إعادة تعيين الـ flag عند تسجيل الدخول الجديد
-    (window as any).__authHandled = false;
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     return { error };
