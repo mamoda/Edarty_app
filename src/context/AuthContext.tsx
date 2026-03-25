@@ -110,21 +110,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("✅ [loadUserData] authUser set");
 
       // 2. profile (public.users)
-      console.log("📌 [loadUserData] Step 2: Fetching profile from users table...");
-      const { data: profileData, error: profileError } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle();
+    // داخل loadUserData، استبدل جزء profile بهذا:
 
-      if (profileError) {
-        console.error("❌ [loadUserData] Profile error:", profileError);
-      } else {
-        console.log("✅ [loadUserData] Profile data:", profileData);
-      }
-      
-      setProfile(profileData || null);
-      console.log("✅ [loadUserData] Profile set");
+console.log("📌 [loadUserData] Step 2: Fetching profile from users table...");
+
+// إضافة timeout 5 ثواني
+const timeoutPromise = new Promise((_, reject) => 
+  setTimeout(() => reject(new Error("Timeout fetching profile")), 5000)
+);
+
+const profilePromise = supabase
+  .from("users")
+  .select("*")
+  .eq("id", user.id)
+  .maybeSingle();
+
+const result = await Promise.race([profilePromise, timeoutPromise]);
+const { data: profileData, error: profileError } = result as any;
+
+if (profileError) {
+  console.error("❌ [loadUserData] Profile error:", profileError);
+} else {
+  console.log("✅ [loadUserData] Profile data:", profileData);
+}
 
       // 3. roles + schools
       console.log("📌 [loadUserData] Step 3: Fetching roles...");
