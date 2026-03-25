@@ -1,7 +1,10 @@
-// نوع المستخدم من Supabase (للتوافق مع الـ library)
-export type SupabaseUser = import('@supabase/supabase-js').User;
+// src/types/database.ts
+import { User as SupabaseUser } from '@supabase/supabase-js';
 
-// نوع المدرسة (للعلاقات)
+// ============================================
+// أنواع المستخدم والمدرسة (Core SaaS)
+// ============================================
+
 export interface School {
   id: string;
   name: string;
@@ -12,26 +15,78 @@ export interface School {
   email: string | null;
   tax_number: string | null;
   settings: Record<string, any>;
-  status: 'active' | 'suspended' | 'inactive';
+  status: 'active' | 'suspended' | 'inactive' | 'trial';
+  subscription_plan: 'free' | 'basic' | 'pro' | 'enterprise';
+  subscription_expires_at: string | null;
+  subscription_status: 'active' | 'expired' | 'canceled' | 'trialing';
+  max_students: number;
+  max_teachers: number;
+  max_users: number;
+  features: string[];
   created_at: string;
   updated_at: string;
 }
 
-// نوع دور المستخدم في المدرسة
+export interface Subscription {
+  id: string;
+  school_id: string;
+  plan: 'free' | 'basic' | 'pro' | 'enterprise';
+  status: 'active' | 'expired' | 'canceled' | 'trialing';
+  starts_at: string;
+  expires_at: string;
+  amount: number;
+  currency: string;
+  payment_method: string | null;
+  transaction_id: string | null;
+  auto_renew: boolean;
+  created_at: string;
+  updated_at: string;
+  school?: School;
+}
+
+export interface Payment {
+  id: string;
+  school_id: string;
+  subscription_id: string;
+  amount: number;
+  currency: string;
+  status: 'pending' | 'completed' | 'failed' | 'refunded';
+  payment_method: string;
+  transaction_id: string;
+  payment_date: string;
+  notes: string | null;
+  created_at: string;
+  school?: School;
+  subscription?: Subscription;
+}
+
+export interface Plan {
+  id: string;
+  name: string;
+  key: 'free' | 'basic' | 'pro' | 'enterprise';
+  price_monthly: number;
+  price_yearly: number;
+  max_students: number;
+  max_teachers: number;
+  max_users: number;
+  features: string[];
+  is_active: boolean;
+  created_at: string;
+}
+
 export interface UserSchoolRole {
   id: string;
   user_id: string;
   school_id: string;
-  role: 'admin' | 'accountant' | 'moderator' | 'teacher' | 'parent';
+  role: 'super_admin' | 'admin' | 'accountant' | 'moderator' | 'teacher' | 'parent';
   permissions: string[];
   is_primary: boolean;
   created_at: string;
   updated_at: string;
   school?: School;
-  user?: User;
+  user?: CustomUser;
 }
 
-// نوع المستخدم المخصص مع بيانات المدرسة
 export interface CustomUser extends SupabaseUser {
   school_id?: string;
   schoolName?: string;
@@ -42,7 +97,6 @@ export interface CustomUser extends SupabaseUser {
   school?: School;
 }
 
-// نوع بيانات المدرسة (للاستخدام في الـ hooks)
 export interface SchoolData {
   id?: string;
   schoolId?: string;
@@ -52,26 +106,28 @@ export interface SchoolData {
   schoolAddress?: string;
   schoolPhone?: string;
   schoolTaxNumber?: string;
+  subscriptionPlan?: string;
+  subscriptionExpiresAt?: string;
+  features?: string[];
 }
 
-// نوع المستخدم (لجدول users في قاعدة البيانات)
-export interface User {
+// ============================================
+// أنواع السجلات (Audit Logs)
+// ============================================
+
+export interface ActivityLog {
   id: string;
-  email: string | null;
-  full_name: string | null;
-  school_id?: string;
-  school_name: string | null;
-  school_address: string | null;
-  school_phone: string | null;
-  tax_number: string | null;
-  role: string;
+  user_id: string;
+  school_id: string;
+  action: string;
+  entity_type: string;
+  entity_id: string;
+  old_data: Record<string, any> | null;
+  new_data: Record<string, any> | null;
+  ip_address: string | null;
+  user_agent: string | null;
   created_at: string;
-  updated_at: string;
-  permissions: any;
-  last_login: string | null;
-  is_active: boolean;
-  avatar_url: string | null;
-  department: string | null;
+  user?: CustomUser;
   school?: School;
 }
 
@@ -155,26 +211,6 @@ export interface Teacher {
 }
 
 // ============================================
-// أنواع رواتب المعلمين (Teacher Salaries)
-// ============================================
-
-export interface TeacherSalary {
-  id: string;
-  teacher_id: string;
-  user_id: string;
-  school_id: string;
-  month: number;
-  year: number;
-  amount: number;
-  status: 'pending' | 'paid' | 'cancelled';
-  payment_date: string | null;
-  notes: string | null;
-  created_at: string;
-  teacher?: Teacher;
-  school?: School;
-}
-
-// ============================================
 // أنواع الإحصائيات (Statistics)
 // ============================================
 
@@ -203,6 +239,20 @@ export interface Statistics {
   todayCollections?: number;
   thisWeekCollections?: number;
   thisMonthCollections?: number;
+}
+
+// ============================================
+// أنواع التحقق من الميزات (Feature Gating)
+// ============================================
+
+export interface FeatureCheck {
+  hasFeature: (feature: string) => boolean;
+  getLimits: () => {
+    maxStudents: number;
+    maxTeachers: number;
+    maxUsers: number;
+  };
+  canAccess: (resource: string) => boolean;
 }
 
 // ============================================
