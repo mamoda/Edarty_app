@@ -28,13 +28,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let isMounted = true;
 
-    const initializeAuth = async () => {
-      try {
-        console.log('🔐 Initializing auth...');
-        
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session?.user) {
+const initializeAuth = async () => {
+  try {
+    console.log('🔐 Initializing auth...');
+    
+    // ✅ إضافة تأخير بسيط للتأكد من اكتمال اتصال Supabase
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    const { data: { session } } = await supabase.auth.getSession();        if (!session?.user) {
           console.log('ℹ️ No session found');
           if (isMounted) setLoading(false);
           return;
