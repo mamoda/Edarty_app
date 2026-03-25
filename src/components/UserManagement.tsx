@@ -1,6 +1,6 @@
 // src/components/UserManagement.tsx
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseAdmin } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { 
   Users, 
@@ -69,6 +69,7 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   
   // نموذج إضافة مستخدم جديد
   const [formData, setFormData] = useState({
@@ -135,8 +136,13 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
     }
     
     try {
-      // 1. إنشاء حساب في Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      if (!supabaseAdmin) {
+        setFormError('لم يتم تكوين صلاحيات المسؤول');
+        return;
+      }
+      
+      // 1. إنشاء حساب في Auth باستخدام supabaseAdmin
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email: formData.email,
         password: formData.password,
         email_confirm: true,
@@ -272,6 +278,7 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
     setShowForm(false);
     setFormError('');
     setFormSuccess('');
+    setShowPassword(false);
   };
 
   const filteredUsers = users.filter(user =>
@@ -507,14 +514,21 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
                 <div className="relative">
                   <Lock className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                    className="w-full pr-10 pl-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                     placeholder="••••••••"
                     required
                     minLength={6}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">كلمة المرور يجب أن تكون 6 أحرف على الأقل</p>
               </div>
