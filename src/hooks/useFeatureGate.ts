@@ -15,7 +15,7 @@ interface FeatureGate {
 }
 
 export const useFeatureGate = (): FeatureGate => {
-  const { hasFeature, getLimits, canAccessResource, subscriptionPlan } = useAuth();
+  const { hasFeature, getLimits, canAccessResource } = useAuth();
   const limits = getLimits();
 
   const showUpgradePrompt = (feature: string): boolean => {

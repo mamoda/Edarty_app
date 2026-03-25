@@ -282,7 +282,33 @@ export interface SortOptions {
   field: string;
   direction: 'asc' | 'desc';
 }
+// src/types/database.ts - أضف ده في آخر الملف
 
+// ============================================
+// أنواع مخصصة لـ Supabase Queries
+// ============================================
+
+export type UserProfileRow = {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  school_id: string | null;
+  school_name: string | null;
+  school_address: string | null;
+  school_phone: string | null;
+  tax_number: string | null;
+  role: string | null;
+  created_at: string;
+  updated_at: string;
+  is_active: boolean;
+};
+
+export type UserSchoolRoleWithSchool = UserSchoolRole & {
+  school: School;
+};
+
+export type UserProfileResponse = UserProfileRow | null;
+export type UserRolesResponse = UserSchoolRoleWithSchool[];
 // ============================================
 // دوال مساعدة للأنواع (Type Guards)
 // ============================================

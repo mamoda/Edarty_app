@@ -1,41 +1,96 @@
 // src/lib/supabase.ts
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
-const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
-// عرض المتغيرات للتأكد (للتطوير فقط)
-console.log('Environment Variables Check:');
-console.log('VITE_SUPABASE_URL:', supabaseUrl ? '✅ Present' : '❌ Missing');
-console.log('VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY:', supabaseAnonKey ? '✅ Present' : '❌ Missing');
-console.log('VITE_SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceKey ? '✅ Present' : '❌ Missing');
-
-if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
-  throw new Error('Missing Supabase environment variables. Please check your .env file.');
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables');
 }
 
-// Client عادي للمستخدمين
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storage: localStorage
-  }
-});
+// Singleton pattern - يضمن وجود instance واحد فقط
+class SupabaseManager {
+  private static instance: SupabaseClient | null = null;
+  private static initializationPromise: Promise<SupabaseClient> | null = null;
 
-// Client خاص بـ Admin (بـ service role key)
-export const supabaseAdmin = supabaseServiceKey 
-  ? createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
+  private constructor() {}
+
+  public static async getInstance(): Promise<SupabaseClient> {
+    if (this.instance) {
+      return this.instance;
+    }
+
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
+
+    this.initializationPromise = (async () => {
+      try {
+        this.instance = createClient(supabaseUrl, supabaseAnonKey, {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true,
+            storageKey: 'supabase-auth',
+            storage: {
+              getItem: (key) => {
+                try {
+                  return localStorage.getItem(key);
+                } catch {
+                  return null;
+                }
+              },
+              setItem: (key, value) => {
+                try {
+                  localStorage.setItem(key, value);
+                } catch {
+                  // Ignore
+                }
+              },
+              removeItem: (key) => {
+                try {
+                  localStorage.removeItem(key);
+                } catch {
+                  // Ignore
+                }
+              },
+            },
+          },
+        });
+        return this.instance;
+      } catch (error) {
+        this.initializationPromise = null;
+        throw error;
       }
-    })
-  : null;
+    })();
 
-// تحذير إذا لم يكن supabaseAdmin متاحاً
-if (!supabaseAdmin) {
-  console.warn('⚠️ Supabase Admin client not available. User management features will be disabled.');
+    return this.initializationPromise;
+  }
+
+  public static reset(): void {
+    this.instance = null;
+    this.initializationPromise = null;
+  }
 }
+
+// Export async function للحصول على الـ client
+export const getSupabase = () => SupabaseManager.getInstance();
+
+// Export sync version للاستخدام بعد التهيئة (للتوافق مع الكود الحالي)
+// هذا سيعمل بشكل متزامن بعد تهيئة الـ client
+let syncClient: SupabaseClient | null = null;
+
+// تهيئة متزامنة للاستخدام الفوري
+(async () => {
+  syncClient = await SupabaseManager.getInstance();
+})();
+
+export const supabase = new Proxy({} as SupabaseClient, {
+  get: (_, prop) => {
+    if (!syncClient) {
+      throw new Error('Supabase client not initialized yet. Use await getSupabase() instead.');
+    }
+    const value = (syncClient as any)[prop];
+    return typeof value === 'function' ? value.bind(syncClient) : value;
+  },
+});
