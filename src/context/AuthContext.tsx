@@ -1,4 +1,4 @@
-// src/context/AuthContext.tsx - نسخة مع logs مفصلة جداً
+// src/context/AuthContext.tsx
 import {
   createContext,
   useContext,
@@ -50,8 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<string | null>(null);
   const [schoolFeatures, setSchoolFeatures] = useState<string[]>([]);
 
-  const isLoadingRef = useRef(false);
+  // منع التكرار
   const initializedRef = useRef(false);
+  const loadingPromiseRef = useRef<Promise<void> | null>(null);
 
   const isAuthenticated = useMemo(() => !!authUser, [authUser]);
 
@@ -60,7 +61,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ============================================
 
   const loadCurrentSchoolData = useCallback(async (schoolId: string) => {
-    console.log("🏫 [loadCurrentSchoolData] Starting for:", schoolId);
     const { data, error } = await supabase
       .from("schools")
       .select("*")
@@ -72,153 +72,100 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSubscriptionPlan(data.subscription_plan);
       setSubscriptionExpiresAt(data.subscription_expires_at);
       setSchoolFeatures(data.features || []);
-      console.log("✅ [loadCurrentSchoolData] School loaded:", data.name);
-    } else {
-      console.error("❌ [loadCurrentSchoolData] Error:", error);
     }
   }, []);
 
   // ============================================
-  // Load User Data - مع logs مفصلة جداً
+  // Load User Data - نهائي بدون تكرار
   // ============================================
 
-  const loadUserData = useCallback(async (user: any) => {
-    console.log("🚀 [loadUserData] STARTED with user:", user?.email);
-    
+  const loadUserData = useCallback(async (user: any): Promise<void> => {
+    // إذا كان هناك promise قيد التنفيذ، انتظره
+    if (loadingPromiseRef.current) {
+      console.log("⏳ Waiting for existing load...");
+      return loadingPromiseRef.current;
+    }
+
     if (!user) {
-      console.log("❌ [loadUserData] No user to load");
       setLoading(false);
       return;
     }
-    
-    if (isLoadingRef.current) {
-      console.log("⏳ [loadUserData] Already loading, skipping...");
-      return;
-    }
 
-    isLoadingRef.current = true;
-    console.log("📥 [loadUserData] Loading for:", user.email);
+    // إنشاء promise جديد
+    loadingPromiseRef.current = (async () => {
+      console.log("📥 Loading user data for:", user.email);
 
-    try {
-      // 1. auth user
-      console.log("📌 [loadUserData] Step 1: Setting authUser");
-      const authUserData: AuthUser = {
-        id: user.id,
-        email: user.email,
-      };
-      setAuthUser(authUserData);
-      console.log("✅ [loadUserData] authUser set");
+      try {
+        // 1. auth user
+        setAuthUser({ id: user.id, email: user.email });
 
-      // 2. profile (public.users)
-    // داخل loadUserData، استبدل جزء profile بهذا:
+        // 2. profile (public.users)
+        const { data: profileData } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", user.id)
+          .maybeSingle();
 
-console.log("📌 [loadUserData] Step 2: Fetching profile from users table...");
+        setProfile(profileData || null);
 
-// إضافة timeout 5 ثواني
-const timeoutPromise = new Promise((_, reject) => 
-  setTimeout(() => reject(new Error("Timeout fetching profile")), 5000)
-);
+        // 3. roles + schools
+        const { data: roles } = await supabase
+          .from("user_school_roles")
+          .select("*, school:schools(*)")
+          .eq("user_id", user.id);
 
-const profilePromise = supabase
-  .from("users")
-  .select("*")
-  .eq("id", user.id)
-  .maybeSingle();
+        const rolesData = roles || [];
+        setUserRoles(rolesData);
 
-const result = await Promise.race([profilePromise, timeoutPromise]);
-const { data: profileData, error: profileError } = result as any;
+        // 4. select school
+        if (rolesData.length > 0) {
+          const savedSchoolId = localStorage.getItem(`current_school_${user.id}`);
+          const selectedRole =
+            rolesData.find((r: any) => r.school_id === savedSchoolId) ||
+            rolesData.find((r: any) => r.is_primary) ||
+            rolesData[0];
 
-if (profileError) {
-  console.error("❌ [loadUserData] Profile error:", profileError);
-} else {
-  console.log("✅ [loadUserData] Profile data:", profileData);
-}
-
-      // 3. roles + schools
-      console.log("📌 [loadUserData] Step 3: Fetching roles...");
-      const { data: roles, error: rolesError } = await supabase
-        .from("user_school_roles")
-        .select("*, school:schools(*)")
-        .eq("user_id", user.id);
-
-      if (rolesError) {
-        console.error("❌ [loadUserData] Roles error:", rolesError);
-      }
-      
-      const rolesData = roles || [];
-      setUserRoles(rolesData);
-      console.log("✅ [loadUserData] Roles loaded:", rolesData.length, "roles");
-
-      // 4. select school
-      console.log("📌 [loadUserData] Step 4: Selecting school...");
-      if (rolesData.length > 0) {
-        const savedSchoolId = localStorage.getItem(`current_school_${user.id}`);
-        console.log("📌 [loadUserData] Saved school ID:", savedSchoolId);
-
-        const selectedRole =
-          rolesData.find((r: any) => r.school_id === savedSchoolId) ||
-          rolesData.find((r: any) => r.is_primary) ||
-          rolesData[0];
-
-        console.log("📌 [loadUserData] Selected role:", selectedRole?.role, "school:", selectedRole?.school?.name);
-
-        if (selectedRole?.school) {
-          setCurrentSchool(selectedRole.school);
-          setCurrentRole(selectedRole.role);
-          setSubscriptionPlan(selectedRole.school.subscription_plan);
-          setSubscriptionExpiresAt(selectedRole.school.subscription_expires_at);
-          setSchoolFeatures(selectedRole.school.features || []);
-          console.log("✅ [loadUserData] School set:", selectedRole.school.name);
+          if (selectedRole?.school) {
+            setCurrentSchool(selectedRole.school);
+            setCurrentRole(selectedRole.role);
+            setSubscriptionPlan(selectedRole.school.subscription_plan);
+            setSubscriptionExpiresAt(selectedRole.school.subscription_expires_at);
+            setSchoolFeatures(selectedRole.school.features || []);
+          }
         } else {
-          console.log("⚠️ [loadUserData] Selected role has no school data");
+          setCurrentSchool(null);
+          setCurrentRole(null);
         }
-      } else {
-        console.log("⚠️ [loadUserData] No roles found for user");
-        setCurrentSchool(null);
-        setCurrentRole(null);
-      }
 
-      console.log("✅ [loadUserData] COMPLETED SUCCESSFULLY");
-    } catch (error) {
-      console.error("❌ [loadUserData] CATCH ERROR:", error);
-    } finally {
-      isLoadingRef.current = false;
-      setLoading(false);
-      console.log("🟢 [loadUserData] Loading state set to false");
-    }
+        console.log("✅ User data loaded");
+      } catch (error) {
+        console.error("loadUserData error:", error);
+      } finally {
+        setLoading(false);
+        loadingPromiseRef.current = null;
+      }
+    })();
+
+    return loadingPromiseRef.current;
   }, []);
 
   // ============================================
-  // Auth Init
+  // Auth Init - مرة واحدة فقط
   // ============================================
 
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    let mounted = true;
+    let isMounted = true;
 
     const init = async () => {
-      try {
-        console.log("🔐 [Auth Init] Starting...");
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error("❌ [Auth Init] Session error:", error);
-        }
-        
-        console.log("📌 [Auth Init] Session user:", data.session?.user?.email || "none");
+      const { data } = await supabase.auth.getSession();
 
-        if (data.session?.user && mounted) {
-          console.log("📌 [Auth Init] Calling loadUserData...");
-          await loadUserData(data.session.user);
-        } else if (mounted) {
-          console.log("📌 [Auth Init] No active session, setting loading to false");
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error("❌ [Auth Init] Error:", error);
-        if (mounted) setLoading(false);
+      if (data.session?.user && isMounted) {
+        await loadUserData(data.session.user);
+      } else if (isMounted) {
+        setLoading(false);
       }
     };
 
@@ -226,17 +173,10 @@ if (profileError) {
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (!mounted) return;
-        console.log("🔄 [Auth Init] Auth event:", event);
+        if (!isMounted) return;
 
-        if (event === "SIGNED_IN" && session?.user) {
-          console.log("📌 [Auth Init] SIGNED_IN, calling loadUserData...");
-          setLoading(true);
-          await loadUserData(session.user);
-        }
-
+        // فقط معالجة SIGNED_OUT بشكل فوري
         if (event === "SIGNED_OUT") {
-          console.log("📌 [Auth Init] SIGNED_OUT, resetting state");
           setAuthUser(null);
           setProfile(null);
           setUserRoles([]);
@@ -246,15 +186,31 @@ if (profileError) {
           setSubscriptionExpiresAt(null);
           setSchoolFeatures([]);
           setLoading(false);
+          loadingPromiseRef.current = null;
+          return;
+        }
+
+        // لحدث SIGNED_IN، ننتظر قليلاً للتأكد من استقرار الجلسة
+        if (event === "SIGNED_IN" && session?.user) {
+          // تأخير بسيط لتجنب التكرار
+          setTimeout(() => {
+            if (isMounted) {
+              loadUserData(session.user);
+            }
+          }, 100);
         }
       }
     );
 
     return () => {
-      mounted = false;
+      isMounted = false;
       listener.subscription.unsubscribe();
     };
   }, [loadUserData]);
+
+  // ============================================
+  // Actions
+  // ============================================
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
@@ -306,10 +262,12 @@ if (profileError) {
   const hasPermission = (permission: string): boolean => {
     if (!currentRole) return false;
     if (["admin"].includes(currentRole)) return true;
+
     const rolePermissions: Record<string, string[]> = {
       accountant: ["view_financials", "manage_fees", "manage_expenses"],
       moderator: ["view_students", "edit_students"],
     };
+
     return rolePermissions[currentRole]?.includes(permission) || false;
   };
 
