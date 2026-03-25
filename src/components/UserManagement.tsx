@@ -70,7 +70,9 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
   });
 
   useEffect(() => {
-    loadUsers();
+    if (currentSchool) {
+      loadUsers();
+    }
   }, [currentSchool]);
 
   const loadUsers = async () => {
@@ -78,7 +80,7 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
     
     setLoading(true);
     try {
-      // استعلام مبسط: جلب الأدوار أولاً
+      // ✅ الخطوة 1: جلب الأدوار فقط (بدون join)
       const { data: rolesData, error: rolesError } = await supabase
         .from('user_school_roles')
         .select('*')
@@ -92,7 +94,7 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
         return;
       }
       
-      // جلب بيانات المستخدمين بشكل منفصل
+      // ✅ الخطوة 2: جلب بيانات المستخدمين بشكل منفصل
       const userIds = rolesData.map(r => r.user_id);
       const { data: usersData, error: usersError } = await supabase
         .from('users')
@@ -101,7 +103,7 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
       
       if (usersError) throw usersError;
       
-      // دمج البيانات
+      // ✅ الخطوة 3: دمج البيانات
       const usersMap = new Map();
       usersData?.forEach(user => {
         usersMap.set(user.id, user);

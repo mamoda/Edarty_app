@@ -1,3 +1,4 @@
+// src/components/Login.tsx
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -28,48 +29,56 @@ export default function Login() {
   const { signIn, signUp } = useAuth();
   const ADMIN_SECRET_CODE = 'Mahmoud17237ESD@';
 
-// نسخة مبسطة من handleSubmit
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setError('');
-  setLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
 
-  try {
-    if (isLogin) {
-      const { error } = await signIn(email, password);
-      if (error) {
-        setError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
-      }
-    } else {
-      if (!schoolData.fullName || !schoolData.schoolName) {
-        setError('يرجى إكمال جميع البيانات المطلوبة');
-        setLoading(false);
-        return;
-      }
+    try {
+      if (isLogin) {
+        const { error } = await signIn(email, password);
+        if (error) {
+          setError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
+        }
+      } else {
+        if (!schoolData.fullName || !schoolData.schoolName) {
+          setError('يرجى إكمال جميع البيانات المطلوبة');
+          setLoading(false);
+          return;
+        }
 
-      const { data: authData, error: signUpError } = await signUp(email, password, schoolData.fullName);
-      
-      if (signUpError) {
-        setError('فشل في إنشاء الحساب. البريد الإلكتروني قد يكون مستخدماً بالفعل');
-      } else if (authData?.user) {
-        // إنشاء مدرسة جديدة
-        const { data: newSchool } = await supabase
-          .from('schools')
-          .insert({
-            name: schoolData.schoolName,
-            address: schoolData.schoolAddress,
-            phone: schoolData.schoolPhone,
-            email: email,
-            tax_number: schoolData.taxNumber,
-            status: 'active'
-          })
-          .select()
-          .single();
+        // ✅ التعديل هنا: signUp يعيد { error } فقط
+        const { error: signUpError } = await signUp(email, password, schoolData.fullName);
+        
+        if (signUpError) {
+          setError('فشل في إنشاء الحساب. البريد الإلكتروني قد يكون مستخدماً بالفعل');
+          setLoading(false);
+          return;
+        }
+        
+        // ✅ بعد نجاح التسجيل، نحتاج للحصول على المستخدم من الجلسة
+        const { data: { session } } = await supabase.auth.getSession();
+        const userId = session?.user?.id;
+        
+        if (userId) {
+          // إنشاء مدرسة جديدة
+          const { data: newSchool } = await supabase
+            .from('schools')
+            .insert({
+              name: schoolData.schoolName,
+              address: schoolData.schoolAddress,
+              phone: schoolData.schoolPhone,
+              email: email,
+              tax_number: schoolData.taxNumber,
+              status: 'active',
+              subscription_plan: 'free'
+            })
+            .select()
+            .single();
 
-        if (newSchool) {
-          // تحديث المستخدم وإضافة الدور في نفس الوقت
-          await Promise.all([
-            supabase
+          if (newSchool) {
+            // تحديث المستخدم
+            await supabase
               .from('users')
               .update({
                 school_id: newSchool.id,
@@ -80,16 +89,19 @@ const handleSubmit = async (e: React.FormEvent) => {
                 full_name: schoolData.fullName,
                 role: 'admin'
               })
-              .eq('id', authData.user.id),
-            supabase
+              .eq('id', userId);
+            
+            // إضافة دور المستخدم في المدرسة
+            await supabase
               .from('user_school_roles')
               .insert({
-                user_id: authData.user.id,
+                user_id: userId,
                 school_id: newSchool.id,
                 role: 'admin',
-                is_primary: true
-              })
-          ]);
+                is_primary: true,
+                permissions: []
+              });
+          }
         }
 
         alert('✅ تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول');
@@ -105,13 +117,14 @@ const handleSubmit = async (e: React.FormEvent) => {
           taxNumber: '',
         });
       }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('حدث خطأ. يرجى المحاولة مرة أخرى');
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    setError('حدث خطأ. يرجى المحاولة مرة أخرى');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
+  
   const handleAdminAccess = () => {
     if (adminCode === ADMIN_SECRET_CODE) {
       setShowAdminPanel(true);
