@@ -5,17 +5,14 @@ import { useAuth } from '../context/AuthContext';
 import { 
   Users, 
   UserPlus, 
-  Edit2, 
   Trash2, 
   X, 
   Search, 
   Shield, 
-  UserCog,
   Mail,
   Lock,
   CheckCircle,
   AlertCircle,
-  RefreshCw,
   Eye,
   EyeOff,
   Crown,
@@ -60,13 +57,11 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
   const [users, setUsers] = useState<SchoolUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editingUser, setEditingUser] = useState<SchoolUser | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   
-  // نموذج إضافة مستخدم جديد
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -83,28 +78,54 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
     
     setLoading(true);
     try {
-      // جلب جميع المستخدمين المرتبطين بنفس المدرسة
+      // استعلام مبسط: جلب الأدوار أولاً
       const { data: rolesData, error: rolesError } = await supabase
         .from('user_school_roles')
-        .select('*, user:users(*)')
+        .select('*')
         .eq('school_id', currentSchool.id);
       
       if (rolesError) throw rolesError;
       
-      const usersList: SchoolUser[] = (rolesData || []).map((role: any) => ({
-        id: role.user_id,
-        email: role.user?.email || '',
-        full_name: role.user?.full_name || '',
-        role: role.role,
-        school_id: role.school_id,
-        created_at: role.created_at,
-        last_login: role.user?.last_login || null,
-        is_active: role.user?.is_active ?? true,
-      }));
+      if (!rolesData || rolesData.length === 0) {
+        setUsers([]);
+        setLoading(false);
+        return;
+      }
+      
+      // جلب بيانات المستخدمين بشكل منفصل
+      const userIds = rolesData.map(r => r.user_id);
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('id, email, full_name, created_at, last_login, is_active')
+        .in('id', userIds);
+      
+      if (usersError) throw usersError;
+      
+      // دمج البيانات
+      const usersMap = new Map();
+      usersData?.forEach(user => {
+        usersMap.set(user.id, user);
+      });
+      
+      const usersList: SchoolUser[] = rolesData.map(role => {
+        const user = usersMap.get(role.user_id);
+        return {
+          id: role.user_id,
+          email: user?.email || '',
+          full_name: user?.full_name || '',
+          role: role.role,
+          school_id: role.school_id,
+          created_at: role.created_at,
+          last_login: user?.last_login || null,
+          is_active: user?.is_active ?? true,
+        };
+      });
       
       setUsers(usersList);
     } catch (error) {
       console.error('Error loading users:', error);
+      setFormError('حدث خطأ في تحميل المستخدمين');
+      setTimeout(() => setFormError(''), 3000);
     } finally {
       setLoading(false);
     }
@@ -131,8 +152,7 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
     }
     
     try {
-      // 1. إنشاء حساب في Auth باستخدام supabase العادي
-      // ملاحظة: هذا يتطلب أن يكون المستخدم الحالي لديه صلاحيات admin
+      // 1. إنشاء حساب في Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -159,20 +179,16 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
       }
       
       // 2. إضافة المستخدم إلى جدول users
-      const { error: userError } = await supabase
+      await supabase
         .from('users')
-        .insert({
+        .upsert({
           id: authData.user.id,
           email: formData.email,
           full_name: formData.full_name,
           school_id: currentSchool.id,
           is_active: true,
           created_at: new Date().toISOString(),
-        });
-      
-      if (userError) {
-        console.error('Error creating user record:', userError);
-      }
+        }, { onConflict: 'id' });
       
       // 3. إضافة دور المستخدم في المدرسة
       const { error: roleError } = await supabase
@@ -213,7 +229,6 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
       
       if (error) throw error;
       
-      // تحديث الواجهة
       setUsers(prev => prev.map(u => 
         u.id === userId ? { ...u, role: newRole } : u
       ));
@@ -238,21 +253,17 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
     
     try {
       // حذف دور المستخدم
-      const { error: roleDeleteError } = await supabase
+      await supabase
         .from('user_school_roles')
         .delete()
         .eq('user_id', user.id)
         .eq('school_id', currentSchool?.id);
       
-      if (roleDeleteError) throw roleDeleteError;
-      
-      // تحديث حالة المستخدم في جدول users (تعطيل بدل حذف)
-      const { error: userUpdateError } = await supabase
+      // تحديث حالة المستخدم
+      await supabase
         .from('users')
         .update({ is_active: false })
         .eq('id', user.id);
-      
-      if (userUpdateError) throw userUpdateError;
       
       setUsers(prev => prev.filter(u => u.id !== user.id));
       setFormSuccess(`تم حذف المستخدم ${user.full_name} بنجاح`);
@@ -272,7 +283,6 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
       full_name: '',
       role: 'moderator',
     });
-    setEditingUser(null);
     setShowForm(false);
     setFormError('');
     setFormSuccess('');
@@ -393,7 +403,7 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                       <div>
                         <span className="text-sm text-gray-500">الدور</span>
                         <div className="flex items-center gap-2 mt-1">
@@ -410,20 +420,10 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
                           {new Date(user.created_at).toLocaleDateString('ar-EG')}
                         </p>
                       </div>
-                      
-                      <div>
-                        <span className="text-sm text-gray-500">آخر تسجيل دخول</span>
-                        <p className="text-sm font-medium text-gray-900 mt-1">
-                          {user.last_login 
-                            ? new Date(user.last_login).toLocaleDateString('ar-EG')
-                            : 'لم يسجل بعد'}
-                        </p>
-                      </div>
                     </div>
                   </div>
                   
                   <div className="flex gap-2">
-                    {/* تغيير الدور */}
                     <select
                       value={user.role}
                       onChange={(e) => handleUpdateRole(user.id, e.target.value)}
@@ -436,7 +436,6 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
                       ))}
                     </select>
                     
-                    {/* حذف المستخدم */}
                     {user.id !== currentUser?.id && (
                       <button
                         onClick={() => handleDeleteUser(user)}
@@ -459,9 +458,7 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
-              <h3 className="text-xl font-bold text-gray-900">
-                {editingUser ? 'تعديل بيانات المستخدم' : 'إضافة مستخدم جديد'}
-              </h3>
+              <h3 className="text-xl font-bold text-gray-900">إضافة مستخدم جديد</h3>
               <button
                 onClick={resetForm}
                 className="text-gray-400 hover:text-gray-600"
@@ -558,8 +555,6 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
                   <li>• <span className="font-semibold">مدير:</span> صلاحيات كاملة (إدارة جميع البيانات والمستخدمين)</li>
                   <li>• <span className="font-semibold">محاسب:</span> إدارة الرسوم الدراسية والمصروفات والتقارير المالية</li>
                   <li>• <span className="font-semibold">مشرف:</span> إدارة الطلاب والمعلمين (إضافة/تعديل/حذف)</li>
-                  <li>• <span className="font-semibold">معلم:</span> عرض الطلاب فقط</li>
-                  <li>• <span className="font-semibold">ولي أمر:</span> متابعة بيانات الطالب فقط</li>
                 </ul>
               </div>
 
