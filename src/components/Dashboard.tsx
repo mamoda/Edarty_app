@@ -34,6 +34,8 @@ import {
   School,
   Mail,
   AlertCircle,
+  Shield,
+  UserCog,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -46,6 +48,7 @@ import ExpensesManager from "./ExpensesManager";
 import TeachersManager from "./TeachersManager";
 import ProfitReport from "./ProfitReport";
 import FinancialReports from "./FinancialReports";
+import UserManagement from "./UserManagement";
 import logo from "../assets/logo.png";
 import backgroundPattern from "../assets/background-pattern.png";
 import backgroundWave from "../assets/background-wave.png";
@@ -58,7 +61,8 @@ type View =
   | "fees"
   | "expenses"
   | "reports"
-  | "financial";
+  | "financial"
+  | "users";
 
 interface StatCardProps {
   title: string;
@@ -683,13 +687,15 @@ const ViewRenderer: React.FC<{
       return <ProfitReport />;
     case "financial":
       return <FinancialReports />;
+    case "users":
+      return <UserManagement onUpdate={onUpdate} />;
     default:
       return null;
   }
 };
 
 export default function Dashboard() {
-  const { user, signOut, currentSchool, currentRole } = useAuth();
+  const { user, signOut, currentSchool, currentRole, hasPermission } = useAuth();
   const { schoolName, schoolEmail, schoolIdentifier } = useSchoolData();
   const { language, toggleLanguage, t } = useLanguage();
 
@@ -724,7 +730,7 @@ export default function Dashboard() {
   const [currentBackground, setCurrentBackground] = useState(0);
   const [dataError, setDataError] = useState<string | null>(null);
   
-  // ✅ منع التحميل المزدوج - مع إعادة تعيين عند تغيير المدرسة
+  // منع التحميل المزدوج
   const hasLoadedRef = useRef<string | null>(null);
 
   // مجموعة الخلفيات المتاحة
@@ -751,18 +757,17 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ إعادة تعيين hasLoadedRef عند تغيير المدرسة
+  // إعادة تعيين hasLoadedRef عند تغيير المدرسة
   useEffect(() => {
     hasLoadedRef.current = null;
     setLoading(true);
   }, [currentSchool?.id]);
 
-  // ✅ تحميل البيانات مرة واحدة لكل مدرسة
+  // تحميل البيانات مرة واحدة لكل مدرسة
   useEffect(() => {
     if (user && currentSchool) {
       const schoolId = currentSchool.id;
       
-      // إذا لم يتم تحميل هذه المدرسة من قبل
       if (hasLoadedRef.current !== schoolId) {
         console.log("👤 Loading statistics for school:", currentSchool.name);
         hasLoadedRef.current = schoolId;
@@ -962,6 +967,7 @@ export default function Dashboard() {
       setLoading(false);
     }
   };
+  
   const handleViewChange = (view: View) => {
     setCurrentView(view);
     if (view === "dashboard") {
@@ -987,6 +993,9 @@ export default function Dashboard() {
   const revenueTrend = calculateTrend();
   const expensesTrend = calculateTrend();
   const profitTrend = calculateTrend();
+
+  // التحقق من صلاحية الوصول لإدارة المستخدمين
+  const canManageUsers = currentRole === 'admin';
 
   return (
     <div
@@ -1181,6 +1190,16 @@ export default function Dashboard() {
                   />
 
                   <div className="h-px bg-gray-200 my-2"></div>
+
+                  {canManageUsers && (
+                    <ModernMenuItem
+                      label="إدارة المستخدمين"
+                      icon={Shield}
+                      view="users"
+                      currentView={currentView}
+                      onClick={() => handleViewChange("users")}
+                    />
+                  )}
 
                   <button className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200">
                     <Settings className="w-4 h-4" />
