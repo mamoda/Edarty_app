@@ -1,4 +1,4 @@
-// src/context/AuthContext.tsx - النسخة النهائية بدون أخطاء
+// src/context/AuthContext.tsx - نسخة مبسطة بدون timeout
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { CustomUser, UserSchoolRole, School } from '../types/database';
@@ -18,17 +18,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// دالة مساعدة للاستعلام مع timeout
-const queryWithTimeout = async <T,>(
-  query: any,
-  timeoutMs: number = 5000
-): Promise<T> => {
-  const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error(`Query timeout after ${timeoutMs}ms`)), timeoutMs)
-  );
-  return Promise.race([query, timeoutPromise]) as Promise<T>;
-};
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CustomUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,121 +25,146 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentSchool, setCurrentSchool] = useState<School | null>(null);
   const [currentRole, setCurrentRole] = useState<string | null>(null);
 
-  // دالة تحميل البيانات مع timeout
-  const loadUserData = async (supabaseUser: any) => {
-    if (!supabaseUser) return;
-    
-    console.log('📥 Loading user data for:', supabaseUser.email);
-    
-    try {
-      // جلب بيانات المستخدم مع timeout
-      console.log('📊 Fetching profile...');
-      let profile = null;
-      try {
-        const result = await queryWithTimeout<{ data: any }>(
-          supabase
-            .from('users')
-            .select('*')
-            .eq('id', supabaseUser.id)
-            .maybeSingle(),
-          5000
-        );
-        profile = result?.data;
-      } catch (err) {
-        console.warn('Profile query timeout:', err);
-      }
-      console.log('📊 Profile:', profile);
-      
-      // جلب أدوار المستخدم مع timeout
-      console.log('👥 Fetching roles...');
-      let roles: any[] = [];
-      try {
-        const result = await queryWithTimeout<{ data: any[] }>(
-          supabase
-            .from('user_school_roles')
-            .select('*, school:schools(*)')
-            .eq('user_id', supabaseUser.id),
-          5000
-        );
-        roles = result?.data || [];
-      } catch (err) {
-        console.warn('Roles query timeout:', err);
-      }
-      console.log('👥 Roles count:', roles?.length || 0);
-      
-      // تعيين المستخدم (حتى لو فشلت الاستعلامات)
-      const customUser: CustomUser = {
-        ...supabaseUser,
-        school_id: profile?.school_id,
-        full_name: profile?.full_name || supabaseUser.user_metadata?.full_name,
-      };
-      setUser(customUser);
-      
-      // تعيين الأدوار
-      if (roles && roles.length > 0) {
-        setUserRoles(roles);
-        
-        // تحديد المدرسة الحالية
-        const primaryRole = roles.find((r: any) => r.is_primary);
-        if (primaryRole?.school) {
-          setCurrentSchool(primaryRole.school);
-          setCurrentRole(primaryRole.role);
-          console.log('🏫 School set:', primaryRole.school.name);
-        } else if (roles[0]?.school) {
-          setCurrentSchool(roles[0].school);
-          setCurrentRole(roles[0].role);
-          console.log('🏫 School set:', roles[0].school.name);
-        }
-      } else {
-        setUserRoles([]);
-        setCurrentSchool(null);
-        setCurrentRole(null);
-        console.log('⚠️ No roles found');
-      }
-      
-      console.log('✅ User data loaded');
-    } catch (error) {
-      console.error('Error loading user data:', error);
-      // في حالة الخطأ، نضع المستخدم الأساسي
-      setUser(supabaseUser as CustomUser);
-    }
-  };
-
   useEffect(() => {
     let isMounted = true;
-    let authTimeout: NodeJS.Timeout;
 
-    // الاستماع لتغييرات المصادقة
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        console.log('🔄 Auth event:', _event);
+    const initializeAuth = async () => {
+      try {
+        console.log('🔐 Initializing auth...');
+        
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session?.user) {
+          console.log('ℹ️ No session found');
+          if (isMounted) setLoading(false);
+          return;
+        }
+        
+        console.log('✅ User found:', session.user.email);
+        
+        // جلب بيانات المستخدم من جدول users - بدون timeout
+        console.log('📊 Fetching profile...');
+        const { data: profile, error: profileError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .maybeSingle();
+        
+        if (profileError) {
+          console.error('Profile error:', profileError);
+        }
+        console.log('📊 Profile:', profile);
+        
+        // جلب أدوار المستخدم - بدون timeout
+        console.log('👥 Fetching roles...');
+        const { data: roles, error: rolesError } = await supabase
+          .from('user_school_roles')
+          .select('*, school:schools(*)')
+          .eq('user_id', session.user.id);
+        
+        if (rolesError) {
+          console.error('Roles error:', rolesError);
+        }
+        console.log('👥 Roles count:', roles?.length || 0);
         
         if (!isMounted) return;
         
+        // تعيين المستخدم
+        const customUser: CustomUser = {
+          ...session.user,
+          school_id: profile?.school_id,
+          full_name: profile?.full_name || session.user.user_metadata?.full_name,
+          schoolName: profile?.school_name,
+          schoolAddress: profile?.school_address,
+          schoolPhone: profile?.school_phone,
+          taxNumber: profile?.tax_number,
+        };
+        setUser(customUser);
+        
+        // تعيين الأدوار
+        setUserRoles(roles || []);
+        
+        // تحديد المدرسة الحالية
+        const primaryRole = roles?.find(r => r.is_primary);
+        let school: School | null = null;
+        let role: string | null = null;
+        
+        if (primaryRole?.school) {
+          school = primaryRole.school;
+          role = primaryRole.role;
+          console.log('🏫 Primary school found:', school?.name);
+        } else if (roles?.[0]?.school) {
+          school = roles[0].school;
+          role = roles[0].role;
+          console.log('🏫 First school found:', school?.name);
+        } else {
+          console.log('⚠️ No school found in roles!');
+        }
+        
+        setCurrentSchool(school);
+        setCurrentRole(role);
+        
+        console.log('✅ User data loaded');
+        
+        if (isMounted) {
+          setLoading(false);
+          console.log('✅ Loading complete');
+        }
+        
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    initializeAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (!isMounted) return;
+        
+        console.log('🔄 Auth event:', _event);
+        
         if (session?.user) {
-          await loadUserData(session.user);
+          const { data: profile } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .maybeSingle();
+          
+          const { data: roles } = await supabase
+            .from('user_school_roles')
+            .select('*, school:schools(*)')
+            .eq('user_id', session.user.id);
+          
+          const customUser: CustomUser = {
+            ...session.user,
+            school_id: profile?.school_id,
+            full_name: profile?.full_name,
+          };
+          setUser(customUser);
+          setUserRoles(roles || []);
+          
+          const primaryRole = roles?.find(r => r.is_primary);
+          if (primaryRole?.school) {
+            setCurrentSchool(primaryRole.school);
+            setCurrentRole(primaryRole.role);
+          } else if (roles?.[0]?.school) {
+            setCurrentSchool(roles[0].school);
+            setCurrentRole(roles[0].role);
+          }
         } else {
           setUser(null);
           setUserRoles([]);
           setCurrentSchool(null);
           setCurrentRole(null);
         }
-        
         setLoading(false);
       }
     );
 
-    // timeout أمان: بعد 8 ثواني، قم بإيقاف التحميل مهما حدث
-    authTimeout = setTimeout(() => {
-      if (isMounted && loading) {
-        console.warn('⚠️ Global auth timeout - forcing loading to false');
-        setLoading(false);
-      }
-    }, 8000);
-
     return () => {
       isMounted = false;
-      clearTimeout(authTimeout);
       subscription.unsubscribe();
     };
   }, []);
@@ -173,12 +187,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!error && data.user) {
       await supabase
         .from('users')
-        .insert([{ 
+        .upsert([{ 
           id: data.user.id, 
           email, 
           full_name: fullName,
+          school_id: null,
           created_at: new Date().toISOString()
-        }]);
+        }], { onConflict: 'id' });
     }
     
     setLoading(false);
@@ -202,9 +217,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const hasPermission = (_permission: string): boolean => {
+  const hasPermission = (permission: string): boolean => {
     if (currentRole === 'admin') return true;
-    return false;
+    
+    const rolePermissions: Record<string, string[]> = {
+      accountant: ['view_financials', 'manage_fees', 'manage_expenses', 'view_reports', 'add_fees', 'edit_fees', 'delete_fees', 'add_expenses', 'edit_expenses', 'delete_expenses'],
+      moderator: ['view_students', 'view_teachers', 'edit_students', 'edit_teachers', 'add_students', 'delete_students'],
+    };
+    
+    const permissions = rolePermissions[currentRole || ''] || [];
+    return permissions.includes(permission);
   };
 
   return (
