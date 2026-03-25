@@ -1,5 +1,6 @@
 // src/components/Dashboard.tsx
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Users,
   TrendingDown,
@@ -48,6 +49,7 @@ import TeachersManager from "./TeachersManager";
 import ProfitReport from "./ProfitReport";
 import FinancialReports from "./FinancialReports";
 import UserManagement from "./UserManagement";
+import { useFeatureGate } from "../hooks/useFeatureGate";
 import logo from "../assets/logo.png";
 import backgroundPattern from "../assets/background-pattern.png";
 import backgroundWave from "../assets/background-wave.png";
@@ -102,6 +104,9 @@ interface HeaderProps {
   t: (key: string) => string;
   schoolName: string;
   schoolIdentifier: string;
+  subscriptionPlan: string | null;
+  subscriptionExpiresAt: string | null;
+  onUpgrade: () => void;
 }
 
 interface ChatProps {
@@ -365,10 +370,38 @@ const ModernHeader: React.FC<HeaderProps> = ({
   language,
   toggleLanguage,
   t,
+  subscriptionPlan,
+  subscriptionExpiresAt,
+  onUpgrade,
 }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+
+  // حساب الأيام المتبقية في الاشتراك
+  const getDaysRemaining = () => {
+    if (!subscriptionExpiresAt) return null;
+    const expires = new Date(subscriptionExpiresAt);
+    const today = new Date();
+    const diffTime = expires.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const daysRemaining = getDaysRemaining();
+  const isExpiringSoon = daysRemaining !== null && daysRemaining <= 7 && daysRemaining > 0;
+  const isExpired = daysRemaining !== null && daysRemaining <= 0;
+
+  // تحديد اسم الخطة بالعربية
+  const getPlanName = () => {
+    const plans: Record<string, string> = {
+      free: "مجاني",
+      basic: "أساسي",
+      pro: "احترافي",
+      enterprise: "مؤسسات",
+    };
+    return plans[subscriptionPlan || "free"] || "مجاني";
+  };
 
   return (
     <header className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-50">
@@ -388,6 +421,35 @@ const ModernHeader: React.FC<HeaderProps> = ({
             </div>
 
             <div className="h-6 w-px bg-gray-200"></div>
+
+            {/* عرض الخطة الحالية */}
+            <div className="hidden md:flex items-center gap-2">
+              <div className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
+                subscriptionPlan === 'pro' || subscriptionPlan === 'enterprise'
+                  ? 'bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700'
+                  : subscriptionPlan === 'basic'
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'bg-gray-100 text-gray-600'
+              }`}>
+                <span className="flex items-center gap-1">
+                  <Crown className="w-3 h-3" />
+                  {getPlanName()}
+                </span>
+              </div>
+              
+              {daysRemaining !== null && daysRemaining > 0 && (
+                <div className={`text-xs ${isExpiringSoon ? 'text-orange-500' : 'text-gray-500'}`}>
+                  {language === 'ar' ? `متبقي ${daysRemaining} يوم` : `${daysRemaining} days left`}
+                </div>
+              )}
+              
+              {isExpired && (
+                <div className="text-xs text-red-500 font-medium">
+                  {language === 'ar' ? 'انتهى الاشتراك' : 'Expired'}
+                </div>
+              )}
+            </div>
+
             <nav className="hidden md:flex items-center gap-1">
               <button
                 onClick={() => onViewChange("dashboard")}
@@ -418,10 +480,6 @@ const ModernHeader: React.FC<HeaderProps> = ({
                 className="w-full px-4 py-2 pr-10 bg-gray-100/50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all duration-300 text-sm placeholder:text-gray-400"
               />
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors duration-300" />
-
-              <kbd className="absolute left-10 top-1/2 transform -translate-y-1/2 hidden group-focus-within:inline-flex items-center gap-1 px-1.5 py-0.5 bg-gray-200/80 rounded text-xs text-gray-500">
-                ⌘K
-              </kbd>
             </div>
           </div>
 
@@ -464,7 +522,29 @@ const ModernHeader: React.FC<HeaderProps> = ({
                     </h3>
                   </div>
                   <div className="max-h-96 overflow-y-auto">
-                    {[1, 2, 3].map((i) => (
+                    {isExpiringSoon && (
+                      <div className="p-3 hover:bg-gray-50/80 transition-colors duration-200 border-b border-gray-100">
+                        <div className="flex items-start gap-3">
+                          <div className="p-1.5 bg-orange-100 rounded-lg">
+                            <AlertCircle className="w-3 h-3 text-orange-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-900">
+                              {language === 'ar' 
+                                ? `اشتراكك سينتهي بعد ${daysRemaining} يوم`
+                                : `Your subscription expires in ${daysRemaining} days`}
+                            </p>
+                            <button
+                              onClick={onUpgrade}
+                              className="text-xs text-blue-600 mt-1 hover:underline"
+                            >
+                              {language === 'ar' ? 'جدد الآن' : 'Renew now'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {[1, 2].map((i) => (
                       <div
                         key={i}
                         className="p-3 hover:bg-gray-50/80 transition-colors duration-200 border-b border-gray-100 last:border-0"
@@ -489,10 +569,28 @@ const ModernHeader: React.FC<HeaderProps> = ({
               )}
             </div>
 
-            <button className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-amber-500/25 transition-all duration-300">
-              <Crown className="w-4 h-4" />
-              <span>{t("upgrade")}</span>
-            </button>
+            {/* زر الترقية المحسن */}
+            {subscriptionPlan !== 'enterprise' && (
+              <button
+                onClick={onUpgrade}
+                className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-300 ${
+                  isExpired
+                    ? 'bg-gradient-to-r from-red-500 to-rose-500 text-white animate-pulse hover:shadow-lg hover:shadow-red-500/25'
+                    : subscriptionPlan === 'pro'
+                    ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:shadow-lg hover:shadow-purple-500/25'
+                    : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg hover:shadow-amber-500/25'
+                }`}
+              >
+                <Crown className="w-4 h-4" />
+                <span>
+                  {isExpired
+                    ? language === 'ar' ? 'جدد الاشتراك' : 'Renew'
+                    : subscriptionPlan === 'pro'
+                    ? language === 'ar' ? 'ترقية المؤسسة' : 'Upgrade Enterprise'
+                    : t("upgrade")}
+                </span>
+              </button>
+            )}
 
             <div className="relative">
               <button
@@ -503,15 +601,35 @@ const ModernHeader: React.FC<HeaderProps> = ({
               </button>
 
               {showUserMenu && (
-                <div className="absolute left-0 mt-2 w-48 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200/50 overflow-hidden">
+                <div className="absolute left-0 mt-2 w-56 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200/50 overflow-hidden">
                   <div className="p-3 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-gray-900 truncate">
                       {user?.email}
                     </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {t("freePlan")}
-                    </p>
+                    <div className="flex items-center justify-between mt-1">
+                      <p className="text-xs text-gray-500">
+                        {getPlanName()} {language === 'ar' ? 'باقة' : 'Plan'}
+                      </p>
+                      {daysRemaining !== null && daysRemaining > 0 && (
+                        <p className={`text-xs ${isExpiringSoon ? 'text-orange-500' : 'text-gray-400'}`}>
+                          {daysRemaining} {language === 'ar' ? 'يوم متبقي' : 'days left'}
+                        </p>
+                      )}
+                    </div>
                   </div>
+                  
+                  {subscriptionPlan !== 'enterprise' && (
+                    <button
+                      onClick={onUpgrade}
+                      className="w-full text-right p-3 text-sm text-amber-600 hover:bg-amber-50/80 transition-colors duration-200 flex items-center gap-2"
+                    >
+                      <Crown className="w-4 h-4" />
+                      {isExpired 
+                        ? (language === 'ar' ? 'تجديد الاشتراك' : 'Renew Subscription')
+                        : (language === 'ar' ? 'ترقية الباقة' : 'Upgrade Plan')}
+                    </button>
+                  )}
+                  
                   <button
                     onClick={onSignOut}
                     className="w-full text-right p-3 text-sm text-red-600 hover:bg-red-50/80 transition-colors duration-200"
@@ -694,9 +812,11 @@ const ViewRenderer: React.FC<{
 };
 
 export default function Dashboard() {
-  const { user, signOut, currentSchool, currentRole } = useAuth();
+  const navigate = useNavigate();
+  const { user, signOut, currentSchool, currentRole, subscriptionPlan, subscriptionExpiresAt, refreshSchoolData } = useAuth();
   const { schoolName, schoolEmail, schoolIdentifier } = useSchoolData();
   const { language, toggleLanguage, t } = useLanguage();
+  const { showUpgradePrompt } = useFeatureGate();
 
   const [currentView, setCurrentView] = useState<View>("dashboard");
   const [stats, setStats] = useState<EnhancedStatistics>({
@@ -756,6 +876,28 @@ export default function Dashboard() {
     }, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // دالة للتعامل مع زر الترقية
+  const handleUpgrade = async () => {
+    // تسجيل محاولة الترقية في الـ Activity Log
+    if (user && currentSchool) {
+      try {
+        await supabase.from("activity_logs").insert({
+          user_id: user.id,
+          school_id: currentSchool.id,
+          action: "upgrade_clicked",
+          entity_type: "subscription",
+          entity_id: currentSchool.id,
+          new_data: { current_plan: subscriptionPlan },
+        });
+      } catch (error) {
+        console.error("Error logging upgrade click:", error);
+      }
+    }
+    
+    // التوجيه لصفحة الترقية
+    navigate("/pricing");
+  };
 
   // تحميل البيانات مرة واحدة
   const loadStatistics = async () => {
@@ -968,6 +1110,7 @@ export default function Dashboard() {
       loadStatistics();
     }
   }, [user, currentSchool]);
+  
   const handleViewChange = (view: View) => {
     setCurrentView(view);
     // ✅ لا نعيد تحميل الإحصائيات هنا
@@ -1048,6 +1191,9 @@ export default function Dashboard() {
           t={t}
           schoolName={schoolName}
           schoolIdentifier={schoolIdentifier}
+          subscriptionPlan={subscriptionPlan}
+          subscriptionExpiresAt={subscriptionExpiresAt}
+          onUpgrade={handleUpgrade}
         />
 
         {/* شريط حالة المدرسة */}
