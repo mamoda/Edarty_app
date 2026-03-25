@@ -75,18 +75,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ============================================
-  // Load User Data (FIXED)
+  // Load User Data (FIXED - مع التأكد من setLoading)
   // ============================================
 
   const loadUserData = useCallback(async (user: any) => {
     if (!user) {
-      console.log("No user to load");
+      console.log("❌ No user to load");
       setLoading(false);
       return;
     }
     
     if (isLoadingRef.current) {
-      console.log("Already loading user data, skipping...");
+      console.log("⏳ Already loading user data, skipping...");
       return;
     }
 
@@ -102,21 +102,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthUser(authUserData);
 
       // 2. profile (public.users)
-      const { data: profileData } = await supabase
+      console.log("🔍 Fetching profile...");
+      const { data: profileData, error: profileError } = await supabase
         .from("users")
         .select("*")
         .eq("id", user.id)
         .maybeSingle();
 
+      if (profileError) {
+        console.error("Profile error:", profileError);
+      }
       setProfile(profileData || null);
       console.log("✅ Profile loaded:", profileData ? profileData.full_name : "not found");
 
       // 3. roles + schools
-      const { data: roles } = await supabase
+      console.log("🔍 Fetching roles...");
+      const { data: roles, error: rolesError } = await supabase
         .from("user_school_roles")
         .select("*, school:schools(*)")
         .eq("user_id", user.id);
 
+      if (rolesError) {
+        console.error("Roles error:", rolesError);
+      }
       const rolesData = roles || [];
       setUserRoles(rolesData);
       console.log("✅ Roles loaded:", rolesData.length);
@@ -124,11 +132,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 4. select school
       if (rolesData.length > 0) {
         const savedSchoolId = localStorage.getItem(`current_school_${user.id}`);
+        console.log("Saved school ID from localStorage:", savedSchoolId);
 
         const selectedRole =
           rolesData.find((r: any) => r.school_id === savedSchoolId) ||
           rolesData.find((r: any) => r.is_primary) ||
           rolesData[0];
+
+        console.log("Selected role:", selectedRole?.role, "school:", selectedRole?.school?.name);
 
         if (selectedRole?.school) {
           setCurrentSchool(selectedRole.school);
@@ -142,18 +153,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         console.log("⚠️ No roles found for user");
-        // ✅ لا توجد أدوار - لا توجد مدرسة
         setCurrentSchool(null);
         setCurrentRole(null);
       }
 
       console.log("✅ User data loaded successfully");
     } catch (error) {
-      console.error("loadUserData error:", error);
+      console.error("❌ loadUserData error:", error);
     } finally {
       isLoadingRef.current = false;
       setLoading(false);
-      console.log("Loading state set to false");
+      console.log("🟢 Loading state set to false");
     }
   }, []);
 
@@ -170,7 +180,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const init = async () => {
       try {
         console.log("🔐 Initializing auth...");
-        const { data } = await supabase.auth.getSession();
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Session error:", error);
+        }
+        
         console.log("Session user:", data.session?.user?.email || "none");
 
         if (data.session?.user && mounted) {
