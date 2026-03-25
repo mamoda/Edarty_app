@@ -53,7 +53,7 @@ const roleOptions = [
 ];
 
 export default function UserManagement({ onUpdate }: UserManagementProps) {
-  const { currentSchool, user: currentUser } = useAuth();
+  const { currentSchool, authUser } = useAuth();
   const [users, setUsers] = useState<SchoolUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -245,7 +245,7 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
   };
 
   const handleDeleteUser = async (user: SchoolUser) => {
-    if (user.id === currentUser?.id) {
+    if (user.id === authUser?.id) {
       setFormError('لا يمكن حذف حسابك الحالي');
       setTimeout(() => setFormError(''), 3000);
       return;
@@ -438,7 +438,7 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
                       ))}
                     </select>
                     
-                    {user.id !== currentUser?.id && (
+                    {user.id !== authUser?.id && (
                       <button
                         onClick={() => handleDeleteUser(user)}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"

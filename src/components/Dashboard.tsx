@@ -138,6 +138,9 @@ interface EnhancedStatistics extends Statistics {
   todayCollections: number;
   thisWeekCollections: number;
   thisMonthCollections: number;
+  totalSalaries: number; 
+  activeTeachers: number; 
+  totalTeachers: number; 
 }
 
 // دوال التنسيق المحسنة
@@ -389,7 +392,8 @@ const ModernHeader: React.FC<HeaderProps> = ({
   };
 
   const daysRemaining = getDaysRemaining();
-  const isExpiringSoon = daysRemaining !== null && daysRemaining <= 7 && daysRemaining > 0;
+  const isExpiringSoon =
+    daysRemaining !== null && daysRemaining <= 7 && daysRemaining > 0;
   const isExpired = daysRemaining !== null && daysRemaining <= 0;
 
   // تحديد اسم الخطة بالعربية
@@ -424,28 +428,35 @@ const ModernHeader: React.FC<HeaderProps> = ({
 
             {/* عرض الخطة الحالية */}
             <div className="hidden md:flex items-center gap-2">
-              <div className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
-                subscriptionPlan === 'pro' || subscriptionPlan === 'enterprise'
-                  ? 'bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700'
-                  : subscriptionPlan === 'basic'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'bg-gray-100 text-gray-600'
-              }`}>
+              <div
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
+                  subscriptionPlan === "pro" ||
+                  subscriptionPlan === "enterprise"
+                    ? "bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700"
+                    : subscriptionPlan === "basic"
+                      ? "bg-blue-100 text-blue-700"
+                      : "bg-gray-100 text-gray-600"
+                }`}
+              >
                 <span className="flex items-center gap-1">
                   <Crown className="w-3 h-3" />
                   {getPlanName()}
                 </span>
               </div>
-              
+
               {daysRemaining !== null && daysRemaining > 0 && (
-                <div className={`text-xs ${isExpiringSoon ? 'text-orange-500' : 'text-gray-500'}`}>
-                  {language === 'ar' ? `متبقي ${daysRemaining} يوم` : `${daysRemaining} days left`}
+                <div
+                  className={`text-xs ${isExpiringSoon ? "text-orange-500" : "text-gray-500"}`}
+                >
+                  {language === "ar"
+                    ? `متبقي ${daysRemaining} يوم`
+                    : `${daysRemaining} days left`}
                 </div>
               )}
-              
+
               {isExpired && (
                 <div className="text-xs text-red-500 font-medium">
-                  {language === 'ar' ? 'انتهى الاشتراك' : 'Expired'}
+                  {language === "ar" ? "انتهى الاشتراك" : "Expired"}
                 </div>
               )}
             </div>
@@ -530,7 +541,7 @@ const ModernHeader: React.FC<HeaderProps> = ({
                           </div>
                           <div className="flex-1">
                             <p className="text-sm text-gray-900">
-                              {language === 'ar' 
+                              {language === "ar"
                                 ? `اشتراكك سينتهي بعد ${daysRemaining} يوم`
                                 : `Your subscription expires in ${daysRemaining} days`}
                             </p>
@@ -538,7 +549,7 @@ const ModernHeader: React.FC<HeaderProps> = ({
                               onClick={onUpgrade}
                               className="text-xs text-blue-600 mt-1 hover:underline"
                             >
-                              {language === 'ar' ? 'جدد الآن' : 'Renew now'}
+                              {language === "ar" ? "جدد الآن" : "Renew now"}
                             </button>
                           </div>
                         </div>
@@ -570,24 +581,28 @@ const ModernHeader: React.FC<HeaderProps> = ({
             </div>
 
             {/* زر الترقية المحسن */}
-            {subscriptionPlan !== 'enterprise' && (
+            {subscriptionPlan !== "enterprise" && (
               <button
                 onClick={onUpgrade}
                 className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-300 ${
                   isExpired
-                    ? 'bg-gradient-to-r from-red-500 to-rose-500 text-white animate-pulse hover:shadow-lg hover:shadow-red-500/25'
-                    : subscriptionPlan === 'pro'
-                    ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:shadow-lg hover:shadow-purple-500/25'
-                    : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg hover:shadow-amber-500/25'
+                    ? "bg-gradient-to-r from-red-500 to-rose-500 text-white animate-pulse hover:shadow-lg hover:shadow-red-500/25"
+                    : subscriptionPlan === "pro"
+                      ? "bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:shadow-lg hover:shadow-purple-500/25"
+                      : "bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg hover:shadow-amber-500/25"
                 }`}
               >
                 <Crown className="w-4 h-4" />
                 <span>
                   {isExpired
-                    ? language === 'ar' ? 'جدد الاشتراك' : 'Renew'
-                    : subscriptionPlan === 'pro'
-                    ? language === 'ar' ? 'ترقية المؤسسة' : 'Upgrade Enterprise'
-                    : t("upgrade")}
+                    ? language === "ar"
+                      ? "جدد الاشتراك"
+                      : "Renew"
+                    : subscriptionPlan === "pro"
+                      ? language === "ar"
+                        ? "ترقية المؤسسة"
+                        : "Upgrade Enterprise"
+                      : t("upgrade")}
                 </span>
               </button>
             )}
@@ -608,28 +623,35 @@ const ModernHeader: React.FC<HeaderProps> = ({
                     </p>
                     <div className="flex items-center justify-between mt-1">
                       <p className="text-xs text-gray-500">
-                        {getPlanName()} {language === 'ar' ? 'باقة' : 'Plan'}
+                        {getPlanName()} {language === "ar" ? "باقة" : "Plan"}
                       </p>
                       {daysRemaining !== null && daysRemaining > 0 && (
-                        <p className={`text-xs ${isExpiringSoon ? 'text-orange-500' : 'text-gray-400'}`}>
-                          {daysRemaining} {language === 'ar' ? 'يوم متبقي' : 'days left'}
+                        <p
+                          className={`text-xs ${isExpiringSoon ? "text-orange-500" : "text-gray-400"}`}
+                        >
+                          {daysRemaining}{" "}
+                          {language === "ar" ? "يوم متبقي" : "days left"}
                         </p>
                       )}
                     </div>
                   </div>
-                  
-                  {subscriptionPlan !== 'enterprise' && (
+
+                  {subscriptionPlan !== "enterprise" && (
                     <button
                       onClick={onUpgrade}
                       className="w-full text-right p-3 text-sm text-amber-600 hover:bg-amber-50/80 transition-colors duration-200 flex items-center gap-2"
                     >
                       <Crown className="w-4 h-4" />
-                      {isExpired 
-                        ? (language === 'ar' ? 'تجديد الاشتراك' : 'Renew Subscription')
-                        : (language === 'ar' ? 'ترقية الباقة' : 'Upgrade Plan')}
+                      {isExpired
+                        ? language === "ar"
+                          ? "تجديد الاشتراك"
+                          : "Renew Subscription"
+                        : language === "ar"
+                          ? "ترقية الباقة"
+                          : "Upgrade Plan"}
                     </button>
                   )}
-                  
+
                   <button
                     onClick={onSignOut}
                     className="w-full text-right p-3 text-sm text-red-600 hover:bg-red-50/80 transition-colors duration-200"
@@ -813,7 +835,14 @@ const ViewRenderer: React.FC<{
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { user, signOut, currentSchool, currentRole, subscriptionPlan, subscriptionExpiresAt, refreshSchoolData } = useAuth();
+  const {
+    authUser: user,
+    signOut,
+    currentSchool,
+    currentRole,
+    subscriptionPlan,
+    subscriptionExpiresAt,
+  } = useAuth();
   const { schoolName, schoolEmail, schoolIdentifier } = useSchoolData();
   const { language, toggleLanguage, t } = useLanguage();
   const { showUpgradePrompt } = useFeatureGate();
@@ -894,7 +923,7 @@ export default function Dashboard() {
         console.error("Error logging upgrade click:", error);
       }
     }
-    
+
     // التوجيه لصفحة الترقية
     navigate("/pricing");
   };
@@ -1110,10 +1139,9 @@ export default function Dashboard() {
       loadStatistics();
     }
   }, [user, currentSchool]);
-  
+
   const handleViewChange = (view: View) => {
     setCurrentView(view);
-    // ✅ لا نعيد تحميل الإحصائيات هنا
   };
 
   // زر التحديث اليدوي

@@ -35,6 +35,22 @@ export interface School {
   updated_at: string;
 }
 
+
+
+export interface SchoolData {
+  id?: string;
+  schoolId?: string;
+  schoolName: string;
+  schoolEmail: string;
+  schoolIdentifier: string;
+  schoolAddress?: string;
+  schoolPhone?: string;
+  schoolTaxNumber?: string;
+  subscriptionPlan?: string;
+  subscriptionExpiresAt?: string;
+  features?: string[];
+}
+
 // ============================================
 // User Profile (public.users)
 // ============================================
@@ -284,6 +300,38 @@ export interface TeacherSalary {
   created_at: string;
   school_id: string;
 }
+
+export interface Statistics {
+  totalStudents: number;
+  activeStudents: number;
+  totalRevenue: number;
+  totalExpenses: number;
+  netProfit: number;
+  totalTeachers: number;        
+  activeTeachers: number;      
+  totalSalaries: number;        
+}
+
+
+// export interface EnhancedStatistics{
+//       totalSalaries: number;
+//     totalRefunds: number;
+//     netRevenue: number;
+//     paidStudents: number;
+//     partialPaidStudents: number;
+//     unpaidStudents: number;
+//     collectionRate: number;
+//     cashPayments: number;
+//     cardPayments: number;
+//     bankTransferPayments: number;
+//     checkPayments: number;
+//     todayCollections: number;
+//     thisWeekCollections: number;
+//     thisMonthCollections: number;
+
+// }
+
+
 
 // ============================================
 // Helper Types
