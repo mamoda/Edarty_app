@@ -42,13 +42,20 @@ export default function Login() {
   const ADMIN_SECRET_CODE = 'Mahmoud17237ESD@';
 
   // ✅ التوجيه التلقائي عند تسجيل الدخول
-  useEffect(() => {
-    if (isAuthenticated) {
-      console.log("✅ User is authenticated, redirecting to dashboard...");
+useEffect(() => {
+  let timeoutId: NodeJS.Timeout;
+  
+  if (isAuthenticated) {
+    // تأخير بسيط لتجنب throttle
+    timeoutId = setTimeout(() => {
       navigate('/dashboard', { replace: true });
-    }
-  }, [isAuthenticated, navigate]);
-
+    }, 50);
+  }
+  
+  return () => {
+    if (timeoutId) clearTimeout(timeoutId);
+  };
+}, [isAuthenticated, navigate]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
