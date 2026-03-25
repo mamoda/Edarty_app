@@ -1,4 +1,5 @@
 // src/context/AuthContext.tsx
+
 import {
   createContext,
   useContext,
@@ -10,16 +11,16 @@ import {
   useRef,
 } from "react";
 import { supabase } from "../lib/supabase";
-import { 
-  CustomUser, 
-  UserSchoolRole, 
-  School, 
-  UserProfileRow,
-  UserSchoolRoleWithSchool 
+import {
+  AuthUser,
+  UserProfile,
+  UserSchoolRole,
+  School,
 } from "../types/database";
 
 interface AuthContextType {
-  user: CustomUser | null;
+  authUser: AuthUser | null;
+  profile: UserProfile | null;
   loading: boolean;
   currentSchool: School | null;
   currentRole: string | null;
@@ -34,19 +35,14 @@ interface AuthContextType {
   switchSchool: (schoolId: string) => Promise<void>;
   hasPermission: (permission: string) => boolean;
   hasFeature: (feature: string) => boolean;
-  getLimits: () => {
-    maxStudents: number;
-    maxTeachers: number;
-    maxUsers: number;
-  };
-  canAccessResource: (resource: string, currentCount: number) => boolean;
   refreshSchoolData: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<CustomUser | null>(null);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRoles, setUserRoles] = useState<UserSchoolRole[]>([]);
   const [currentSchool, setCurrentSchool] = useState<School | null>(null);
@@ -54,271 +50,174 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [subscriptionPlan, setSubscriptionPlan] = useState<string | null>(null);
   const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<string | null>(null);
   const [schoolFeatures, setSchoolFeatures] = useState<string[]>([]);
-  
+
   const isLoadingRef = useRef(false);
   const initializedRef = useRef(false);
-  const authListenerRef = useRef<any>(null);
 
-  const isAuthenticated = useMemo(() => !!user, [user]);
+  const isAuthenticated = useMemo(() => !!authUser, [authUser]);
 
-  // ✅ تحميل بيانات المدرسة الحالية
+  // ============================================
+  // Load School Data
+  // ============================================
+
   const loadCurrentSchoolData = useCallback(async (schoolId: string) => {
-    if (!schoolId) return;
+    const { data, error } = await supabase
+      .from("schools")
+      .select("*")
+      .eq("id", schoolId)
+      .single();
 
-    try {
-      console.log("🏫 Loading school data for:", schoolId);
-      const { data: school, error } = await supabase
-        .from("schools")
-        .select("*")
-        .eq("id", schoolId)
-        .single();
-
-      if (error) {
-        console.error("Error loading school:", error);
-        return;
-      }
-
-      if (school) {
-        const schoolData = school as School;
-        setCurrentSchool(schoolData);
-        setSubscriptionPlan(schoolData.subscription_plan);
-        setSubscriptionExpiresAt(schoolData.subscription_expires_at);
-        setSchoolFeatures(schoolData.features || []);
-        console.log("✅ School data loaded:", schoolData.name);
-      }
-    } catch (error) {
-      console.error("Error loading school data:", error);
+    if (!error && data) {
+      setCurrentSchool(data);
+      setSubscriptionPlan(data.subscription_plan);
+      setSubscriptionExpiresAt(data.subscription_expires_at);
+      setSchoolFeatures(data.features || []);
     }
   }, []);
 
-  // ✅ تحميل بيانات المستخدم - النسخة المستقرة مع logs للتتبع
-  const loadUserData = useCallback(async (supabaseUser: any) => {
-    if (!supabaseUser) {
-      console.log("No user to load");
-      setLoading(false);
-      return;
-    }
-    
-    if (isLoadingRef.current) {
-      console.log("Already loading user data, skipping...");
-      return;
-    }
+  // ============================================
+  // Load User Data (FIXED)
+  // ============================================
+
+  const loadUserData = useCallback(async (user: any) => {
+    if (!user || isLoadingRef.current) return;
 
     isLoadingRef.current = true;
-    console.log("📥 Loading user data for:", supabaseUser.email);
 
     try {
-      // 1. تحميل الملف الشخصي
-      console.log("🔍 Step 1: Fetching profile...");
-      const { data: profile, error: profileError } = await supabase
+      // 1. auth user
+      const authUserData: AuthUser = {
+        id: user.id,
+        email: user.email,
+      };
+      setAuthUser(authUserData);
+
+      // 2. profile (public.users)
+      const { data: profileData } = await supabase
         .from("users")
         .select("*")
-        .eq("id", supabaseUser.id)
+        .eq("id", user.id)
         .maybeSingle();
 
-      if (profileError) {
-        console.error("Profile error:", profileError);
-      }
-      console.log("✅ Profile fetched:", profile ? profile.full_name : "not found");
+      setProfile(profileData || null);
 
-      // 2. تحميل الأدوار مع المدارس
-      console.log("🔍 Step 2: Fetching roles...");
-      const { data: roles, error: rolesError } = await supabase
+      // 3. roles + schools
+      const { data: roles } = await supabase
         .from("user_school_roles")
         .select("*, school:schools(*)")
-        .eq("user_id", supabaseUser.id);
+        .eq("user_id", user.id);
 
-      if (rolesError) {
-        console.error("Roles error:", rolesError);
-      }
-      console.log("✅ Roles fetched:", roles?.length || 0, "roles found");
-
-      // 3. بناء المستخدم المخصص - متوافق مع الأنواع الجديدة
-      const customUser: CustomUser = {
-        ...supabaseUser,
-        school_id: profile?.school_id,
-        full_name: profile?.full_name || supabaseUser.user_metadata?.full_name,
-        school_name: profile?.school_name,
-        school_address: profile?.school_address,
-        school_phone: profile?.school_phone,
-        tax_number: profile?.tax_number,
-      };
-
-      setUser(customUser);
-      console.log("✅ User set");
-
-      // 4. معالجة الأدوار
       const rolesData = roles || [];
       setUserRoles(rolesData);
-      console.log("✅ User roles set:", rolesData.length);
 
+      // 4. select school
       if (rolesData.length > 0) {
-        const savedSchoolId = localStorage.getItem(`current_school_${supabaseUser.id}`);
-        console.log("Saved school ID:", savedSchoolId);
-        
-        const selectedRole = savedSchoolId 
-          ? rolesData.find((r: any) => r.school_id === savedSchoolId) 
-          : rolesData.find((r: any) => r.is_primary) || rolesData[0];
+        const savedSchoolId = localStorage.getItem(`current_school_${user.id}`);
 
-        console.log("Selected role:", selectedRole?.role, "school:", selectedRole?.school?.name);
+        const selectedRole =
+          rolesData.find((r: any) => r.school_id === savedSchoolId) ||
+          rolesData.find((r: any) => r.is_primary) ||
+          rolesData[0];
 
         if (selectedRole?.school) {
-          const schoolData = selectedRole.school;
-          setCurrentSchool(schoolData);
+          setCurrentSchool(selectedRole.school);
           setCurrentRole(selectedRole.role);
-          setSubscriptionPlan(schoolData.subscription_plan);
-          setSubscriptionExpiresAt(schoolData.subscription_expires_at);
-          setSchoolFeatures(schoolData.features || []);
-          console.log("✅ School set:", schoolData.name);
-        } else {
-          console.log("Selected role has no school data");
+          setSubscriptionPlan(selectedRole.school.subscription_plan);
+          setSubscriptionExpiresAt(selectedRole.school.subscription_expires_at);
+          setSchoolFeatures(selectedRole.school.features || []);
         }
-      } else {
-        console.log("No roles found for user");
       }
-
-      console.log("✅ User data loaded successfully");
     } catch (error) {
-      console.error("Error loading user data:", error);
+      console.error("loadUserData error:", error);
     } finally {
       isLoadingRef.current = false;
       setLoading(false);
-      console.log("Loading state set to false");
     }
   }, []);
 
-  const refreshSchoolData = useCallback(async () => {
-    if (currentSchool?.id) {
-      await loadCurrentSchoolData(currentSchool.id);
-    }
-  }, [currentSchool?.id, loadCurrentSchoolData]);
+  // ============================================
+  // Auth Init
+  // ============================================
 
-  const hasFeature = useCallback(
-    (feature: string): boolean => {
-      if (currentRole === "super_admin") return true;
-      return schoolFeatures.includes(feature);
-    },
-    [currentRole, schoolFeatures]
-  );
-
-  const getLimits = useCallback(() => {
-    const limits: Record<string, { maxStudents: number; maxTeachers: number; maxUsers: number }> = {
-      free: { maxStudents: 50, maxTeachers: 10, maxUsers: 5 },
-      basic: { maxStudents: 200, maxTeachers: 30, maxUsers: 15 },
-      pro: { maxStudents: 1000, maxTeachers: 100, maxUsers: 50 },
-      enterprise: { maxStudents: Infinity, maxTeachers: Infinity, maxUsers: Infinity },
-    };
-    const plan = subscriptionPlan || "free";
-    return limits[plan] || limits.free;
-  }, [subscriptionPlan]);
-
-  const canAccessResource = useCallback(
-    (resource: string, currentCount: number): boolean => {
-      const limits = getLimits();
-      switch (resource) {
-        case "students": return currentCount < limits.maxStudents;
-        case "teachers": return currentCount < limits.maxTeachers;
-        case "users": return currentCount < limits.maxUsers;
-        default: return true;
-      }
-    },
-    [getLimits]
-  );
-
-  // ✅ تهيئة المصادقة
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    let isMounted = true;
+    let mounted = true;
 
-    const initializeAuth = async () => {
-      try {
-        console.log("🔐 Initializing auth...");
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error("Session error:", error);
-        }
+    const init = async () => {
+      const { data } = await supabase.auth.getSession();
 
-        console.log("Session user:", session?.user?.email || "none");
-
-        if (session?.user && isMounted) {
-          await loadUserData(session.user);
-        } else if (isMounted) {
-          console.log("No active session, setting loading to false");
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error("Error initializing auth:", error);
-        if (isMounted) setLoading(false);
+      if (data.session?.user && mounted) {
+        await loadUserData(data.session.user);
+      } else if (mounted) {
+        setLoading(false);
       }
     };
 
-    initializeAuth();
+    init();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("🔄 Auth event:", event);
-      if (!isMounted) return;
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return;
 
-      if (event === "SIGNED_IN" && session?.user) {
-        setLoading(true);
-        await loadUserData(session.user);
-      } else if (event === "SIGNED_OUT") {
-        setUser(null);
-        setUserRoles([]);
-        setCurrentSchool(null);
-        setCurrentRole(null);
-        setSubscriptionPlan(null);
-        setSubscriptionExpiresAt(null);
-        setSchoolFeatures([]);
-        setLoading(false);
+        if (event === "SIGNED_IN" && session?.user) {
+          setLoading(true);
+          await loadUserData(session.user);
+        }
+
+        if (event === "SIGNED_OUT") {
+          setAuthUser(null);
+          setProfile(null);
+          setUserRoles([]);
+          setCurrentSchool(null);
+          setCurrentRole(null);
+          setSubscriptionPlan(null);
+          setSubscriptionExpiresAt(null);
+          setSchoolFeatures([]);
+          setLoading(false);
+        }
       }
-    });
-    
-    authListenerRef.current = subscription;
+    );
 
     return () => {
-      isMounted = false;
-      authListenerRef.current?.unsubscribe();
+      mounted = false;
+      listener.subscription.unsubscribe();
     };
   }, [loadUserData]);
 
+  // ============================================
+  // Actions
+  // ============================================
+
   const signIn = async (email: string, password: string) => {
     setLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      return { error };
-    } catch (error: any) {
-      return { error };
-    } finally {
-      setLoading(false);
-    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    return { error };
   };
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     setLoading(true);
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { full_name: fullName } },
-      });
 
-      if (!error && data.user) {
-        await supabase.from("users").insert({
-          id: data.user.id,
-          email,
-          full_name: fullName,
-          created_at: new Date().toISOString(),
-        });
-      }
-      return { error };
-    } catch (error: any) {
-      return { error };
-    } finally {
-      setLoading(false);
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: fullName },
+      },
+    });
+
+    if (!error && data.user) {
+      await supabase.from("users").insert({
+        id: data.user.id,
+        email,
+        full_name: fullName,
+      });
     }
+
+    setLoading(false);
+    return { error };
   };
 
   const signOut = async () => {
@@ -327,29 +226,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const switchSchool = async (schoolId: string) => {
     const role = userRoles.find((r) => r.school_id === schoolId);
-    if (role?.school && user) {
+
+    if (role?.school && authUser) {
       setCurrentSchool(role.school);
       setCurrentRole(role.role);
       setSubscriptionPlan(role.school.subscription_plan);
       setSubscriptionExpiresAt(role.school.subscription_expires_at);
       setSchoolFeatures(role.school.features || []);
-      localStorage.setItem(`current_school_${user.id}`, schoolId);
+      localStorage.setItem(`current_school_${authUser.id}`, schoolId);
     }
   };
 
+  // ============================================
+  // Permissions
+  // ============================================
+
   const hasPermission = (permission: string): boolean => {
     if (!currentRole) return false;
-    if (currentRole === "super_admin" || currentRole === "admin") return true;
+    if (["admin"].includes(currentRole)) return true;
 
     const rolePermissions: Record<string, string[]> = {
-      accountant: ["view_financials", "manage_fees", "manage_expenses", "view_reports"],
-      moderator: ["view_students", "view_teachers", "edit_students", "edit_teachers"],
+      accountant: ["view_financials", "manage_fees", "manage_expenses"],
+      moderator: ["view_students", "edit_students"],
     };
+
     return rolePermissions[currentRole]?.includes(permission) || false;
   };
 
-  const value = useMemo(() => ({
-    user,
+  const hasFeature = (feature: string): boolean => {
+    return schoolFeatures.includes(feature);
+  };
+
+  const refreshSchoolData = async () => {
+    if (currentSchool?.id) {
+      await loadCurrentSchoolData(currentSchool.id);
+    }
+  };
+
+  // ============================================
+  // Context Value
+  // ============================================
+
+  const value = {
+    authUser,
+    profile,
     loading,
     currentSchool,
     currentRole,
@@ -364,17 +284,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     switchSchool,
     hasPermission,
     hasFeature,
-    getLimits,
-    canAccessResource,
     refreshSchoolData,
-  }), [user, loading, currentSchool, currentRole, userRoles, subscriptionPlan, subscriptionExpiresAt, schoolFeatures, isAuthenticated]);
+  };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
+
+// ============================================
+// Hook
+// ============================================
 
 export function useAuth() {
   const context = useContext(AuthContext);

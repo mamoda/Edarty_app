@@ -1,8 +1,16 @@
 // src/types/database.ts
-import { User as SupabaseUser } from '@supabase/supabase-js';
 
 // ============================================
-// أنواع متوافقة مع Schema قاعدة البيانات
+// Types متوافقة مع Supabase Auth
+// ============================================
+
+export interface AuthUser {
+  id: string;
+  email?: string | null;
+}
+
+// ============================================
+// School
 // ============================================
 
 export interface School {
@@ -27,6 +35,10 @@ export interface School {
   updated_at: string;
 }
 
+// ============================================
+// User Profile (public.users)
+// ============================================
+
 export interface UserProfile {
   id: string;
   email: string | null;
@@ -36,8 +48,8 @@ export interface UserProfile {
   school_address: string | null;
   school_phone: string | null;
   tax_number: string | null;
-  role: string | null;
-  permissions: any;
+  role: string;
+  permissions: Record<string, any>;
   last_login: string | null;
   is_active: boolean;
   avatar_url: string | null;
@@ -45,6 +57,10 @@ export interface UserProfile {
   created_at: string;
   updated_at: string;
 }
+
+// ============================================
+// User Roles
+// ============================================
 
 export interface UserSchoolRole {
   id: string;
@@ -56,35 +72,10 @@ export interface UserSchoolRole {
   created_at: string;
   updated_at: string;
   school?: School;
-  user?: CustomUser;
-}
-
-// ✅ إصلاح CustomUser - إزالة role لأن Supabase User لا يحتوي عليها
-export interface CustomUser extends SupabaseUser {
-  school_id?: string;
-  full_name?: string;
-  school_name?: string | null;
-  school_address?: string | null;
-  school_phone?: string | null;
-  tax_number?: string | null;
-}
-
-export interface SchoolData {
-  id?: string;
-  schoolId?: string;
-  schoolName: string;
-  schoolEmail: string;
-  schoolIdentifier: string;
-  schoolAddress?: string;
-  schoolPhone?: string;
-  schoolTaxNumber?: string;
-  subscriptionPlan?: string;
-  subscriptionExpiresAt?: string;
-  features?: string[];
 }
 
 // ============================================
-// أنواع الجداول الأخرى
+// Students
 // ============================================
 
 export interface Student {
@@ -101,6 +92,10 @@ export interface Student {
   updated_at: string;
   school?: School;
 }
+
+// ============================================
+// Teachers
+// ============================================
 
 export interface Teacher {
   id: string;
@@ -121,6 +116,10 @@ export interface Teacher {
   school?: School;
 }
 
+// ============================================
+// Fees
+// ============================================
+
 export interface Fee {
   id: string;
   user_id: string;
@@ -136,6 +135,10 @@ export interface Fee {
   school?: School;
 }
 
+// ============================================
+// Expenses
+// ============================================
+
 export interface Expense {
   id: string;
   user_id: string;
@@ -150,6 +153,10 @@ export interface Expense {
   school?: School;
 }
 
+// ============================================
+// Activity Logs
+// ============================================
+
 export interface ActivityLog {
   id: string;
   user_id: string;
@@ -162,9 +169,11 @@ export interface ActivityLog {
   ip_address: string | null;
   user_agent: string | null;
   created_at: string;
-  user?: CustomUser;
-  school?: School;
 }
+
+// ============================================
+// Subscriptions
+// ============================================
 
 export interface Subscription {
   id: string;
@@ -180,24 +189,30 @@ export interface Subscription {
   auto_renew: boolean;
   created_at: string;
   updated_at: string;
-  school?: School;
 }
+
+// ============================================
+// Payments
+// ============================================
 
 export interface Payment {
   id: string;
   school_id: string;
-  subscription_id: string;
+  subscription_id: string | null;
   amount: number;
   currency: string;
   status: 'pending' | 'completed' | 'failed' | 'refunded';
   payment_method: string;
-  transaction_id: string;
+  transaction_id: string | null;
   payment_date: string;
   notes: string | null;
   created_at: string;
-  school?: School;
-  subscription?: Subscription;
+  updated_at: string;
 }
+
+// ============================================
+// Plans
+// ============================================
 
 export interface Plan {
   id: string;
@@ -211,81 +226,75 @@ export interface Plan {
   features: string[];
   is_active: boolean;
   created_at: string;
-}
-
-export interface Statistics {
-  totalStudents: number;
-  activeStudents: number;
-  totalRevenue: number;
-  totalExpenses: number;
-  netProfit: number;
-  totalTeachers?: number;
-  activeTeachers?: number;
-  totalSalaries?: number;
-  totalRefunds?: number;
-  netRevenue?: number;
-  paidStudents?: number;
-  partialPaidStudents?: number;
-  unpaidStudents?: number;
-  collectionRate?: number;
-  cashPayments?: number;
-  cardPayments?: number;
-  bankTransferPayments?: number;
-  checkPayments?: number;
-  todayCollections?: number;
-  thisWeekCollections?: number;
-  thisMonthCollections?: number;
+  updated_at: string;
 }
 
 // ============================================
-// أنواع مساعدة
+// Notifications
 // ============================================
 
-export type UserProfileRow = UserProfile;
-export type UserSchoolRoleWithSchool = UserSchoolRole & { school: School };
-export type UserProfileResponse = UserProfileRow | null;
-export type UserRolesResponse = UserSchoolRoleWithSchool[];
-
-export interface LoadingState {
-  loading: boolean;
-  error: string | null;
+export interface Notification {
+  id: string;
+  user_id: string;
+  school_id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  is_read: boolean;
+  link: string | null;
+  created_at: string;
 }
+
+// ============================================
+// Permissions
+// ============================================
+
+export interface Permission {
+  id: string;
+  name: string;
+  description: string | null;
+  module: string;
+  created_at: string;
+  school_id: string | null;
+}
+
+export interface UserPermission {
+  user_id: string;
+  permission_id: string;
+  granted_by: string | null;
+  granted_at: string;
+  expires_at: string | null;
+  school_id: string;
+}
+
+// ============================================
+// Teacher Salaries
+// ============================================
+
+export interface TeacherSalary {
+  id: string;
+  teacher_id: string | null;
+  user_id: string;
+  month: number;
+  year: number;
+  amount: number;
+  status: 'pending' | 'paid' | 'cancelled';
+  payment_date: string | null;
+  notes: string | null;
+  created_at: string;
+  school_id: string;
+}
+
+// ============================================
+// Helper Types
+// ============================================
 
 export interface ApiResponse<T> {
   data: T | null;
   error: Error | null;
 }
 
-export interface FilterOptions {
-  search?: string;
-  status?: 'active' | 'inactive' | 'all';
-  dateFrom?: string;
-  dateTo?: string;
-  page?: number;
-  limit?: number;
-}
-
-export interface SortOptions {
-  field: string;
-  direction: 'asc' | 'desc';
-}
-
-// ============================================
-// دوال مساعدة للأنواع (Type Guards)
-// ============================================
-
-export function isStudent(obj: any): obj is Student {
-  return obj && typeof obj === 'object' && 'grade' in obj && 'parent_name' in obj;
-}
-
-export function isTeacher(obj: any): obj is Teacher {
-  return obj && typeof obj === 'object' && 'specialization' in obj && 'salary' in obj;
-}
-
-export function isFee(obj: any): obj is Fee {
-  return obj && typeof obj === 'object' && 'amount' in obj && 'payment_type' in obj;
-}
-
-export function isSchool(obj: any): obj is School {
-  return obj && typeof obj === 'object' && 'name' in obj && 'subdomain' in obj;
+export interface LoadingState {
+  loading: boolean;
+  error: string | null;
 }
