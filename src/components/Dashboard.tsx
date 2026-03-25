@@ -728,7 +728,7 @@ export default function Dashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState("month");
   const [currentBackground, setCurrentBackground] = useState(0);
   const [dataError, setDataError] = useState<string | null>(null);
-  
+
   // منع التحميل المزدوج
   const hasLoadedStatsRef = useRef(false);
   const isLoadingRef = useRef(false);
@@ -764,7 +764,7 @@ export default function Dashboard() {
       console.log("⏳ Statistics already loading, skipping...");
       return;
     }
-    
+
     if (!user || !currentSchool) {
       console.log("⏳ No user or school yet, skipping data load");
       setLoading(false);
@@ -776,7 +776,9 @@ export default function Dashboard() {
     setDataError(null);
 
     try {
-      console.log(`📊 Loading statistics for school: ${currentSchool.name} (ID: ${currentSchool.id})`);
+      console.log(
+        `📊 Loading statistics for school: ${currentSchool.name} (ID: ${currentSchool.id})`,
+      );
 
       const results = await Promise.allSettled([
         supabase.from("students").select("*").eq("school_id", currentSchool.id),
@@ -784,7 +786,10 @@ export default function Dashboard() {
           .from("fees")
           .select("*, student:students(*)")
           .eq("school_id", currentSchool.id),
-        supabase.from("expenses").select("amount").eq("school_id", currentSchool.id),
+        supabase
+          .from("expenses")
+          .select("amount")
+          .eq("school_id", currentSchool.id),
         supabase.from("teachers").select("*").eq("school_id", currentSchool.id),
       ]);
 
@@ -958,11 +963,11 @@ export default function Dashboard() {
 
   // تحميل الإحصائيات مرة واحدة عند تحميل الصفحة
   useEffect(() => {
-    if (user && currentSchool && !hasLoadedStatsRef.current && !isLoadingRef.current) {
+    hasLoadedStatsRef.current = false;
+    if (user && currentSchool && !isLoadingRef.current) {
       loadStatistics();
     }
   }, [user, currentSchool]);
-
   const handleViewChange = (view: View) => {
     setCurrentView(view);
     // ✅ لا نعيد تحميل الإحصائيات هنا
@@ -988,13 +993,13 @@ export default function Dashboard() {
     };
   };
 
-  const studentsTrend = calculateTrend();
-  const revenueTrend = calculateTrend();
-  const expensesTrend = calculateTrend();
-  const profitTrend = calculateTrend();
+  const [studentsTrend] = useState(calculateTrend());
+  const [revenueTrend] = useState(calculateTrend());
+  const [expensesTrend] = useState(calculateTrend());
+  const [profitTrend] = useState(calculateTrend());
 
   // التحقق من صلاحية الوصول لإدارة المستخدمين
-  const canManageUsers = currentRole === 'admin';
+  const canManageUsers = currentRole === "admin";
 
   return (
     <div
@@ -1060,7 +1065,13 @@ export default function Dashboard() {
                     </span>
                     {currentRole && (
                       <span className="text-xs text-gray-500 mr-2">
-                        ({currentRole === 'admin' ? 'مدير' : currentRole === 'accountant' ? 'محاسب' : 'مشرف'})
+                        (
+                        {currentRole === "admin"
+                          ? "مدير"
+                          : currentRole === "accountant"
+                            ? "محاسب"
+                            : "مشرف"}
+                        )
                       </span>
                     )}
                   </div>
