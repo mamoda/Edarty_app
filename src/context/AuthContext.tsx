@@ -1,7 +1,12 @@
-// src/context/AuthContext.tsx - نسخة محسنة
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
-import { CustomUser, UserSchoolRole, School } from '../types/database';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
+import { supabase } from "../lib/supabase";
+import { CustomUser, UserSchoolRole, School } from "../types/database";
 
 interface AuthContextType {
   user: CustomUser | null;
@@ -10,7 +15,11 @@ interface AuthContextType {
   currentRole: string | null;
   userRoles: UserSchoolRole[];
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName?: string
+  ) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   switchSchool: (schoolId: string) => Promise<void>;
   hasPermission: (permission: string) => boolean;
@@ -25,55 +34,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentSchool, setCurrentSchool] = useState<School | null>(null);
   const [currentRole, setCurrentRole] = useState<string | null>(null);
 
+  // ✅ تحميل بيانات المستخدم
   const loadUserData = async (supabaseUser: any) => {
     if (!supabaseUser) return;
-    
-    console.log('📥 Loading user data for:', supabaseUser.email);
-    
+
     try {
-      // جلب بيانات المستخدم
-      const { data: profile } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', supabaseUser.id)
-        .maybeSingle();
-      
-      // جلب أدوار المستخدم
-      const { data: roles } = await supabase
-        .from('user_school_roles')
-        .select('*, school:schools(*)')
-        .eq('user_id', supabaseUser.id);
-      
+      console.log("📥 Loading user data for:", supabaseUser.email);
+
+      const [{ data: profile, error: profileError }, { data: roles, error: rolesError }] =
+        await Promise.all([
+          supabase
+            .from("users")
+            .select("*")
+            .eq("id", supabaseUser.id)
+            .maybeSingle(),
+
+          supabase
+            .from("user_school_roles")
+            .select("*, school:schools(*)")
+            .eq("user_id", supabaseUser.id),
+        ]);
+
+      if (profileError) console.error(profileError);
+      if (rolesError) console.error(rolesError);
+
       const customUser: CustomUser = {
         ...supabaseUser,
         school_id: profile?.school_id,
-        full_name: profile?.full_name || supabaseUser.user_metadata?.full_name,
+        full_name:
+          profile?.full_name || supabaseUser.user_metadata?.full_name,
         schoolName: profile?.school_name,
         schoolAddress: profile?.school_address,
         schoolPhone: profile?.school_phone,
         taxNumber: profile?.tax_number,
       };
+
       setUser(customUser);
-      
+
       if (roles && roles.length > 0) {
         setUserRoles(roles);
-        const primaryRole = roles.find(r => r.is_primary);
-        if (primaryRole?.school) {
-          setCurrentSchool(primaryRole.school);
-          setCurrentRole(primaryRole.role);
-        } else if (roles[0]?.school) {
-          setCurrentSchool(roles[0].school);
-          setCurrentRole(roles[0].role);
+
+        // ✅ استرجاع المدرسة من localStorage
+        const savedSchoolId = localStorage.getItem(
+          `current_school_${supabaseUser.id}`
+        );
+
+        const selectedRole =
+          roles.find((r) => r.school_id === savedSchoolId) ||
+          roles.find((r) => r.is_primary) ||
+          roles[0];
+
+        if (selectedRole?.school) {
+          setCurrentSchool(selectedRole.school);
+          setCurrentRole(selectedRole.role);
         }
       } else {
         setUserRoles([]);
         setCurrentSchool(null);
         setCurrentRole(null);
       }
-      
-      console.log('✅ User data loaded');
+
+      console.log("✅ User data loaded");
     } catch (error) {
-      console.error('Error loading user data:', error);
+      console.error("Error loading user data:", error);
     }
   };
 
@@ -82,58 +105,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initializeAuth = async () => {
       try {
-        console.log('🔐 Initializing auth...');
-        
-        // ✅ التحقق من الجلسة
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Session error:', error);
-        }
-        
+        console.log("🔐 Initializing auth...");
+
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
+
+        if (error) console.error("Session error:", error);
+
         if (session?.user) {
-          console.log('✅ User found:', session.user.email);
           await loadUserData(session.user);
         } else {
-          console.log('ℹ️ No active session');
-          // ✅ إعادة تعيين الحالة
           setUser(null);
           setUserRoles([]);
           setCurrentSchool(null);
           setCurrentRole(null);
         }
-        
-        if (isMounted) {
-          setLoading(false);
-          console.log('✅ Loading complete');
-        }
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        console.error("Error initializing auth:", error);
+      } finally {
         if (isMounted) setLoading(false);
       }
     };
 
     initializeAuth();
 
-    // ✅ الاستماع لتغييرات المصادقة
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('🔄 Auth event:', event);
-        
-        if (!isMounted) return;
-        
-        if (event === 'SIGNED_IN' && session?.user) {
-          await loadUserData(session.user);
-        } else if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' && !session) {
-          setUser(null);
-          setUserRoles([]);
-          setCurrentSchool(null);
-          setCurrentRole(null);
-        }
-        
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("🔄 Auth event:", event);
+
+      if (!isMounted) return;
+
+      if (event === "SIGNED_IN" && session?.user) {
+        setLoading(true);
+        await loadUserData(session.user);
+        setLoading(false);
+      } else if (
+        event === "SIGNED_OUT" ||
+        (event === "TOKEN_REFRESHED" && !session)
+      ) {
+        setUser(null);
+        setUserRoles([]);
+        setCurrentSchool(null);
+        setCurrentRole(null);
         setLoading(false);
       }
-    );
+    });
 
     return () => {
       isMounted = false;
@@ -143,31 +162,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
     setLoading(false);
     return { error };
   };
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({ 
-      email, 
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
       password,
-      options: { data: { full_name: fullName } }
+      options: { data: { full_name: fullName } },
     });
-    
+
     if (!error && data.user) {
-      await supabase
-        .from('users')
-        .upsert([{ 
-          id: data.user.id, 
-          email, 
-          full_name: fullName,
-          school_id: null,
-          created_at: new Date().toISOString()
-        }], { onConflict: 'id' });
+      const { error: insertError } = await supabase.from("users").upsert(
+        [
+          {
+            id: data.user.id,
+            email,
+            full_name: fullName,
+            school_id: null,
+            created_at: new Date().toISOString(),
+          },
+        ],
+        { onConflict: "id" }
+      );
+
+      if (insertError) console.error(insertError);
     }
-    
+
     setLoading(false);
     return { error };
   };
@@ -181,7 +209,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const switchSchool = async (schoolId: string) => {
-    const role = userRoles.find(r => r.school_id === schoolId);
+    const role = userRoles.find((r) => r.school_id === schoolId);
+
     if (role && role.school && user) {
       setCurrentSchool(role.school);
       setCurrentRole(role.role);
@@ -190,30 +219,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const hasPermission = (permission: string): boolean => {
-    if (currentRole === 'admin') return true;
-    
+    if (!currentRole) return false;
+    if (currentRole === "admin") return true;
+
     const rolePermissions: Record<string, string[]> = {
-      accountant: ['view_financials', 'manage_fees', 'manage_expenses', 'view_reports', 'add_fees', 'edit_fees', 'delete_fees', 'add_expenses', 'edit_expenses', 'delete_expenses'],
-      moderator: ['view_students', 'view_teachers', 'edit_students', 'edit_teachers', 'add_students', 'delete_students'],
+      accountant: [
+        "view_financials",
+        "manage_fees",
+        "manage_expenses",
+        "view_reports",
+        "add_fees",
+        "edit_fees",
+        "delete_fees",
+        "add_expenses",
+        "edit_expenses",
+        "delete_expenses",
+      ],
+      moderator: [
+        "view_students",
+        "view_teachers",
+        "edit_students",
+        "edit_teachers",
+        "add_students",
+        "delete_students",
+      ],
     };
-    
-    const permissions = rolePermissions[currentRole || ''] || [];
-    return permissions.includes(permission);
+
+    return rolePermissions[currentRole]?.includes(permission) || false;
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      loading, 
-      currentSchool,
-      currentRole,
-      userRoles,
-      signIn, 
-      signUp, 
-      signOut,
-      switchSchool,
-      hasPermission
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        currentSchool,
+        currentRole,
+        userRoles,
+        signIn,
+        signUp,
+        signOut,
+        switchSchool,
+        hasPermission,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -221,6 +270,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  if (!context)
+    throw new Error("useAuth must be used within AuthProvider");
   return context;
 }
