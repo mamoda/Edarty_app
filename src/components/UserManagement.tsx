@@ -1,6 +1,6 @@
 // src/components/UserManagement.tsx
 import { useState, useEffect } from 'react';
-import { supabase, supabaseAdmin } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { 
   Users, 
@@ -39,13 +39,6 @@ interface SchoolUser {
   is_active: boolean;
 }
 
-interface UserRole {
-  user_id: string;
-  school_id: string;
-  role: string;
-  is_primary: boolean;
-}
-
 const roleLabels = {
   admin: { label: 'مدير', color: 'bg-purple-100 text-purple-700', icon: Crown },
   accountant: { label: 'محاسب', color: 'bg-blue-100 text-blue-700', icon: Briefcase },
@@ -58,6 +51,8 @@ const roleOptions = [
   { value: 'admin', label: 'مدير - صلاحيات كاملة' },
   { value: 'accountant', label: 'محاسب - إدارة الرسوم والمصروفات' },
   { value: 'moderator', label: 'مشرف - إدارة الطلاب والمعلمين' },
+  { value: 'teacher', label: 'معلم - عرض الطلاب فقط' },
+  { value: 'parent', label: 'ولي أمر - متابعة الطالب' },
 ];
 
 export default function UserManagement({ onUpdate }: UserManagementProps) {
@@ -76,7 +71,7 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
     email: '',
     password: '',
     full_name: '',
-    role: 'moderator' as 'admin' | 'accountant' | 'moderator',
+    role: 'moderator' as 'admin' | 'accountant' | 'moderator' | 'teacher' | 'parent',
   });
 
   useEffect(() => {
@@ -136,17 +131,17 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
     }
     
     try {
-      if (!supabaseAdmin) {
-        setFormError('لم يتم تكوين صلاحيات المسؤول');
-        return;
-      }
-      
-      // 1. إنشاء حساب في Auth باستخدام supabaseAdmin
-      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      // 1. إنشاء حساب في Auth باستخدام supabase العادي
+      // ملاحظة: هذا يتطلب أن يكون المستخدم الحالي لديه صلاحيات admin
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
-        email_confirm: true,
-        user_metadata: { full_name: formData.full_name }
+        options: {
+          data: { 
+            full_name: formData.full_name,
+            school_id: currentSchool.id
+          }
+        }
       });
       
       if (authError) {
@@ -171,7 +166,6 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
           email: formData.email,
           full_name: formData.full_name,
           school_id: currentSchool.id,
-          role: formData.role,
           is_active: true,
           created_at: new Date().toISOString(),
         });
@@ -244,17 +238,21 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
     
     try {
       // حذف دور المستخدم
-      await supabase
+      const { error: roleDeleteError } = await supabase
         .from('user_school_roles')
         .delete()
         .eq('user_id', user.id)
         .eq('school_id', currentSchool?.id);
       
+      if (roleDeleteError) throw roleDeleteError;
+      
       // تحديث حالة المستخدم في جدول users (تعطيل بدل حذف)
-      await supabase
+      const { error: userUpdateError } = await supabase
         .from('users')
         .update({ is_active: false })
         .eq('id', user.id);
+      
+      if (userUpdateError) throw userUpdateError;
       
       setUsers(prev => prev.filter(u => u.id !== user.id));
       setFormSuccess(`تم حذف المستخدم ${user.full_name} بنجاح`);
@@ -560,6 +558,8 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
                   <li>• <span className="font-semibold">مدير:</span> صلاحيات كاملة (إدارة جميع البيانات والمستخدمين)</li>
                   <li>• <span className="font-semibold">محاسب:</span> إدارة الرسوم الدراسية والمصروفات والتقارير المالية</li>
                   <li>• <span className="font-semibold">مشرف:</span> إدارة الطلاب والمعلمين (إضافة/تعديل/حذف)</li>
+                  <li>• <span className="font-semibold">معلم:</span> عرض الطلاب فقط</li>
+                  <li>• <span className="font-semibold">ولي أمر:</span> متابعة بيانات الطالب فقط</li>
                 </ul>
               </div>
 
