@@ -72,45 +72,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq("id", schoolId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error loading school:", error);
+        return;
+      }
 
-      const schoolData = school as School;
-      setCurrentSchool(schoolData);
-      setSubscriptionPlan(schoolData.subscription_plan);
-      setSubscriptionExpiresAt(schoolData.subscription_expires_at);
-      setSchoolFeatures(schoolData.features || []);
-      
-      console.log("✅ School data loaded:", schoolData.name);
+      if (school) {
+        const schoolData = school as School;
+        setCurrentSchool(schoolData);
+        setSubscriptionPlan(schoolData.subscription_plan);
+        setSubscriptionExpiresAt(schoolData.subscription_expires_at);
+        setSchoolFeatures(schoolData.features || []);
+        console.log("✅ School data loaded:", schoolData.name);
+      }
     } catch (error) {
       console.error("Error loading school data:", error);
     }
   }, []);
 
-  // ✅ تحميل بيانات المستخدم
+  // ✅ تحميل بيانات المستخدم - النسخة المستقرة
   const loadUserData = useCallback(async (supabaseUser: any) => {
-    if (!supabaseUser) return;
-    if (isLoadingRef.current) return;
+    if (!supabaseUser) {
+      console.log("No user to load");
+      setLoading(false);
+      return;
+    }
+    
+    if (isLoadingRef.current) {
+      console.log("Already loading user data, skipping...");
+      return;
+    }
 
     isLoadingRef.current = true;
+    console.log("📥 Loading user data for:", supabaseUser.email);
 
     try {
-      console.log("📥 Loading user data for:", supabaseUser.email);
+      // 1. تحميل الملف الشخصي
+      const { data: profile, error: profileError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", supabaseUser.id)
+        .maybeSingle();
 
-      const [profileResult, rolesResult] = await Promise.all([
-        supabase
-          .from("users")
-          .select("*")
-          .eq("id", supabaseUser.id)
-          .maybeSingle(),
-        supabase
-          .from("user_school_roles")
-          .select("*, school:schools(*)")
-          .eq("user_id", supabaseUser.id),
-      ]);
+      if (profileError) {
+        console.error("Profile error:", profileError);
+      }
 
-      const profile = profileResult.data as UserProfileRow | null;
-      const roles = (rolesResult.data || []) as UserSchoolRoleWithSchool[];
+      // 2. تحميل الأدوار مع المدارس
+      const { data: roles, error: rolesError } = await supabase
+        .from("user_school_roles")
+        .select("*, school:schools(*)")
+        .eq("user_id", supabaseUser.id);
 
+      if (rolesError) {
+        console.error("Roles error:", rolesError);
+      }
+
+      // 3. بناء المستخدم المخصص
       const customUser: CustomUser = {
         ...supabaseUser,
         school_id: profile?.school_id,
@@ -123,13 +141,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setUser(customUser);
 
-      if (roles.length > 0) {
-        setUserRoles(roles);
+      // 4. معالجة الأدوار
+      const rolesData = roles || [];
+      setUserRoles(rolesData);
 
+      if (rolesData.length > 0) {
         const savedSchoolId = localStorage.getItem(`current_school_${supabaseUser.id}`);
         const selectedRole = savedSchoolId 
-          ? roles.find((r) => r.school_id === savedSchoolId) 
-          : roles.find((r) => r.is_primary) || roles[0];
+          ? rolesData.find((r: any) => r.school_id === savedSchoolId) 
+          : rolesData.find((r: any) => r.is_primary) || rolesData[0];
 
         if (selectedRole?.school) {
           const schoolData = selectedRole.school;
@@ -139,17 +159,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSubscriptionExpiresAt(schoolData.subscription_expires_at);
           setSchoolFeatures(schoolData.features || []);
           console.log("✅ School set:", schoolData.name);
+        } else {
+          console.log("Selected role has no school data");
         }
       } else {
-        setUserRoles([]);
+        console.log("No roles found for user");
       }
 
-      console.log("✅ User data loaded");
+      console.log("✅ User data loaded successfully");
     } catch (error) {
       console.error("Error loading user data:", error);
     } finally {
       isLoadingRef.current = false;
       setLoading(false);
+      console.log("Loading state set to false");
     }
   }, []);
 
@@ -202,11 +225,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         console.log("🔐 Initializing auth...");
         const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) console.error("Session error:", error);
+        
+        if (error) {
+          console.error("Session error:", error);
+        }
 
         if (session?.user && isMounted) {
           await loadUserData(session.user);
         } else if (isMounted) {
+          console.log("No active session, setting loading to false");
           setLoading(false);
         }
       } catch (error) {
