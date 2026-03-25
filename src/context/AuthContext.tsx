@@ -1,5 +1,4 @@
 // src/context/AuthContext.tsx
-
 import {
   createContext,
   useContext,
@@ -80,9 +79,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ============================================
 
   const loadUserData = useCallback(async (user: any) => {
-    if (!user || isLoadingRef.current) return;
+    if (!user) {
+      console.log("No user to load");
+      setLoading(false);
+      return;
+    }
+    
+    if (isLoadingRef.current) {
+      console.log("Already loading user data, skipping...");
+      return;
+    }
 
     isLoadingRef.current = true;
+    console.log("📥 Loading user data for:", user.email);
 
     try {
       // 1. auth user
@@ -100,6 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .maybeSingle();
 
       setProfile(profileData || null);
+      console.log("✅ Profile loaded:", profileData ? profileData.full_name : "not found");
 
       // 3. roles + schools
       const { data: roles } = await supabase
@@ -109,6 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const rolesData = roles || [];
       setUserRoles(rolesData);
+      console.log("✅ Roles loaded:", rolesData.length);
 
       // 4. select school
       if (rolesData.length > 0) {
@@ -125,13 +136,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSubscriptionPlan(selectedRole.school.subscription_plan);
           setSubscriptionExpiresAt(selectedRole.school.subscription_expires_at);
           setSchoolFeatures(selectedRole.school.features || []);
+          console.log("✅ School set:", selectedRole.school.name);
+        } else {
+          console.log("⚠️ Selected role has no school data");
         }
+      } else {
+        console.log("⚠️ No roles found for user");
+        // ✅ لا توجد أدوار - لا توجد مدرسة
+        setCurrentSchool(null);
+        setCurrentRole(null);
       }
+
+      console.log("✅ User data loaded successfully");
     } catch (error) {
       console.error("loadUserData error:", error);
     } finally {
       isLoadingRef.current = false;
       setLoading(false);
+      console.log("Loading state set to false");
     }
   }, []);
 
@@ -146,12 +168,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
 
     const init = async () => {
-      const { data } = await supabase.auth.getSession();
+      try {
+        console.log("🔐 Initializing auth...");
+        const { data } = await supabase.auth.getSession();
+        console.log("Session user:", data.session?.user?.email || "none");
 
-      if (data.session?.user && mounted) {
-        await loadUserData(data.session.user);
-      } else if (mounted) {
-        setLoading(false);
+        if (data.session?.user && mounted) {
+          await loadUserData(data.session.user);
+        } else if (mounted) {
+          console.log("No active session, setting loading to false");
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Init error:", error);
+        if (mounted) setLoading(false);
       }
     };
 
@@ -160,6 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
+        console.log("🔄 Auth event:", event);
 
         if (event === "SIGNED_IN" && session?.user) {
           setLoading(true);

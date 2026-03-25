@@ -49,7 +49,6 @@ import TeachersManager from "./TeachersManager";
 import ProfitReport from "./ProfitReport";
 import FinancialReports from "./FinancialReports";
 import UserManagement from "./UserManagement";
-import { useFeatureGate } from "../hooks/useFeatureGate";
 import logo from "../assets/logo.png";
 import backgroundPattern from "../assets/background-pattern.png";
 import backgroundWave from "../assets/background-wave.png";
@@ -845,7 +844,6 @@ export default function Dashboard() {
   } = useAuth();
   const { schoolName, schoolEmail, schoolIdentifier } = useSchoolData();
   const { language, toggleLanguage, t } = useLanguage();
-  const { showUpgradePrompt } = useFeatureGate();
 
   const [currentView, setCurrentView] = useState<View>("dashboard");
   const [stats, setStats] = useState<EnhancedStatistics>({
