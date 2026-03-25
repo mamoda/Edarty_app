@@ -63,7 +63,7 @@ export interface User {
   id: string;
   email: string | null;
   full_name: string | null;
-  school_id: string;
+  school_id?: string;
   school_name: string | null;
   school_address: string | null;
   school_phone: string | null;
