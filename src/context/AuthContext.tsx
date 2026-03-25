@@ -51,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const initializedRef = useRef(false);
   const loadingPromiseRef = useRef<Promise<void> | null>(null);
+  const isProcessingRef = useRef(false); // ✅ منع التكرار
 
   const isAuthenticated = useMemo(() => !!authUser, [authUser]);
 
@@ -81,12 +82,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // منع التكرار
+    // ✅ منع التكرار - لو في تحميل جاري، ارجع
     if (loadingPromiseRef.current) {
       return loadingPromiseRef.current;
     }
 
+    // ✅ منع التكرار - لو نفس المستخدم تم تحميله
+    if (authUser?.id === user.id && userRoles.length > 0) {
+      console.log("⏩ User already loaded, skipping");
+      setLoading(false);
+      return;
+    }
+
     loadingPromiseRef.current = (async () => {
+      if (isProcessingRef.current) return;
+      isProcessingRef.current = true;
+
       console.log("📥 Loading user data for:", user.email);
 
       try {
@@ -134,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } finally {
         setLoading(false);
         loadingPromiseRef.current = null;
+        isProcessingRef.current = false;
       }
     })();
 
@@ -148,11 +160,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializedRef.current = true;
 
     let isMounted = true;
+    let authHandled = false; // ✅ منع معالجة الحدث أكثر من مرة
 
     const init = async () => {
       const { data } = await supabase.auth.getSession();
 
-      if (data.session?.user && isMounted) {
+      if (data.session?.user && isMounted && !authHandled) {
+        authHandled = true;
         await loadUserData(data.session.user);
       } else if (isMounted) {
         setLoading(false);
@@ -165,7 +179,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         if (!isMounted) return;
 
+        // ✅ تجاهل الأحداث المتكررة
+        if (event === "SIGNED_IN" && session?.user && !authHandled) {
+          authHandled = true;
+          await loadUserData(session.user);
+        }
+
         if (event === "SIGNED_OUT") {
+          authHandled = false;
           setAuthUser(null);
           setProfile(null);
           setUserRoles([]);
@@ -176,10 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSchoolFeatures([]);
           setLoading(false);
           loadingPromiseRef.current = null;
-        }
-
-        if (event === "SIGNED_IN" && session?.user) {
-          await loadUserData(session.user);
+          isProcessingRef.current = false;
         }
       }
     );
@@ -188,13 +206,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isMounted = false;
       listener.subscription.unsubscribe();
     };
-  }, []); // ✅ بدون dependencies
+  }, []);
 
   // ============================================
   // Actions
   // ============================================
   const signIn = async (email: string, password: string) => {
     setLoading(true);
+    // ✅ إعادة تعيين الـ flag عند تسجيل الدخول الجديد
+    (window as any).__authHandled = false;
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     return { error };
