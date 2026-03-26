@@ -1131,13 +1131,15 @@ export default function Dashboard() {
   };
 
   // تحميل الإحصائيات مرة واحدة عند تحميل الصفحة
-  useEffect(() => {
-    hasLoadedStatsRef.current = false;
-    if (user && currentSchool && !isLoadingRef.current) {
-      loadStatistics();
-    }
-  }, [user, currentSchool]);
+const hasInitialLoadedRef = useRef(false);
 
+useEffect(() => {
+  // ✅ يتم التحميل مرة واحدة فقط
+  if (user && currentSchool && !hasInitialLoadedRef.current) {
+    hasInitialLoadedRef.current = true;
+    loadStatistics();
+  }
+}, [user, currentSchool]); 
   const handleViewChange = (view: View) => {
     setCurrentView(view);
   };
