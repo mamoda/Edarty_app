@@ -10,7 +10,7 @@ interface ExpensesManagerProps {
 }
 
 export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
-  const { user, currentSchool, hasPermission } = useAuth();
+  const { authUser, currentSchool, hasPermission } = useAuth();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -76,7 +76,7 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !currentSchool) return;
+    if (!authUser || !currentSchool) return;
 
     try {
       const expenseData = {
@@ -85,7 +85,7 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
         amount: parseFloat(formData.amount),
         expense_date: formData.expense_date,
         notes: formData.notes,
-        user_id: user.id,
+        user_id: authUser.id,
         school_id: currentSchool.id, // ✅ إضافة school_id
       };
 

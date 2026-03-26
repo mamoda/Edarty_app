@@ -72,7 +72,7 @@ interface Transaction {
 }
 
 export default function FeesManager({ onUpdate }: FeesManagerProps) {
-  const { user, currentSchool, hasPermission } = useAuth();
+  const { authUser, currentSchool, hasPermission } = useAuth();
   const { schoolName, schoolEmail, schoolAddress, schoolPhone, schoolTaxNumber } = useSchoolData();
 
   // الحالة الأساسية
@@ -470,7 +470,7 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !currentSchool) {
+    if (!authUser || !currentSchool) {
       alert("الرجاء تسجيل الدخول أولاً");
       return;
     }
@@ -561,7 +561,7 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
         payment_date: formData.payment_date,
         academic_year: formData.academic_year,
         notes: JSON.stringify(notesData),
-        user_id: user.id,
+        user_id: authUser.id,
         school_id: currentSchool.id, // ✅ إضافة school_id
       };
 
