@@ -274,7 +274,7 @@ const calculateSeasonalFactors = (months: number = 12): number[] => {
 };
 
 export default function FinancialReports() {
-  const { user } = useAuth();
+  const { authUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reportType, setReportType] = useState<
@@ -884,7 +884,7 @@ export default function FinancialReports() {
   // ==================== تحميل التقرير الرئيسي ====================
 
   const loadReport = async () => {
-    if (!user) {
+    if (!authUser) {
       setError("الرجاء تسجيل الدخول أولاً");
       return;
     }
@@ -895,10 +895,10 @@ export default function FinancialReports() {
     try {
       // استخدام Promise.allSettled للتعامل مع الأخطاء بشكل أفضل
       const results = await Promise.allSettled([
-        supabase.from("fees").select("*, student:students(*)").eq("user_id", user.id).gte("payment_date", startDate).lte("payment_date", endDate),
-        supabase.from("expenses").select("*").eq("user_id", user.id).gte("expense_date", startDate).lte("expense_date", endDate),
-        supabase.from("students").select("*").eq("user_id", user.id),
-        supabase.from("teachers").select("*").eq("user_id", user.id),
+        supabase.from("fees").select("*, student:students(*)").eq("user_id", authUser.id).gte("payment_date", startDate).lte("payment_date", endDate),
+        supabase.from("expenses").select("*").eq("user_id", authUser.id).gte("expense_date", startDate).lte("expense_date", endDate),
+        supabase.from("students").select("*").eq("user_id", authUser.id),
+        supabase.from("teachers").select("*").eq("user_id", authUser.id),
       ]);
 
       // معالجة النتائج
