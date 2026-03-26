@@ -53,7 +53,7 @@ const roleOptions = [
 ];
 
 export default function UserManagement({ onUpdate }: UserManagementProps) {
-  const { currentSchool, authUser } = useAuth();
+  const { currentSchool, authUser, hasPermission } = useAuth();
   const [users, setUsers] = useState<SchoolUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -80,10 +80,15 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
     
     setLoading(true);
     try {
-      // ✅ الخطوة 1: جلب الأدوار فقط (بدون join)
+      // ✅ جلب الأدوار من user_school_roles
       const { data: rolesData, error: rolesError } = await supabase
         .from('user_school_roles')
-        .select('*')
+        .select(`
+          user_id,
+          school_id,
+          role,
+          created_at
+        `)
         .eq('school_id', currentSchool.id);
       
       if (rolesError) throw rolesError;
@@ -94,16 +99,16 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
         return;
       }
       
-      // ✅ الخطوة 2: جلب بيانات المستخدمين بشكل منفصل
+      // ✅ جلب بيانات المستخدمين من جدول users
       const userIds = rolesData.map(r => r.user_id);
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('id, email, full_name, created_at, last_login, is_active')
+        .select('id, email, full_name, last_login, is_active')
         .in('id', userIds);
       
       if (usersError) throw usersError;
       
-      // ✅ الخطوة 3: دمج البيانات
+      // ✅ دمج البيانات
       const usersMap = new Map();
       usersData?.forEach(user => {
         usersMap.set(user.id, user);
@@ -133,6 +138,9 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
     }
   };
 
+  // ✅ التحقق من صلاحية إضافة مستخدم
+  const canManageUsers = hasPermission('manage_users') || hasPermission('admin');
+
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
@@ -140,6 +148,12 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
     
     if (!currentSchool) {
       setFormError('لم يتم تحديد المدرسة');
+      return;
+    }
+    
+    // ✅ التحقق من الصلاحية
+    if (!canManageUsers) {
+      setFormError('ليس لديك صلاحية لإضافة مستخدمين');
       return;
     }
     
@@ -181,16 +195,20 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
       }
       
       // 2. إضافة المستخدم إلى جدول users
-      await supabase
+      const { error: userError } = await supabase
         .from('users')
-        .upsert({
+        .insert({
           id: authData.user.id,
           email: formData.email,
           full_name: formData.full_name,
           school_id: currentSchool.id,
           is_active: true,
           created_at: new Date().toISOString(),
-        }, { onConflict: 'id' });
+        });
+      
+      if (userError && userError.code !== '23505') { // 23505 = duplicate key
+        console.error('Error creating user record:', userError);
+      }
       
       // 3. إضافة دور المستخدم في المدرسة
       const { error: roleError } = await supabase
@@ -205,6 +223,8 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
       
       if (roleError) {
         console.error('Error creating user role:', roleError);
+        setFormError('تم إنشاء المستخدم ولكن حدث خطأ في تعيين الدور');
+        return;
       }
       
       setFormSuccess(`تم إضافة المستخدم ${formData.full_name} بنجاح`);
@@ -221,6 +241,20 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
 
   const handleUpdateRole = async (userId: string, newRole: string) => {
     if (!currentSchool) return;
+    
+    // ✅ التحقق من الصلاحية
+    if (!hasPermission('manage_users') && !hasPermission('admin')) {
+      setFormError('ليس لديك صلاحية لتعديل أدوار المستخدمين');
+      setTimeout(() => setFormError(''), 3000);
+      return;
+    }
+    
+    // منع تعديل دور الـ Admin الحالي
+    if (userId === authUser?.id && newRole !== 'admin') {
+      setFormError('لا يمكن تغيير دور حسابك الحالي');
+      setTimeout(() => setFormError(''), 3000);
+      return;
+    }
     
     try {
       const { error } = await supabase
@@ -245,6 +279,13 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
   };
 
   const handleDeleteUser = async (user: SchoolUser) => {
+    // ✅ التحقق من الصلاحية
+    if (!hasPermission('manage_users') && !hasPermission('admin')) {
+      setFormError('ليس لديك صلاحية لحذف المستخدمين');
+      setTimeout(() => setFormError(''), 3000);
+      return;
+    }
+    
     if (user.id === authUser?.id) {
       setFormError('لا يمكن حذف حسابك الحالي');
       setTimeout(() => setFormError(''), 3000);
@@ -254,18 +295,22 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
     if (!confirm(`هل أنت متأكد من حذف المستخدم "${user.full_name}"؟`)) return;
     
     try {
-      // حذف دور المستخدم
-      await supabase
+      // حذف دور المستخدم من المدرسة
+      const { error: roleError } = await supabase
         .from('user_school_roles')
         .delete()
         .eq('user_id', user.id)
         .eq('school_id', currentSchool?.id);
       
-      // تحديث حالة المستخدم
-      await supabase
+      if (roleError) throw roleError;
+      
+      // تحديث حالة المستخدم (تعطيله بدلاً من حذفه نهائياً)
+      const { error: userError } = await supabase
         .from('users')
         .update({ is_active: false })
         .eq('id', user.id);
+      
+      if (userError) console.error('Error updating user status:', userError);
       
       setUsers(prev => prev.filter(u => u.id !== user.id));
       setFormSuccess(`تم حذف المستخدم ${user.full_name} بنجاح`);
@@ -310,13 +355,15 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
             إضافة وتعديل أدوار المستخدمين في المدرسة
           </p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-all shadow-md"
-        >
-          <UserPlus className="w-5 h-5" />
-          <span>إضافة مستخدم جديد</span>
-        </button>
+        {canManageUsers && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-all shadow-md"
+          >
+            <UserPlus className="w-5 h-5" />
+            <span>إضافة مستخدم جديد</span>
+          </button>
+        )}
       </div>
 
       {/* Success/Error Messages */}
@@ -368,18 +415,21 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
           <p className="text-gray-600 mb-6">
             {searchTerm ? 'لا توجد نتائج للبحث' : 'لم يتم إضافة أي مستخدمين بعد'}
           </p>
-          <button
-            onClick={() => setShowForm(true)}
-            className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-all"
-          >
-            إضافة أول مستخدم
-          </button>
+          {canManageUsers && (
+            <button
+              onClick={() => setShowForm(true)}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-all"
+            >
+              إضافة أول مستخدم
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid gap-4">
           {filteredUsers.map((user) => {
             const roleInfo = getRoleInfo(user.role);
             const RoleIcon = roleInfo.icon;
+            const isCurrentUser = user.id === authUser?.id;
             
             return (
               <div
@@ -395,9 +445,16 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
                         </span>
                       </div>
                       <div>
-                        <h3 className="text-lg font-bold text-gray-900">
-                          {user.full_name}
-                        </h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-bold text-gray-900">
+                            {user.full_name}
+                          </h3>
+                          {isCurrentUser && (
+                            <span className="text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full">
+                              أنت
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-2 mt-1">
                           <Mail className="w-4 h-4 text-gray-400" />
                           <span className="text-sm text-gray-600">{user.email}</span>
@@ -426,26 +483,33 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
                   </div>
                   
                   <div className="flex gap-2">
-                    <select
-                      value={user.role}
-                      onChange={(e) => handleUpdateRole(user.id, e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                    >
-                      {roleOptions.map(option => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    
-                    {user.id !== authUser?.id && (
-                      <button
-                        onClick={() => handleDeleteUser(user)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                        title="حذف المستخدم"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
+                    {canManageUsers && !isCurrentUser && (
+                      <>
+                        <select
+                          value={user.role}
+                          onChange={(e) => handleUpdateRole(user.id, e.target.value)}
+                          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                        >
+                          {roleOptions.map(option => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        
+                        <button
+                          onClick={() => handleDeleteUser(user)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                          title="حذف المستخدم"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </>
+                    )}
+                    {isCurrentUser && canManageUsers && (
+                      <div className="text-xs text-gray-400 px-3 py-2">
+                        حسابك الحالي
+                      </div>
                     )}
                   </div>
                 </div>
@@ -557,6 +621,8 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
                   <li>• <span className="font-semibold">مدير:</span> صلاحيات كاملة (إدارة جميع البيانات والمستخدمين)</li>
                   <li>• <span className="font-semibold">محاسب:</span> إدارة الرسوم الدراسية والمصروفات والتقارير المالية</li>
                   <li>• <span className="font-semibold">مشرف:</span> إدارة الطلاب والمعلمين (إضافة/تعديل/حذف)</li>
+                  <li>• <span className="font-semibold">معلم:</span> عرض بيانات الطلاب فقط</li>
+                  <li>• <span className="font-semibold">ولي أمر:</span> متابعة بيانات الطالب فقط</li>
                 </ul>
               </div>
 
