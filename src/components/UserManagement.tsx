@@ -171,40 +171,42 @@ const handleAddUser = async (e: React.FormEvent) => {
     
     if (authError) {
       if (authError.message.includes('already registered')) {
-        // إذا كان المستخدم موجود، نحاول جلب بياناته
-        const { data: existingUser } = await supabase.auth.signInWithPassword({
+        // محاولة تسجيل الدخول للمستخدم الموجود
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password,
         });
         
-        if (existingUser?.user) {
-          // المستخدم موجود، نكمل بإضافة الدور فقط
-          const { error: roleError } = await supabase
-            .from('user_school_roles')
-            .upsert({
-              user_id: existingUser.user.id,
-              school_id: currentSchool.id,
-              role: formData.role,
-              is_primary: true,
-              created_at: new Date().toISOString(),
-            }, {
-              onConflict: 'user_id,school_id',
-              ignoreDuplicates: false
-            });
-          
-          if (roleError) {
-            console.error('Role upsert error:', roleError);
-            setFormError('حدث خطأ في إضافة الدور');
-            return;
-          }
-          
-          setFormSuccess(`تم إضافة المستخدم ${formData.full_name} بنجاح`);
-          resetForm();
-          loadUsers();
-          onUpdate();
-          setTimeout(() => setFormSuccess(''), 3000);
+        if (signInError || !signInData.user) {
+          setFormError('المستخدم موجود ولكن كلمة المرور غير صحيحة');
           return;
         }
+        
+        // إضافة الدور فقط للمستخدم الموجود
+        const { error: roleError } = await supabase
+          .from('user_school_roles')
+          .upsert({
+            user_id: signInData.user.id,
+            school_id: currentSchool.id,
+            role: formData.role,
+            is_primary: true,
+            created_at: new Date().toISOString(),
+          }, {
+            onConflict: 'user_id,school_id'
+          });
+        
+        if (roleError) {
+          console.error('Role upsert error:', roleError);
+          setFormError('حدث خطأ في إضافة الدور');
+          return;
+        }
+        
+        setFormSuccess(`تم إضافة المستخدم ${formData.full_name} بنجاح`);
+        resetForm();
+        loadUsers();
+        onUpdate();
+        setTimeout(() => setFormSuccess(''), 3000);
+        return;
       }
       setFormError(authError.message);
       return;
@@ -226,13 +228,12 @@ const handleAddUser = async (e: React.FormEvent) => {
         is_active: true,
         created_at: new Date().toISOString(),
       }, {
-        onConflict: 'id',
-        ignoreDuplicates: false
+        onConflict: 'id'
       });
     
     if (userError) {
       console.error('User upsert error:', userError);
-      // مش مشكلة كبيرة، نكمل عادي
+      // نكمل حتى لو فشل insert users
     }
     
     // 3. إضافة دور المستخدم باستخدام upsert
@@ -245,8 +246,7 @@ const handleAddUser = async (e: React.FormEvent) => {
         is_primary: true,
         created_at: new Date().toISOString(),
       }, {
-        onConflict: 'user_id,school_id',
-        ignoreDuplicates: false
+        onConflict: 'user_id,school_id'
       });
     
     if (roleError) {
@@ -265,9 +265,7 @@ const handleAddUser = async (e: React.FormEvent) => {
     console.error('Error adding user:', error);
     setFormError(error.message || 'حدث خطأ أثناء إضافة المستخدم');
   }
-};
-
-const handleUpdateRole = async (userId: string, newRole: string) => {
+};  const handleUpdateRole = async (userId: string, newRole: string) => {
     if (!currentSchool) return;
     
     // ✅ التحقق من الصلاحية
