@@ -20,23 +20,23 @@ function LoadingScreen() {
 }
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { authUser, loading } = useAuth();
 
   if (loading) {
     return <LoadingScreen />;
   }
 
-  return user ? <>{children}</> : <Navigate to="/login" replace />;
+  return authUser ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { authUser, loading } = useAuth();
 
   if (loading) {
     return <LoadingScreen />;
   }
 
-  return !user ? <>{children}</> : <Navigate to="/dashboard" replace />;
+  return !authUser ? <>{children}</> : <Navigate to="/dashboard" replace />;
 }
 
 function AppRoutes() {
