@@ -19,7 +19,7 @@ interface StudentsManagerProps {
 }
 
 export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
-  const { user, currentSchool, hasPermission } = useAuth();
+  const { authUser, currentSchool, hasPermission } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -69,7 +69,7 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !currentSchool) return;
+    if (!authUser || !currentSchool) return;
 
     try {
       if (editingStudent) {
@@ -85,7 +85,7 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
           .from("students")
           .insert([{ 
             ...formData, 
-            user_id: user.id,
+            user_id: authUser.id,
             school_id: currentSchool.id // ✅ إضافة school_id
           }]);
 
