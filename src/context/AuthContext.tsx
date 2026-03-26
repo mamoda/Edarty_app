@@ -39,7 +39,6 @@ interface AuthContextType {
   hasFeature: (feature: string) => boolean;
   refreshSchoolData: () => Promise<void>;
 }
-const loadingUserRef = useRef(false);
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -50,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentSchool, setCurrentSchool] = useState<School | null>(null);
   const [currentRole, setCurrentRole] = useState<string | null>(null);
   const [subscriptionPlan, setSubscriptionPlan] = useState<string | null>(null);
+  const loadingUserRef = useRef(false);
   const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<
     string | null
   >(null);
