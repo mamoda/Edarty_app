@@ -106,7 +106,6 @@ export interface Student {
   status: 'active' | 'inactive';
   created_at: string;
   updated_at: string;
-  school?: School;
 }
 
 // ============================================
