@@ -21,7 +21,7 @@ interface TeachersManagerProps {
 }
 
 export default function TeachersManager({ onUpdate, onSalaryProcessed }: TeachersManagerProps) {
-  const { user } = useAuth();
+  const { authUser } = useAuth();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -68,14 +68,14 @@ export default function TeachersManager({ onUpdate, onSalaryProcessed }: Teacher
   };
 
   const loadTeachers = async () => {
-    if (!user) return;
+    if (!authUser) return;
 
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from("teachers")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", authUser.id)
         .order("name", { ascending: true });
 
       if (error) throw error;
@@ -88,14 +88,14 @@ export default function TeachersManager({ onUpdate, onSalaryProcessed }: Teacher
   };
 
   const loadSalaryStatus = async () => {
-    if (!user) return;
+    if (!authUser) return;
 
     try {
       // تحميل حالة الرواتب للشهر المحدد
       const { data: salaryData, error: salaryError } = await supabase
         .from("teacher_salaries")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", authUser.id)
         .eq("month", selectedMonth)
         .eq("year", selectedYear);
 
@@ -119,7 +119,7 @@ export default function TeachersManager({ onUpdate, onSalaryProcessed }: Teacher
             email
           )
         `)
-        .eq("user_id", user.id)
+        .eq("user_id", authUser.id)
         .eq("status", "pending")
         .order("created_at", { ascending: false });
 
@@ -131,7 +131,7 @@ export default function TeachersManager({ onUpdate, onSalaryProcessed }: Teacher
   };
 
   const processSalaries = async () => {
-    if (!user) return;
+    if (!authUser) return;
 
     const activeTeachers = teachers.filter(t => t.status === "active");
     const totalAmount = activeTeachers.reduce((sum, t) => sum + t.salary, 0);
@@ -165,7 +165,7 @@ export default function TeachersManager({ onUpdate, onSalaryProcessed }: Teacher
 
       const salaryRecords = teachersToProcess.map(teacher => ({
         teacher_id: teacher.id,
-        user_id: user.id,
+        user_id: authUser.id,
         month: selectedMonth,
         year: selectedYear,
         amount: teacher.salary,
@@ -190,7 +190,7 @@ export default function TeachersManager({ onUpdate, onSalaryProcessed }: Teacher
             amount: amountToProcess,
             expense_date: new Date().toISOString().split('T')[0],
             notes: `صرف رواتب ${teachersToProcess.length} معلم`,
-            user_id: user.id
+            user_id: authUser.id
           }]);
 
         if (expenseError) throw expenseError;
@@ -253,7 +253,7 @@ export default function TeachersManager({ onUpdate, onSalaryProcessed }: Teacher
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!authUser) return;
 
     try {
       const teacherData = {
@@ -267,7 +267,7 @@ export default function TeachersManager({ onUpdate, onSalaryProcessed }: Teacher
         address: formData.address || null,
         qualifications: formData.qualifications || null,
         notes: formData.notes || null,
-        user_id: user.id,
+        user_id: authUser.id,
       };
 
       if (editingTeacher) {
@@ -275,7 +275,7 @@ export default function TeachersManager({ onUpdate, onSalaryProcessed }: Teacher
           .from("teachers")
           .update(teacherData)
           .eq("id", editingTeacher.id)
-          .eq("user_id", user.id);
+          .eq("user_id", authUser.id);
 
         if (error) throw error;
       } else {
