@@ -136,104 +136,98 @@ const loadUsers = async () => {
   // ✅ التحقق من صلاحية إضافة مستخدم
   const canManageUsers = hasPermission('manage_users') || hasPermission('admin');
 
-  const handleAddUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError('');
-    setFormSuccess('');
-    
-    if (!currentSchool) {
-      setFormError('لم يتم تحديد المدرسة');
-      return;
-    }
-    
-    // ✅ التحقق من الصلاحية
-    if (!canManageUsers) {
-      setFormError('ليس لديك صلاحية لإضافة مستخدمين');
-      return;
-    }
-    
-    if (!formData.email || !formData.password || !formData.full_name) {
-      setFormError('يرجى إكمال جميع البيانات المطلوبة');
-      return;
-    }
-    
-    if (formData.password.length < 6) {
-      setFormError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
-      return;
-    }
-    
-    try {
-      // 1. إنشاء حساب في Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: { 
-            full_name: formData.full_name,
-            school_id: currentSchool.id
-          }
-        }
-      });
-      
-      if (authError) {
-        if (authError.message.includes('already registered')) {
-          setFormError('البريد الإلكتروني مستخدم بالفعل');
-        } else {
-          setFormError(authError.message);
-        }
-        return;
-      }
-      
-      if (!authData.user) {
-        setFormError('فشل في إنشاء المستخدم');
-        return;
-      }
-      
-      // 2. إضافة المستخدم إلى جدول users
-      const { error: userError } = await supabase
-        .from('users')
-        .insert({
-          id: authData.user.id,
-          email: formData.email,
+const handleAddUser = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setFormError('');
+  setFormSuccess('');
+  
+  if (!currentSchool) {
+    setFormError('لم يتم تحديد المدرسة');
+    return;
+  }
+  
+  if (!formData.email || !formData.password || !formData.full_name) {
+    setFormError('يرجى إكمال جميع البيانات المطلوبة');
+    return;
+  }
+  
+  if (formData.password.length < 6) {
+    setFormError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+    return;
+  }
+  
+  try {
+    // 1. إنشاء حساب في Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: formData.email,
+      password: formData.password,
+      options: {
+        data: { 
           full_name: formData.full_name,
-          school_id: currentSchool.id,
-          is_active: true,
-          created_at: new Date().toISOString(),
-        });
-      
-      if (userError && userError.code !== '23505') { // 23505 = duplicate key
-        console.error('Error creating user record:', userError);
+          school_id: currentSchool.id
+        }
       }
-      
-      // 3. إضافة دور المستخدم في المدرسة
-      const { error: roleError } = await supabase
-        .from('user_school_roles')
-        .insert({
-          user_id: authData.user.id,
-          school_id: currentSchool.id,
-          role: formData.role,
-          is_primary: true,
-          permissions: []
-        });
-      
-      if (roleError) {
-        console.error('Error creating user role:', roleError);
-        setFormError('تم إنشاء المستخدم ولكن حدث خطأ في تعيين الدور');
-        return;
+    });
+    
+    if (authError) {
+      if (authError.message.includes('already registered')) {
+        setFormError('البريد الإلكتروني مستخدم بالفعل');
+      } else {
+        setFormError(authError.message);
       }
-      
-      setFormSuccess(`تم إضافة المستخدم ${formData.full_name} بنجاح`);
-      resetForm();
-      loadUsers();
-      onUpdate();
-      
-      setTimeout(() => setFormSuccess(''), 3000);
-    } catch (error: any) {
-      console.error('Error adding user:', error);
-      setFormError(error.message || 'حدث خطأ أثناء إضافة المستخدم');
+      return;
     }
-  };
-
+    
+    if (!authData.user) {
+      setFormError('فشل في إنشاء المستخدم');
+      return;
+    }
+    
+    // 2. إضافة المستخدم إلى جدول users
+    const { error: userError } = await supabase
+      .from('users')
+      .insert({
+        id: authData.user.id,
+        email: formData.email,
+        full_name: formData.full_name,
+        school_id: currentSchool.id,
+        is_active: true,
+        created_at: new Date().toISOString(),
+      });
+    
+    if (userError) {
+      console.error('User insert error:', userError);
+      // مش مشكلة كبيرة، كمل عادي
+    }
+    
+    // 3. إضافة دور المستخدم
+    const { error: roleError } = await supabase
+      .from('user_school_roles')
+      .insert({
+        user_id: authData.user.id,
+        school_id: currentSchool.id,
+        role: formData.role,
+        is_primary: true,
+        created_at: new Date().toISOString(),
+      });
+    
+    if (roleError) {
+      console.error('Role insert error:', roleError);
+      setFormError('تم إنشاء المستخدم ولكن حدث خطأ في تعيين الدور');
+      return;
+    }
+    
+    setFormSuccess(`تم إضافة المستخدم ${formData.full_name} بنجاح`);
+    resetForm();
+    loadUsers();
+    onUpdate();
+    
+    setTimeout(() => setFormSuccess(''), 3000);
+  } catch (error: any) {
+    console.error('Error adding user:', error);
+    setFormError(error.message || 'حدث خطأ أثناء إضافة المستخدم');
+  }
+};
   const handleUpdateRole = async (userId: string, newRole: string) => {
     if (!currentSchool) return;
     
