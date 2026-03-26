@@ -187,6 +187,8 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
 
 // src/components/FeesManager.tsx - استبدل دالة loadData بهذه
 
+// src/components/FeesManager.tsx - استبدل دالة loadData فقط
+
 const loadData = async () => {
   if (!currentSchool) {
     console.log("⏳ No school selected, skipping load");
@@ -195,26 +197,36 @@ const loadData = async () => {
   }
 
   setLoading(true);
+  console.log("📊 Loading fees for school:", currentSchool.id);
+  
   try {
-    // ✅ استعلام منفصل للـ fees
+    // ✅ جلب الرسوم أولاً
     const { data: feesData, error: feesError } = await supabase
       .from("fees")
       .select("*")
       .eq("school_id", currentSchool.id)
       .order("payment_date", { ascending: false });
 
-    if (feesError) throw feesError;
+    if (feesError) {
+      console.error("Fees error:", feesError);
+      throw feesError;
+    }
+    console.log("✅ Fees loaded:", feesData?.length || 0);
 
-    // ✅ استعلام منفصل للـ students
+    // ✅ جلب الطلاب
     const { data: studentsData, error: studentsError } = await supabase
       .from("students")
       .select("*")
       .eq("school_id", currentSchool.id)
       .order("full_name");
 
-    if (studentsError) throw studentsError;
+    if (studentsError) {
+      console.error("Students error:", studentsError);
+      throw studentsError;
+    }
+    console.log("✅ Students loaded:", studentsData?.length || 0);
 
-    // ✅ ربط البيانات يدوياً
+    // ✅ ربط البيانات
     const studentsMap = new Map();
     studentsData?.forEach(student => {
       studentsMap.set(student.id, student);
@@ -228,14 +240,18 @@ const loadData = async () => {
     setFees(feesWithStudents);
     setStudents(studentsData || []);
 
+    // ✅ حساب الإحصائيات
     calculateStatistics(feesWithStudents, studentsData || []);
     calculatePaymentMethodStats();
+    
+    console.log("✅ FeesManager ready");
   } catch (error) {
-    console.error("Error loading data:", error);
+    console.error("❌ Error loading fees data:", error);
   } finally {
     setLoading(false);
   }
-};  const calculateStatistics = (feesData: Fee[], studentsData: Student[]) => {
+};
+const calculateStatistics = (feesData: Fee[], studentsData: Student[]) => {
     // إجمالي التحصيل = المدفوعات - الاستردادات
     const total_payments = feesData
       .filter(f => f.amount > 0)
