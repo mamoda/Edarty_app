@@ -75,69 +75,64 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
     }
   }, [currentSchool]);
 
-  const loadUsers = async () => {
-    if (!currentSchool) return;
-    
-    setLoading(true);
-    try {
-      // ✅ جلب الأدوار من user_school_roles
-      const { data: rolesData, error: rolesError } = await supabase
-        .from('user_school_roles')
-        .select(`
-          user_id,
-          school_id,
-          role,
-          created_at
-        `)
-        .eq('school_id', currentSchool.id);
-      
-      if (rolesError) throw rolesError;
-      
-      if (!rolesData || rolesData.length === 0) {
-        setUsers([]);
-        setLoading(false);
-        return;
-      }
-      
-      // ✅ جلب بيانات المستخدمين من جدول users
-      const userIds = rolesData.map(r => r.user_id);
-      const { data: usersData, error: usersError } = await supabase
-        .from('users')
-        .select('id, email, full_name, last_login, is_active')
-        .in('id', userIds);
-      
-      if (usersError) throw usersError;
-      
-      // ✅ دمج البيانات
-      const usersMap = new Map();
-      usersData?.forEach(user => {
-        usersMap.set(user.id, user);
-      });
-      
-      const usersList: SchoolUser[] = rolesData.map(role => {
-        const user = usersMap.get(role.user_id);
-        return {
-          id: role.user_id,
-          email: user?.email || '',
-          full_name: user?.full_name || '',
-          role: role.role,
-          school_id: role.school_id,
-          created_at: role.created_at,
-          last_login: user?.last_login || null,
-          is_active: user?.is_active ?? true,
-        };
-      });
-      
-      setUsers(usersList);
-    } catch (error) {
-      console.error('Error loading users:', error);
-      setFormError('حدث خطأ في تحميل المستخدمين');
-      setTimeout(() => setFormError(''), 3000);
-    } finally {
-      setLoading(false);
-    }
-  };
+const loadUsers = async () => {
+  if (!currentSchool) return;
 
+  setLoading(true);
+  try {
+    // ✅ جلب الأدوار من user_school_roles بدون join لتجنب مشاكل RLS
+    const { data: rolesData, error: rolesError } = await supabase
+      .from('user_school_roles')
+      .select(`
+        user_id,
+        school_id,
+        role,
+        created_at
+      `)
+      .eq('school_id', currentSchool.id);
+
+    if (rolesError) throw rolesError;
+
+    if (!rolesData || rolesData.length === 0) {
+      setUsers([]);
+      return;
+    }
+
+    // ✅ جلب بيانات المستخدمين من جدول users
+    const userIds = rolesData.map(r => r.user_id);
+    const { data: usersData, error: usersError } = await supabase
+      .from('users')
+      .select('id, email, full_name, last_login, is_active')
+      .in('id', userIds);
+
+    if (usersError) throw usersError;
+
+    // ✅ دمج البيانات بدون أي join في الـ query
+    const usersMap = new Map(usersData?.map(user => [user.id, user]));
+
+    const usersList: SchoolUser[] = rolesData.map(role => {
+      const user = usersMap.get(role.user_id);
+      return {
+        id: role.user_id,
+        email: user?.email || '',
+        full_name: user?.full_name || '',
+        role: role.role,
+        school_id: role.school_id,
+        created_at: role.created_at,
+        last_login: user?.last_login || null,
+        is_active: user?.is_active ?? true,
+      };
+    });
+
+    setUsers(usersList);
+  } catch (error) {
+    console.error('Error loading users:', error);
+    setFormError('حدث خطأ في تحميل المستخدمين');
+    setTimeout(() => setFormError(''), 3000);
+  } finally {
+    setLoading(false);
+  }
+};
   // ✅ التحقق من صلاحية إضافة مستخدم
   const canManageUsers = hasPermission('manage_users') || hasPermission('admin');
 
