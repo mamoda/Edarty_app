@@ -28,7 +28,11 @@ interface AuthContextType {
   schoolFeatures: string[];
   isAuthenticated: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName?: string,
+  ) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   switchSchool: (schoolId: string) => Promise<void>;
   hasPermission: (permission: string) => boolean;
@@ -46,7 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentSchool, setCurrentSchool] = useState<School | null>(null);
   const [currentRole, setCurrentRole] = useState<string | null>(null);
   const [subscriptionPlan, setSubscriptionPlan] = useState<string | null>(null);
-  const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<string | null>(null);
+  const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<
+    string | null
+  >(null);
   const [schoolFeatures, setSchoolFeatures] = useState<string[]>([]);
 
   const initializedRef = useRef(false);
@@ -76,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ============================================
   const loadUserData = async (user: any) => {
     console.log("📥 Loading user data for:", user?.email);
-    
+
     try {
       if (!user) {
         setLoading(false);
@@ -87,12 +93,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthUser({ id: user.id, email: user.email });
 
       // 2. profile
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from("users")
         .select("*")
         .eq("id", user.id)
         .maybeSingle();
 
+      if (profileError) console.error(profileError);
       setProfile(profileData || null);
 
       // 3. roles
@@ -108,7 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (rolesData.length > 0) {
         const savedSchoolId = localStorage.getItem(`current_school_${user.id}`);
         const selectedRole =
-          rolesData.find((r: any) => r.school_id === savedSchoolId) ||
+          rolesData.find((r) => String(r.school_id) === savedSchoolId) ||
           rolesData.find((r: any) => r.is_primary) ||
           rolesData[0];
 
@@ -142,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const init = async () => {
       try {
         const { data } = await supabase.auth.getSession();
-        
+
         if (data.session?.user && isMounted) {
           await loadUserData(data.session.user);
         } else if (isMounted) {
@@ -160,10 +167,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         if (!isMounted) return;
 
-        if (event === "SIGNED_IN" && session?.user) {
+        if (event === "SIGNED_IN" && session?.user && !authUser) {
           await loadUserData(session.user);
         }
-
         if (event === "SIGNED_OUT") {
           setAuthUser(null);
           setProfile(null);
@@ -175,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSchoolFeatures([]);
           setLoading(false);
         }
-      }
+      },
     );
 
     return () => {
@@ -187,10 +193,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ============================================
   // Actions
   // ============================================
-const signIn = async (email: string, password: string) => {
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  return { error };
-};
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    return { error };
+  };
   const signUp = async (email: string, password: string, fullName?: string) => {
     setLoading(true);
 
