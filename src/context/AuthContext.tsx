@@ -50,7 +50,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [schoolFeatures, setSchoolFeatures] = useState<string[]>([]);
 
   const initializedRef = useRef(false);
-  const dataLoadedRef = useRef(false); // ✅ منع إعادة التحميل بعد تحميل البيانات
 
   const isAuthenticated = useMemo(() => !!authUser, [authUser]);
 
@@ -73,25 +72,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // ============================================
-  // Load User Data - مرة واحدة فقط في عمر التطبيق
+  // Load User Data - بسيطة ومباشرة
   // ============================================
   const loadUserData = async (user: any) => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
-    // ✅ منع إعادة التحميل إذا كانت البيانات محملة بالفعل
-    if (dataLoadedRef.current) {
-      console.log("⏩ Data already loaded, skipping");
-      setLoading(false);
-      return;
-    }
-
-    console.log("📥 Loading user data for:", user.email);
-    dataLoadedRef.current = true;
-
+    console.log("📥 Loading user data for:", user?.email);
+    
     try {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
       // 1. auth user
       setAuthUser({ id: user.id, email: user.email });
 
@@ -133,14 +124,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("✅ User data loaded");
     } catch (error) {
       console.error("loadUserData error:", error);
-      dataLoadedRef.current = false; // لو فشل، نسمح بمحاولة تانية
     } finally {
+      // ✅ التأكد من إيقاف التحميل في كل الأحوال
       setLoading(false);
     }
   };
 
   // ============================================
-  // Auth Init - مرة واحدة فقط
+  // Auth Init
   // ============================================
   useEffect(() => {
     if (initializedRef.current) return;
@@ -151,7 +142,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const init = async () => {
       try {
         const { data } = await supabase.auth.getSession();
-        if (data.session?.user && isMounted && !dataLoadedRef.current) {
+        
+        if (data.session?.user && isMounted) {
           await loadUserData(data.session.user);
         } else if (isMounted) {
           setLoading(false);
@@ -168,14 +160,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         if (!isMounted) return;
 
-        // ✅ SIGNED_IN: نحمل البيانات مرة واحدة فقط
-        if (event === "SIGNED_IN" && session?.user && !dataLoadedRef.current) {
+        if (event === "SIGNED_IN" && session?.user) {
           await loadUserData(session.user);
         }
 
-        // ✅ SIGNED_OUT: نعيد تعيين الـ flag عشان نقدر نحمل تاني بعد تسجيل الدخول الجديد
         if (event === "SIGNED_OUT") {
-          dataLoadedRef.current = false;
           setAuthUser(null);
           setProfile(null);
           setUserRoles([]);
