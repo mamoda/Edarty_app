@@ -185,42 +185,44 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
     }
   }, [selectedStudent, fees]);
 
-  const loadData = async () => {
-    if (!currentSchool) {
-      console.log("⏳ No school selected, skipping load");
-      return;
-    }
+const loadData = async () => {
+  if (!currentSchool) {
+    console.log("⏳ No school selected, skipping load");
+    return;
+  }
 
-    setLoading(true);
-    try {
-      const [feesRes, studentsRes] = await Promise.all([
-        supabase
-          .from("fees")
-          .select("*, student:students(*)")
-          .eq("school_id", currentSchool.id) // ✅ استخدام school_id بدلاً من user_id
-          .order("payment_date", { ascending: false }),
-        supabase
-          .from("students")
-          .select("*")
-          .eq("school_id", currentSchool.id) // ✅ استخدام school_id بدلاً من user_id
-          .order("full_name"),
-      ]);
+  setLoading(true);
+  try {
+    const [feesRes, studentsRes] = await Promise.all([
+      supabase
+        .from("fees")
+        .select(`
+          *,
+          student:students(*)
+        `)
+        .eq("school_id", currentSchool.id)
+        .order("payment_date", { ascending: false }),
+      supabase
+        .from("students")
+        .select("*")
+        .eq("school_id", currentSchool.id)
+        .order("full_name"),
+    ]);
 
-      if (feesRes.error) throw feesRes.error;
-      if (studentsRes.error) throw studentsRes.error;
+    if (feesRes.error) throw feesRes.error;
+    if (studentsRes.error) throw studentsRes.error;
 
-      setFees(feesRes.data || []);
-      setStudents(studentsRes.data || []);
+    setFees(feesRes.data || []);
+    setStudents(studentsRes.data || []);
 
-      calculateStatistics(feesRes.data || [], studentsRes.data || []);
-      calculatePaymentMethodStats();
-    } catch (error) {
-      console.error("Error loading data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+    calculateStatistics(feesRes.data || [], studentsRes.data || []);
+    calculatePaymentMethodStats();
+  } catch (error) {
+    console.error("Error loading data:", error);
+  } finally {
+    setLoading(false);
+  }
+};
   const calculateStatistics = (feesData: Fee[], studentsData: Student[]) => {
     // إجمالي التحصيل = المدفوعات - الاستردادات
     const total_payments = feesData

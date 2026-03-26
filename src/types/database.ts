@@ -147,7 +147,6 @@ export interface Fee {
   notes: string;
   created_at: string;
   student?: Student;
-  school?: School;
 }
 
 // ============================================
