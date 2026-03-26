@@ -231,11 +231,9 @@ const loadUserData = async (user: any) => {
 
         if (!isMounted) return;
 
-        if (event === "SIGNED_IN" && session?.user && !authUser) {
-          console.log("✅ SIGNED_IN event triggered");
-          await loadUserData(session.user);
-        }
-
+if (event === "SIGNED_IN") {
+  console.log("ℹ️ SIGNED_IN ignored (init handles it)");
+}
         if (event === "SIGNED_OUT") {
           console.log("👋 SIGNED_OUT event");
 
