@@ -128,8 +128,8 @@ const loadUserData = async (user: any) => {
     console.log("➡️ Step 3: Fetching roles...");
     const { data: roles, error: rolesError } = await supabase
       .from("user_school_roles")
-      .select("*, school:schools(*)")
-      .eq("user_id", user.id);
+.select("*, schools(*)")   
+   .eq("user_id", user.id);
 
     if (rolesError) {
       console.error("❌ Roles error:", rolesError);
@@ -161,11 +161,8 @@ const loadUserData = async (user: any) => {
 
       console.log("🎯 Selected role:", selectedRole);
 
-      if (selectedRole?.school) {
-        console.log("🏫 Setting current school:", selectedRole.school);
-
-        setCurrentSchool(selectedRole.school);
-        setCurrentRole(selectedRole.role);
+if (selectedRole?.schools) {
+  setCurrentSchool(selectedRole.schools);        setCurrentRole(selectedRole.role);
         setSubscriptionPlan(selectedRole.school.subscription_plan);
         setSubscriptionExpiresAt(
           selectedRole.school.subscription_expires_at
