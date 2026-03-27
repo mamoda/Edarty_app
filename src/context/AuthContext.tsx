@@ -163,11 +163,11 @@ const loadUserData = async (user: any) => {
 
 if (selectedRole?.schools) {
   setCurrentSchool(selectedRole.schools);        setCurrentRole(selectedRole.role);
-        setSubscriptionPlan(selectedRole.school.subscription_plan);
+        setSubscriptionPlan(selectedRole.schools.subscription_plan);
         setSubscriptionExpiresAt(
-          selectedRole.school.subscription_expires_at
+          selectedRole.schools.subscription_expires_at
         );
-        setSchoolFeatures(selectedRole.school.features || []);
+        setSchoolFeatures(selectedRole.schools.features || []);
       } else {
         console.warn("⚠️ No school found in selected role");
       }
