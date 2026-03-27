@@ -1,4 +1,3 @@
-// src/context/AuthContext.tsx
 import {
   createContext,
   useContext,
@@ -21,6 +20,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   currentSchool: School | null;
+  currentSchoolId: string | null; // ✅ NEW
   currentRole: string | null;
   userRoles: UserSchoolRole[];
   subscriptionPlan: string | null;
@@ -39,6 +39,7 @@ interface AuthContextType {
   hasFeature: (feature: string) => boolean;
   refreshSchoolData: () => Promise<void>;
 }
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -47,14 +48,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [userRoles, setUserRoles] = useState<UserSchoolRole[]>([]);
   const [currentSchool, setCurrentSchool] = useState<School | null>(null);
+  const [currentSchoolId, setCurrentSchoolId] = useState<string | null>(null); // ✅ NEW
   const [currentRole, setCurrentRole] = useState<string | null>(null);
+
   const [subscriptionPlan, setSubscriptionPlan] = useState<string | null>(null);
-  const loadingUserRef = useRef(false);
-  const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<
-    string | null
-  >(null);
+  const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<string | null>(null);
   const [schoolFeatures, setSchoolFeatures] = useState<string[]>([]);
 
+  const loadingUserRef = useRef(false);
   const initializedRef = useRef(false);
 
   const isAuthenticated = useMemo(() => !!authUser, [authUser]);
@@ -63,13 +64,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Load School Data
   // ============================================
   const loadCurrentSchoolData = async (schoolId: string) => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("schools")
       .select("*")
       .eq("id", schoolId)
       .single();
 
-    if (!error && data) {
+    if (data) {
       setCurrentSchool(data);
       setSubscriptionPlan(data.subscription_plan);
       setSubscriptionExpiresAt(data.subscription_expires_at);
@@ -78,145 +79,87 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // ============================================
-  // Load User Data - بسيطة ومباشرة
+  // Load User Data
   // ============================================
-const loadUserData = async (user: any) => {
-  // 🛑 منع التكرار (أهم جزء)
-  if (loadingUserRef.current) {
-    console.log("⛔ Duplicate loadUserData prevented");
-    return;
-  }
+  const loadUserData = async (user: any) => {
+    if (loadingUserRef.current) return;
+    loadingUserRef.current = true;
 
-  loadingUserRef.current = true;
+    try {
+      if (!user) return;
 
-  console.log("📥 [START] Loading user data for:", user?.email);
-  console.time("⏱ loadUserData");
+      setAuthUser({ id: user.id, email: user.email });
 
-  try {
-    if (!user) {
-      console.warn("⚠️ No user found");
-      return;
-    }
+      // profile
+      const { data: profileData } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
 
-    // ============================================
-    // 1. auth user
-    // ============================================
-    console.log("➡️ Step 1: Setting auth user");
-    setAuthUser({ id: user.id, email: user.email });
+      setProfile(profileData || null);
 
-    // ============================================
-    // 2. profile
-    // ============================================
-    console.log("➡️ Step 2: Fetching profile...");
-    const { data: profileData, error: profileError } = await supabase
-      .from("users")
-      .select("*")
-      .eq("id", user.id)
-      .maybeSingle();
+      // roles
+      const { data: roles } = await supabase
+        .from("user_school_roles")
+        .select("*, schools(*)")
+        .eq("user_id", user.id);
 
-    if (profileError) {
-      console.error("❌ Profile error:", profileError);
-    } else {
-      console.log("✅ Profile loaded:", profileData);
-    }
+      const rolesData = roles || [];
+      setUserRoles(rolesData);
 
-    setProfile(profileData || null);
-
-    // ============================================
-    // 3. roles
-    // ============================================
-    console.log("➡️ Step 3: Fetching roles...");
-    const { data: roles, error: rolesError } = await supabase
-      .from("user_school_roles")
-.select("*, schools(*)")   
-   .eq("user_id", user.id);
-
-    if (rolesError) {
-      console.error("❌ Roles error:", rolesError);
-    } else {
-      console.log("✅ Roles loaded:", roles);
-    }
-
-    const rolesData = roles || [];
-    setUserRoles(rolesData);
-
-    console.log("📊 Roles count:", rolesData.length);
-
-    // ============================================
-    // 4. select school
-    // ============================================
-    console.log("➡️ Step 4: Selecting school...");
-
-    if (rolesData.length > 0) {
-      const savedSchoolId = localStorage.getItem(
-        `current_school_${user.id}`
-      );
-
-      console.log("💾 Saved schoolId:", savedSchoolId);
+      // =========================
+      // FIX: school selection
+      // =========================
+      const savedSchoolId = localStorage.getItem(`current_school_${user.id}`);
 
       const selectedRole =
-        rolesData.find((r) => String(r.school_id) === savedSchoolId) ||
+        rolesData.find((r) => r.school_id === savedSchoolId) ||
         rolesData.find((r: any) => r.is_primary) ||
         rolesData[0];
 
-      console.log("🎯 Selected role:", selectedRole);
+      if (selectedRole?.school_id) {
+        const schoolId = selectedRole.school_id;
 
-if (selectedRole?.schools) {
-  setCurrentSchool(selectedRole.schools);        setCurrentRole(selectedRole.role);
-        setSubscriptionPlan(selectedRole.schools.subscription_plan);
-        setSubscriptionExpiresAt(
-          selectedRole.schools.subscription_expires_at
-        );
-        setSchoolFeatures(selectedRole.schools.features || []);
-      } else {
-        console.warn("⚠️ No school found in selected role");
+        // ✅ SAVE + STATE
+        setCurrentSchoolId(schoolId);
+        localStorage.setItem(`current_school_${user.id}`, schoolId);
+
+        if (selectedRole.schools) {
+          setCurrentSchool(selectedRole.schools);
+          setCurrentRole(selectedRole.role);
+          setSubscriptionPlan(selectedRole.schools.subscription_plan);
+          setSubscriptionExpiresAt(
+            selectedRole.schools.subscription_expires_at
+          );
+          setSchoolFeatures(selectedRole.schools.features || []);
+        } else {
+          await loadCurrentSchoolData(schoolId);
+        }
       }
-    } else {
-      console.warn("⚠️ User has NO roles");
+
+    } catch (error) {
+      console.error("loadUserData error:", error);
+    } finally {
+      loadingUserRef.current = false;
+      setLoading(false);
     }
+  };
 
-    console.log("✅ [END] User data loaded");
-  } catch (error) {
-    console.error("💥 loadUserData crash:", error);
-  } finally {
-    console.log("🛑 Stopping loading");
-    console.timeEnd("⏱ loadUserData");
-
-    // مهم: ترتيب الإنهاء
-    loadingUserRef.current = false;
-    setLoading(false);
-  }
-};  // ============================================
-  // Auth Init
+  // ============================================
+  // Init Auth
   // ============================================
   useEffect(() => {
-    if (initializedRef.current) {
-      console.log("⚠️ Auth already initialized");
-      return;
-    }
-
+    if (initializedRef.current) return;
     initializedRef.current = true;
-    console.log("🚀 Auth initializing...");
-
-    let isMounted = true;
 
     const init = async () => {
-      try {
-        console.log("🔍 Checking session...");
-        const { data } = await supabase.auth.getSession();
+      const { data } = await supabase.auth.getSession();
 
-        console.log("📦 Session result:", data);
-
-        if (data.session?.user && isMounted) {
-          console.log("✅ Found session user");
-          await loadUserData(data.session.user);
-        } else {
-          console.log("❌ No active session");
-          if (isMounted) setLoading(false);
-        }
-      } catch (error) {
-        console.error("💥 Init error:", error);
-        if (isMounted) setLoading(false);
+      if (data.session?.user) {
+        await loadUserData(data.session.user);
+      } else {
+        setLoading(false);
       }
     };
 
@@ -224,90 +167,38 @@ if (selectedRole?.schools) {
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("🔔 Auth event:", event, session);
-
-        if (!isMounted) return;
-
-if (event === "SIGNED_IN") {
-  console.log("ℹ️ SIGNED_IN ignored (init handles it)");
-}
         if (event === "SIGNED_OUT") {
-          console.log("👋 SIGNED_OUT event");
-
           setAuthUser(null);
           setProfile(null);
           setUserRoles([]);
           setCurrentSchool(null);
+          setCurrentSchoolId(null); // ✅ RESET
           setCurrentRole(null);
-          setSubscriptionPlan(null);
-          setSubscriptionExpiresAt(null);
-          setSchoolFeatures([]);
           setLoading(false);
         }
-      },
+      }
     );
 
     return () => {
-      console.log("🧹 Cleaning up auth listener");
-      isMounted = false;
       listener.subscription.unsubscribe();
     };
   }, []);
+
   // ============================================
-  // Actions
+  // Switch School (FIXED)
   // ============================================
-  const signIn = async (email: string, password: string) => {
-    console.log("🔐 Signing in:", email);
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      console.error("❌ Sign in error:", error);
-    } else {
-      console.log("✅ Sign in success");
-    }
-
-    return { error };
-  };
-  const signUp = async (email: string, password: string, fullName?: string) => {
-    setLoading(true);
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-      },
-    });
-
-    if (!error && data.user) {
-      await supabase.from("users").insert({
-        id: data.user.id,
-        email,
-        full_name: fullName,
-      });
-    }
-
-    setLoading(false);
-    return { error };
-  };
-
-  const signOut = async () => {
-    await supabase.auth.signOut();
-  };
-
   const switchSchool = async (schoolId: string) => {
     const role = userRoles.find((r) => r.school_id === schoolId);
 
     if (role?.school && authUser) {
       setCurrentSchool(role.school);
+      setCurrentSchoolId(schoolId); // ✅ IMPORTANT
       setCurrentRole(role.role);
+
       setSubscriptionPlan(role.school.subscription_plan);
       setSubscriptionExpiresAt(role.school.subscription_expires_at);
       setSchoolFeatures(role.school.features || []);
+
       localStorage.setItem(`current_school_${authUser.id}`, schoolId);
     }
   };
@@ -329,8 +220,8 @@ if (event === "SIGNED_IN") {
   };
 
   const refreshSchoolData = async () => {
-    if (currentSchool?.id) {
-      await loadCurrentSchoolData(currentSchool.id);
+    if (currentSchoolId) {
+      await loadCurrentSchoolData(currentSchoolId);
     }
   };
 
@@ -339,15 +230,45 @@ if (event === "SIGNED_IN") {
     profile,
     loading,
     currentSchool,
+    currentSchoolId, // ✅ exposed
     currentRole,
     userRoles,
     subscriptionPlan,
     subscriptionExpiresAt,
     schoolFeatures,
     isAuthenticated,
-    signIn,
-    signUp,
-    signOut,
+    signIn: async (email: string, password: string) => {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      return { error };
+    },
+    signUp: async (email: string, password: string, fullName?: string) => {
+      setLoading(true);
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName },
+        },
+      });
+
+      if (!error && data.user) {
+        await supabase.from("users").insert({
+          id: data.user.id,
+          email,
+          full_name: fullName,
+        });
+      }
+
+      setLoading(false);
+      return { error };
+    },
+    signOut: async () => {
+      await supabase.auth.signOut();
+    },
     switchSchool,
     hasPermission,
     hasFeature,
