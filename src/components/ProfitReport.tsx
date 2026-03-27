@@ -21,7 +21,7 @@ interface MonthlyData {
 }
 
 export default function ProfitReport() {
-  const { user } = useAuth();
+  const { authUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
@@ -43,13 +43,13 @@ export default function ProfitReport() {
   }, [selectedYear]);
 
   const loadReportData = async () => {
-    if (!user) return;
+    if (!authUser) return;
 
     setLoading(true);
     try {
       const [feesRes, expensesRes] = await Promise.all([
-        supabase.from('fees').select('amount, payment_date').eq('user_id', user.id),
-        supabase.from('expenses').select('amount, expense_date').eq('user_id', user.id),
+        supabase.from('fees').select('amount, payment_date').eq('user_id', authUser.id),
+        supabase.from('expenses').select('amount, expense_date').eq('user_id', authUser.id),
       ]);
 
       if (feesRes.error) throw feesRes.error;
