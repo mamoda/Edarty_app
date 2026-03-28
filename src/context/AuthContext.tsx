@@ -79,6 +79,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  
+
   // ============================================
   // 🔥 NEW: Auto Create School
   // ============================================
@@ -87,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // إنشاء مدرسة
       const { data: school, error: schoolError } = await supabase
         .from("schools")
-        .insert([{ name: "مدرستي الجديدة" }])
+        .insert([{ name: "مدرستي" }])
         .select()
         .single();
 
@@ -205,6 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const init = async () => {
       const { data } = await supabase.auth.getSession();
+      console.log("SESSION:", data.session);
 
       if (data.session?.user) {
         await loadUserData(data.session.user);
