@@ -61,9 +61,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAuthenticated = useMemo(() => !!authUser, [authUser]);
 
-  // =========================
-  // Load School
-  // =========================
+  // ============================================
+  // Load School Data
+  // ============================================
   const loadCurrentSchoolData = async (schoolId: string) => {
     const { data } = await supabase
       .from("schools")
@@ -79,58 +79,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // =========================
-  // Create School (Auto)
-  // =========================
-  const createSchoolForUser = async (userId: string) => {
-    try {
-      const { data: school, error } = await supabase
-        .from("schools")
-        .insert([
-          {
-            name: "مدرستي",
-            status: "active",
-            subscription_plan: "free",
-            subscription_status: "active",
-            max_students: 50,
-            max_teachers: 10,
-            max_users: 5,
-            features: [],
-            settings: {},
-          },
-        ])
-        .select()
-        .single();
+  
 
-      if (error) throw error;
+// ============================================
+// 🔥 NEW: Auto Create School (FIXED)
+// ============================================
+const createSchoolForUser = async (userId: string) => {
+  try {
+    const { data: school, error: schoolError } = await supabase
+      .from("schools")
+      .insert([
+        {
+          name: "مدرستي",
 
-      const { error: roleError } = await supabase
-        .from("user_school_roles")
-        .insert({
-          user_id: userId,
-          school_id: school.id,
-          role: "admin",
-          is_primary: true,
-        });
+          // القيم الافتراضية (اختياري لكن أفضل)
+          status: "active",
+          subscription_plan: "free",
+          subscription_status: "active",
+          max_students: 50,
+          max_teachers: 10,
+          max_users: 5,
+          features: [],
+          settings: {},
+        },
+      ])
+      .select()
+      .single();
 
-      if (roleError) throw roleError;
+    if (schoolError) throw schoolError;
 
-      return school;
-    } catch (err) {
-      console.error("❌ createSchoolForUser error:", err);
-      return null;
-    }
-  };
+    // ربط المستخدم بالمدرسة
+    const { error: roleError } = await supabase
+      .from("user_school_roles")
+      .insert({
+        user_id: userId,
+        school_id: school.id,
+        role: "admin",
+        is_primary: true,
+      });
 
-  // =========================
+    if (roleError) throw roleError;
+
+    return school;
+  } catch (error) {
+    console.error("Error creating school:", error);
+    return null;
+  }
+};  // ============================================
   // Load User Data
-  // =========================
+  // ============================================
   const loadUserData = async (user: any) => {
     if (loadingUserRef.current) return;
     loadingUserRef.current = true;
 
     try {
-      if (!user?.id) return;
+      if (!user) return;
 
       setAuthUser({ id: user.id, email: user.email });
 
@@ -151,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       let rolesData = roles || [];
 
-      // 🔥 لو مفيش مدرسة → أنشئ
+      // 🔥 FIX: لو مفيش roles → أنشئ مدرسة
       if (rolesData.length === 0) {
         console.log("🚀 Creating school for new user...");
 
@@ -172,55 +175,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setUserRoles(rolesData);
 
+      // اختيار المدرسة
+      const savedSchoolId = localStorage.getItem(`current_school_${user.id}`);
+
       const selectedRole =
-        rolesData.find((r: any) => r.is_primary) || rolesData[0];
+        rolesData.find((r) => r.school_id === savedSchoolId) ||
+        rolesData.find((r: any) => r.is_primary) ||
+        rolesData[0];
 
       if (selectedRole?.school_id) {
-        setCurrentSchoolId(selectedRole.school_id);
+        const schoolId = selectedRole.school_id;
+
+        setCurrentSchoolId(schoolId);
+        localStorage.setItem(`current_school_${user.id}`, schoolId);
 
         if (selectedRole.schools) {
           setCurrentSchool(selectedRole.schools);
           setCurrentRole(selectedRole.role);
+          setSubscriptionPlan(selectedRole.schools.subscription_plan);
+          setSubscriptionExpiresAt(
+            selectedRole.schools.subscription_expires_at
+          );
+          setSchoolFeatures(selectedRole.schools.features || []);
         } else {
-          await loadCurrentSchoolData(selectedRole.school_id);
+          await loadCurrentSchoolData(schoolId);
         }
       }
     } catch (error) {
-      console.error("❌ loadUserData error:", error);
+      console.error("loadUserData error:", error);
     } finally {
       loadingUserRef.current = false;
       setLoading(false);
     }
   };
 
-  // =========================
-  // Init Auth (FIXED 🔥)
-  // =========================
+  // ============================================
+  // Init Auth
+  // ============================================
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
     const init = async () => {
-      const { data } = await supabase.auth.getUser();
+const { data } = await supabase.auth.getSession();
 
-      const user = data?.user;
-
-      if (!user) {
+if (!data.session) {
+  setLoading(false);
+  return;
+}
+      if (data.session?.user) {
+        await loadUserData(data.session.user);
+      } else {
         setLoading(false);
-        return;
       }
-
-      await loadUserData(user);
     };
 
     init();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (event === "SIGNED_IN" && session?.user) {
-          await loadUserData(session.user);
-        }
-
         if (event === "SIGNED_OUT") {
           setAuthUser(null);
           setProfile(null);
@@ -238,9 +251,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // =========================
-  // باقي الفانكشنز
-  // =========================
+  // ============================================
+  // Switch School
+  // ============================================
   const switchSchool = async (schoolId: string) => {
     const role = userRoles.find((r) => r.school_id === schoolId);
 
@@ -248,13 +261,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCurrentSchool(role.school);
       setCurrentSchoolId(schoolId);
       setCurrentRole(role.role);
+
+      setSubscriptionPlan(role.school.subscription_plan);
+      setSubscriptionExpiresAt(role.school.subscription_expires_at);
+      setSchoolFeatures(role.school.features || []);
+
+      localStorage.setItem(`current_school_${authUser.id}`, schoolId);
     }
   };
 
   const hasPermission = (permission: string): boolean => {
     if (!currentRole) return false;
-    if (currentRole === "admin") return true;
-    return false;
+    if (["admin"].includes(currentRole)) return true;
+
+    const rolePermissions: Record<string, string[]> = {
+      accountant: ["view_financials", "manage_fees", "manage_expenses"],
+      moderator: ["view_students", "edit_students"],
+    };
+
+    return rolePermissions[currentRole]?.includes(permission) || false;
   };
 
   const hasFeature = (feature: string): boolean => {
@@ -279,7 +304,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     subscriptionExpiresAt,
     schoolFeatures,
     isAuthenticated,
-
     signIn: async (email: string, password: string) => {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -287,8 +311,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       return { error };
     },
-
     signUp: async (email: string, password: string, fullName?: string) => {
+      setLoading(true);
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -305,13 +330,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       }
 
+      setLoading(false);
       return { error };
     },
-
     signOut: async () => {
       await supabase.auth.signOut();
     },
-
     switchSchool,
     hasPermission,
     hasFeature,
