@@ -266,7 +266,7 @@ export default function TeachersManager({ onUpdate, onSalaryProcessed }: Teacher
         address: formData.address || null,
         qualifications: formData.qualifications || null,
         notes: formData.notes || null,
-        user_id: authUser.id,
+        school_id: authUser.id,
       };
 
       if (editingTeacher) {
