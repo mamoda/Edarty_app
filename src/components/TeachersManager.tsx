@@ -118,7 +118,7 @@ export default function TeachersManager({ onUpdate, onSalaryProcessed }: Teacher
             email
           )
         `)
-        .eq("user_id", authUser.id)
+        .eq("school_id", authUser.id)
         .eq("status", "pending")
         .order("created_at", { ascending: false });
 
@@ -189,7 +189,7 @@ export default function TeachersManager({ onUpdate, onSalaryProcessed }: Teacher
             amount: amountToProcess,
             expense_date: new Date().toISOString().split('T')[0],
             notes: `صرف رواتب ${teachersToProcess.length} معلم`,
-            user_id: authUser.id
+            school_id: authUser.id
           }]);
 
         if (expenseError) throw expenseError;
