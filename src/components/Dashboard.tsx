@@ -934,12 +934,10 @@ export default function Dashboard() {
       return;
     }
 
-    if (!user || !currentSchool) {
-      console.log("⏳ No user or school yet, skipping data load");
-      setLoading(false);
-      return;
-    }
-
+if (!user || !currentSchool) {
+  console.log("⏳ Waiting for auth and school...");
+  return<div>Loading app...</div>;
+}
     isLoadingRef.current = true;
     setLoading(true);
     setDataError(null);
@@ -1134,12 +1132,14 @@ export default function Dashboard() {
 const hasInitialLoadedRef = useRef(false);
 
 useEffect(() => {
-  // ✅ يتم التحميل مرة واحدة فقط
-  if (user && currentSchool && !hasInitialLoadedRef.current) {
-    hasInitialLoadedRef.current = true;
-    loadStatistics();
-  }
-}, [user, currentSchool]); 
+  if (!user) return;
+  if (!currentSchool) return;
+
+  if (hasInitialLoadedRef.current) return;
+
+  hasInitialLoadedRef.current = true;
+  loadStatistics();
+}, [user, currentSchool]);
   const handleViewChange = (view: View) => {
     setCurrentView(view);
   };
