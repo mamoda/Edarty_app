@@ -81,40 +81,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   
 
-  // ============================================
-  // 🔥 NEW: Auto Create School
-  // ============================================
-  const createSchoolForUser = async (userId: string) => {
-    try {
-      // إنشاء مدرسة
-      const { data: school, error: schoolError } = await supabase
-        .from("schools")
-        .insert([{ name: "مدرستي" }])
-        .select()
-        .single();
+// ============================================
+// 🔥 NEW: Auto Create School (FIXED)
+// ============================================
+const createSchoolForUser = async (userId: string) => {
+  try {
+    const { data: school, error: schoolError } = await supabase
+      .from("schools")
+      .insert([
+        {
+          name: "مدرستي",
 
-      if (schoolError) throw schoolError;
+          // القيم الافتراضية (اختياري لكن أفضل)
+          status: "active",
+          subscription_plan: "free",
+          subscription_status: "active",
+          max_students: 50,
+          max_teachers: 10,
+          max_users: 5,
+          features: [],
+          settings: {},
+        },
+      ])
+      .select()
+      .single();
 
-      // ربط المستخدم بالمدرسة
-      const { error: roleError } = await supabase
-        .from("user_school_roles")
-        .insert({
-          user_id: userId,
-          school_id: school.id,
-          role: "admin",
-          is_primary: true,
-        });
+    if (schoolError) throw schoolError;
 
-      if (roleError) throw roleError;
+    // ربط المستخدم بالمدرسة
+    const { error: roleError } = await supabase
+      .from("user_school_roles")
+      .insert({
+        user_id: userId,
+        school_id: school.id,
+        role: "admin",
+        is_primary: true,
+      });
 
-      return school;
-    } catch (error) {
-      console.error("Error creating school:", error);
-      return null;
-    }
-  };
+    if (roleError) throw roleError;
 
-  // ============================================
+    return school;
+  } catch (error) {
+    console.error("Error creating school:", error);
+    return null;
+  }
+};  // ============================================
   // Load User Data
   // ============================================
   const loadUserData = async (user: any) => {
