@@ -118,7 +118,7 @@ export default function TeachersManager({ onUpdate, onSalaryProcessed }: Teacher
             email
           )
         `)
-        .eq("school_id", authUser.id)
+        .eq("user_id", authUser.id)
         .eq("status", "pending")
         .order("created_at", { ascending: false });
 
@@ -189,7 +189,7 @@ export default function TeachersManager({ onUpdate, onSalaryProcessed }: Teacher
             amount: amountToProcess,
             expense_date: new Date().toISOString().split('T')[0],
             notes: `صرف رواتب ${teachersToProcess.length} معلم`,
-            school_id: authUser.id
+            user_id: authUser.id
           }]);
 
         if (expenseError) throw expenseError;
@@ -266,7 +266,7 @@ export default function TeachersManager({ onUpdate, onSalaryProcessed }: Teacher
         address: formData.address || null,
         qualifications: formData.qualifications || null,
         notes: formData.notes || null,
-        school_id: authUser.id,
+        user_id: authUser.id,
       };
 
       if (editingTeacher) {
@@ -274,7 +274,7 @@ export default function TeachersManager({ onUpdate, onSalaryProcessed }: Teacher
           .from("teachers")
           .update(teacherData)
           .eq("id", editingTeacher.id)
-          .eq("school_id", authUser.id);
+          .eq("user_id", authUser.id);
 
         if (error) throw error;
       } else {
