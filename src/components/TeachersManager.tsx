@@ -274,7 +274,7 @@ export default function TeachersManager({ onUpdate, onSalaryProcessed }: Teacher
           .from("teachers")
           .update(teacherData)
           .eq("id", editingTeacher.id)
-          .eq("user_id", authUser.id);
+          .eq("school_id", authUser.id);
 
         if (error) throw error;
       } else {
