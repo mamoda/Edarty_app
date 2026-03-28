@@ -1,5 +1,5 @@
 // src/components/Login.tsx
-import { useState, useEffect, useRef } from "react"; // ✅ أضف useRef هنا
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -19,8 +19,8 @@ import bg from "../assets/background-wave.png";
 
 export default function Login() {
   const navigate = useNavigate();
-  const { signIn, signUp, isAuthenticated } = useAuth(); // ✅ إزالة authLoading غير المستخدمة
-  const hasRedirected = useRef(false); // ✅ إضافة useRef
+  const { signIn, signUp, isAuthenticated } = useAuth();
+  const hasRedirected = useRef(false);
 
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
@@ -64,6 +64,7 @@ export default function Login() {
     setLoading(true);
 
     try {
+      // ================= LOGIN =================
       if (isLogin) {
         console.log("🔐 Attempting login for:", email);
         const { error } = await signIn(email, password);
@@ -76,7 +77,10 @@ export default function Login() {
           console.log("✅ Login successful, waiting for redirect...");
           setLoading(false);
         }
-      } else {
+      }
+
+      // ================= SIGNUP =================
+      else {
         if (!schoolData.fullName || !schoolData.schoolName) {
           setError("يرجى إكمال جميع البيانات المطلوبة");
           setLoading(false);
@@ -84,65 +88,47 @@ export default function Login() {
         }
 
         console.log("📝 Attempting signup for:", email);
+
+        // 1. إنشاء حساب في Auth
         const { error: signUpError } = await signUp(
           email,
           password,
-          schoolData.fullName,
+          schoolData.fullName
         );
 
         if (signUpError) {
           setError(
-            "فشل في إنشاء الحساب. البريد الإلكتروني قد يكون مستخدماً بالفعل",
+            "فشل في إنشاء الحساب. البريد الإلكتروني قد يكون مستخدماً بالفعل"
           );
           setLoading(false);
           return;
         }
 
+        // 2. الحصول على الجلسة بعد التسجيل
         const {
           data: { session },
         } = await supabase.auth.getSession();
-        const userId = session?.user?.id;
 
-        if (userId) {
-          const { data: newSchool } = await supabase
-            .from("schools")
-            .insert({
-              name: schoolData.schoolName,
-              address: schoolData.schoolAddress,
-              phone: schoolData.schoolPhone,
-              email: email,
-              tax_number: schoolData.taxNumber,
-              status: "active",
-              subscription_plan: "free",
-            })
-            .select()
-            .single();
+        // 3. إنشاء المدرسة وربط المستخدم (باستخدام RPC)
+        if (session?.user) {
+          // ✅ استخدام RPC function لإنشاء المدرسة بشكل آمن
+          const { error: rpcError } = await supabase.rpc(
+            "create_school_for_user",
+            {
+              school_name: schoolData.schoolName,
+              user_full_name: schoolData.fullName,
+            }
+          );
 
-          if (newSchool) {
-            await supabase
-              .from("users")
-              .update({
-                school_id: newSchool.id,
-                school_name: schoolData.schoolName,
-                school_address: schoolData.schoolAddress,
-                school_phone: schoolData.schoolPhone,
-                tax_number: schoolData.taxNumber,
-                full_name: schoolData.fullName,
-                role: "admin",
-              })
-              .eq("id", userId);
-
-            await supabase.from("user_school_roles").insert({
-              user_id: userId,
-              school_id: newSchool.id,
-              role: "admin",
-              is_primary: true,
-              permissions: [],
-            });
+          if (rpcError) {
+            console.error("RPC error:", rpcError);
+            setError("فشل في إنشاء المدرسة");
+            setLoading(false);
+            return;
           }
         }
 
-        alert("✅ تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول");
+        alert("✅ تم إنشاء الحساب بنجاح!");
         setIsLogin(true);
         setCurrentStep(1);
         setEmail("");
@@ -154,6 +140,7 @@ export default function Login() {
           schoolPhone: "",
           taxNumber: "",
         });
+
         setLoading(false);
       }
     } catch (err) {
@@ -311,7 +298,7 @@ export default function Login() {
                       className="w-full pr-10 pl-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                       placeholder="••••••••"
                       required
-                    />{" "}
+                    />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
@@ -384,7 +371,7 @@ export default function Login() {
                           className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                           placeholder="أحمد محمد"
                           required
-                        />{" "}
+                        />
                       </div>
                     </div>
 
@@ -407,7 +394,7 @@ export default function Login() {
                           className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                           placeholder="example@school.com"
                           required
-                        />{" "}
+                        />
                       </div>
                     </div>
 
@@ -431,7 +418,7 @@ export default function Login() {
                           placeholder="••••••••"
                           required
                           minLength={6}
-                        />{" "}
+                        />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
@@ -483,7 +470,7 @@ export default function Login() {
                           className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                           placeholder="مدارس الإدارة التعليمية"
                           required
-                        />{" "}
+                        />
                       </div>
                     </div>
 
@@ -510,7 +497,7 @@ export default function Login() {
                           }
                           className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                           placeholder="القاهرة، مصر"
-                        />{" "}
+                        />
                       </div>
                     </div>
 
@@ -538,7 +525,7 @@ export default function Login() {
                           className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                           placeholder="01234567890"
                           dir="ltr"
-                        />{" "}
+                        />
                       </div>
                     </div>
 
@@ -565,7 +552,7 @@ export default function Login() {
                           }
                           className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                           placeholder="123-456-789"
-                        />{" "}
+                        />
                       </div>
                     </div>
 
@@ -609,7 +596,7 @@ export default function Login() {
                   onChange={(e) => setAdminCode(e.target.value)}
                   placeholder="كود المسؤول"
                   className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                />{" "}
+                />
                 <button
                   type="button"
                   onClick={handleAdminAccess}

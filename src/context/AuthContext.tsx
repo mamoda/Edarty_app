@@ -155,26 +155,23 @@ const createSchoolForUser = async (userId: string) => {
       let rolesData = roles || [];
 
       // 🔥 FIX: لو مفيش roles → أنشئ مدرسة
-      if (rolesData.length === 0) {
-        console.log("🚀 Creating school for new user...");
+if (rolesData.length === 0) {
+  console.log("🚀 Creating school for new user...");
 
-        const newSchool = await createSchoolForUser(user.id);
+  const { data: schoolId, error } = await supabase.rpc(
+    "create_school_for_user"
+  );
 
-        if (newSchool) {
-          rolesData = [
-            {
-              user_id: user.id,
-              school_id: newSchool.id,
-              role: "admin",
-              is_primary: true,
-              schools: newSchool,
-            } as any,
-          ];
-        }
-      }
+  if (!error && schoolId) {
+    // نعيد تحميل الـ roles بعد الإنشاء
+    const { data: newRoles } = await supabase
+      .from("user_school_roles")
+      .select("*, schools(*)")
+      .eq("user_id", user.id);
 
-      setUserRoles(rolesData);
-
+    rolesData = newRoles || [];
+  }
+}
       // اختيار المدرسة
       const savedSchoolId = localStorage.getItem(`current_school_${user.id}`);
 
