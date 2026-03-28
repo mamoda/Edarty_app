@@ -1,3 +1,4 @@
+// src/context/AuthContext.tsx
 import {
   createContext,
   useContext,
@@ -20,7 +21,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   currentSchool: School | null;
-  currentSchoolId: string | null; // ✅ NEW
+  currentSchoolId: string | null;
   currentRole: string | null;
   userRoles: UserSchoolRole[];
   subscriptionPlan: string | null;
@@ -48,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [userRoles, setUserRoles] = useState<UserSchoolRole[]>([]);
   const [currentSchool, setCurrentSchool] = useState<School | null>(null);
-  const [currentSchoolId, setCurrentSchoolId] = useState<string | null>(null); // ✅ NEW
+  const [currentSchoolId, setCurrentSchoolId] = useState<string | null>(null);
   const [currentRole, setCurrentRole] = useState<string | null>(null);
 
   const [subscriptionPlan, setSubscriptionPlan] = useState<string | null>(null);
@@ -79,6 +80,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // ============================================
+  // 🔥 NEW: Auto Create School
+  // ============================================
+  const createSchoolForUser = async (userId: string) => {
+    try {
+      // إنشاء مدرسة
+      const { data: school, error: schoolError } = await supabase
+        .from("schools")
+        .insert([{ name: "مدرستي الجديدة" }])
+        .select()
+        .single();
+
+      if (schoolError) throw schoolError;
+
+      // ربط المستخدم بالمدرسة
+      const { error: roleError } = await supabase
+        .from("user_school_roles")
+        .insert({
+          user_id: userId,
+          school_id: school.id,
+          role: "admin",
+          is_primary: true,
+        });
+
+      if (roleError) throw roleError;
+
+      return school;
+    } catch (error) {
+      console.error("Error creating school:", error);
+      return null;
+    }
+  };
+
+  // ============================================
   // Load User Data
   // ============================================
   const loadUserData = async (user: any) => {
@@ -105,12 +139,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .select("*, schools(*)")
         .eq("user_id", user.id);
 
-      const rolesData = roles || [];
+      let rolesData = roles || [];
+
+      // 🔥 FIX: لو مفيش roles → أنشئ مدرسة
+      if (rolesData.length === 0) {
+        console.log("🚀 Creating school for new user...");
+
+        const newSchool = await createSchoolForUser(user.id);
+
+        if (newSchool) {
+          rolesData = [
+            {
+              user_id: user.id,
+              school_id: newSchool.id,
+              role: "admin",
+              is_primary: true,
+              schools: newSchool,
+            } as any,
+          ];
+        }
+      }
+
       setUserRoles(rolesData);
 
-      // =========================
-      // FIX: school selection
-      // =========================
+      // اختيار المدرسة
       const savedSchoolId = localStorage.getItem(`current_school_${user.id}`);
 
       const selectedRole =
@@ -121,7 +173,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (selectedRole?.school_id) {
         const schoolId = selectedRole.school_id;
 
-        // ✅ SAVE + STATE
         setCurrentSchoolId(schoolId);
         localStorage.setItem(`current_school_${user.id}`, schoolId);
 
@@ -137,7 +188,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await loadCurrentSchoolData(schoolId);
         }
       }
-
     } catch (error) {
       console.error("loadUserData error:", error);
     } finally {
@@ -172,7 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setProfile(null);
           setUserRoles([]);
           setCurrentSchool(null);
-          setCurrentSchoolId(null); // ✅ RESET
+          setCurrentSchoolId(null);
           setCurrentRole(null);
           setLoading(false);
         }
@@ -185,14 +235,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ============================================
-  // Switch School (FIXED)
+  // Switch School
   // ============================================
   const switchSchool = async (schoolId: string) => {
     const role = userRoles.find((r) => r.school_id === schoolId);
 
     if (role?.school && authUser) {
       setCurrentSchool(role.school);
-      setCurrentSchoolId(schoolId); // ✅ IMPORTANT
+      setCurrentSchoolId(schoolId);
       setCurrentRole(role.role);
 
       setSubscriptionPlan(role.school.subscription_plan);
@@ -230,7 +280,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     profile,
     loading,
     currentSchool,
-    currentSchoolId, // ✅ exposed
+    currentSchoolId,
     currentRole,
     userRoles,
     subscriptionPlan,
