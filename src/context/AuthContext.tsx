@@ -53,9 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentRole, setCurrentRole] = useState<string | null>(null);
 
   const [subscriptionPlan, setSubscriptionPlan] = useState<string | null>(null);
-  const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<
-    string | null
-  >(null);
+  const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<string | null>(null);
   const [schoolFeatures, setSchoolFeatures] = useState<string[]>([]);
 
   const loadingUserRef = useRef(false);
@@ -82,51 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // ============================================
-  // 🔥 NEW: Auto Create School (FIXED)
-  // ============================================
-  const createSchoolForUser = async (userId: string) => {
-    try {
-      const { data: school, error: schoolError } = await supabase
-        .from("schools")
-        .insert([
-          {
-            name: "مدرستي",
-
-            // القيم الافتراضية (اختياري لكن أفضل)
-            status: "active",
-            subscription_plan: "free",
-            subscription_status: "active",
-            max_students: 50,
-            max_teachers: 10,
-            max_users: 5,
-            features: [],
-            settings: {},
-          },
-        ])
-        .select()
-        .single();
-
-      if (schoolError) throw schoolError;
-
-      // ربط المستخدم بالمدرسة
-      const { error: roleError } = await supabase
-        .from("user_school_roles")
-        .insert({
-          user_id: userId,
-          school_id: school.id,
-          role: "admin",
-          is_primary: true,
-        });
-
-      if (roleError) throw roleError;
-
-      return school;
-    } catch (error) {
-      console.error("Error creating school:", error);
-      return null;
-    }
-  }; // ============================================
-  // Load User Data
+  // 🔥 Load User Data (RPC Driven)
   // ============================================
   const loadUserData = async (user: any) => {
     if (loadingUserRef.current) return;
@@ -154,24 +108,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       let rolesData = roles || [];
 
-      // 🔥 FIX: لو مفيش roles → أنشئ مدرسة
+      // 🔥 لو المستخدم جديد → أنشئ مدرسة بـ RPC
       if (rolesData.length === 0) {
-        console.log("🚀 Creating school for new user...");
+        console.log("🚀 Creating school via RPC...");
 
-        const { data: schoolId, error } = await supabase.rpc(
-          "create_school_for_user",
-        );
+        const { error } = await supabase.rpc("create_school_for_user");
 
-        if (!error && schoolId) {
-          // نعيد تحميل الـ roles بعد الإنشاء
-          const { data: newRoles } = await supabase
-            .from("user_school_roles")
-            .select("*, schools(*)")
-            .eq("user_id", user.id);
-
-          rolesData = newRoles || [];
+        if (error) {
+          console.error("RPC error:", error);
         }
+
+        // إعادة تحميل roles
+        const { data: newRoles } = await supabase
+          .from("user_school_roles")
+          .select("*, schools(*)")
+          .eq("user_id", user.id);
+
+        rolesData = newRoles || [];
       }
+
+      setUserRoles(rolesData);
+
       // اختيار المدرسة
       const savedSchoolId = localStorage.getItem(`current_school_${user.id}`);
 
@@ -190,9 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setCurrentSchool(selectedRole.schools);
           setCurrentRole(selectedRole.role);
           setSubscriptionPlan(selectedRole.schools.subscription_plan);
-          setSubscriptionExpiresAt(
-            selectedRole.schools.subscription_expires_at,
-          );
+          setSubscriptionExpiresAt(selectedRole.schools.subscription_expires_at);
           setSchoolFeatures(selectedRole.schools.features || []);
         } else {
           await loadCurrentSchoolData(schoolId);
@@ -216,15 +171,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const init = async () => {
       const { data } = await supabase.auth.getSession();
 
-      if (!data.session) {
+      if (!data.session?.user) {
         setLoading(false);
         return;
       }
-      if (data.session?.user) {
-        await loadUserData(data.session.user);
-      } else {
-        setLoading(false);
-      }
+
+      await loadUserData(data.session.user);
     };
 
     init();
@@ -240,7 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setCurrentRole(null);
           setLoading(false);
         }
-      },
+      }
     );
 
     return () => {
@@ -267,12 +219,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // ============================================
+  // Permissions
+  // ============================================
   const hasPermission = (permission: string): boolean => {
     if (!currentRole) return false;
-    if (["admin"].includes(currentRole)) return true;
+    if (currentRole === "admin") return true;
 
     const rolePermissions: Record<string, string[]> = {
-      accountant: ["view_financials", "manage_fees", "manage_expenses"],
+      accountant: ["view_financials", "manage_fees"],
       moderator: ["view_students", "edit_students"],
     };
 
@@ -289,6 +244,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // ============================================
+  // Auth Actions
+  // ============================================
   const value = {
     authUser,
     profile,
@@ -301,6 +259,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     subscriptionExpiresAt,
     schoolFeatures,
     isAuthenticated,
+
     signIn: async (email: string, password: string) => {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -308,6 +267,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       return { error };
     },
+
     signUp: async (email: string, password: string, fullName?: string) => {
       setLoading(true);
 
@@ -330,9 +290,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return { error };
     },
+
     signOut: async () => {
       await supabase.auth.signOut();
     },
+
     switchSchool,
     hasPermission,
     hasFeature,
