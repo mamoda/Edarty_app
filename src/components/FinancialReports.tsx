@@ -34,6 +34,7 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from 'jspdf-autotable';
 
+
 // ==================== إعدادات اللغة العربية ====================
 // تعريب الأرقام
 const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];

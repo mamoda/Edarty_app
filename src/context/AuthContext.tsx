@@ -53,7 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentRole, setCurrentRole] = useState<string | null>(null);
 
   const [subscriptionPlan, setSubscriptionPlan] = useState<string | null>(null);
-  const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<string | null>(null);
+  const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<
+    string | null
+  >(null);
   const [schoolFeatures, setSchoolFeatures] = useState<string[]>([]);
 
   const loadingUserRef = useRef(false);
@@ -79,53 +81,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  
+  // ============================================
+  // 🔥 NEW: Auto Create School (FIXED)
+  // ============================================
+  const createSchoolForUser = async (userId: string) => {
+    try {
+      const { data: school, error: schoolError } = await supabase
+        .from("schools")
+        .insert([
+          {
+            name: "مدرستي",
 
-// ============================================
-// 🔥 NEW: Auto Create School (FIXED)
-// ============================================
-const createSchoolForUser = async (userId: string) => {
-  try {
-    const { data: school, error: schoolError } = await supabase
-      .from("schools")
-      .insert([
-        {
-          name: "مدرستي",
+            // القيم الافتراضية (اختياري لكن أفضل)
+            status: "active",
+            subscription_plan: "free",
+            subscription_status: "active",
+            max_students: 50,
+            max_teachers: 10,
+            max_users: 5,
+            features: [],
+            settings: {},
+          },
+        ])
+        .select()
+        .single();
 
-          // القيم الافتراضية (اختياري لكن أفضل)
-          status: "active",
-          subscription_plan: "free",
-          subscription_status: "active",
-          max_students: 50,
-          max_teachers: 10,
-          max_users: 5,
-          features: [],
-          settings: {},
-        },
-      ])
-      .select()
-      .single();
+      if (schoolError) throw schoolError;
 
-    if (schoolError) throw schoolError;
+      // ربط المستخدم بالمدرسة
+      const { error: roleError } = await supabase
+        .from("user_school_roles")
+        .insert({
+          user_id: userId,
+          school_id: school.id,
+          role: "admin",
+          is_primary: true,
+        });
 
-    // ربط المستخدم بالمدرسة
-    const { error: roleError } = await supabase
-      .from("user_school_roles")
-      .insert({
-        user_id: userId,
-        school_id: school.id,
-        role: "admin",
-        is_primary: true,
-      });
+      if (roleError) throw roleError;
 
-    if (roleError) throw roleError;
-
-    return school;
-  } catch (error) {
-    console.error("Error creating school:", error);
-    return null;
-  }
-};  // ============================================
+      return school;
+    } catch (error) {
+      console.error("Error creating school:", error);
+      return null;
+    }
+  }; // ============================================
   // Load User Data
   // ============================================
   const loadUserData = async (user: any) => {
@@ -155,23 +155,23 @@ const createSchoolForUser = async (userId: string) => {
       let rolesData = roles || [];
 
       // 🔥 FIX: لو مفيش roles → أنشئ مدرسة
-if (rolesData.length === 0) {
-  console.log("🚀 Creating school for new user...");
+      if (rolesData.length === 0) {
+        console.log("🚀 Creating school for new user...");
 
-  const { data: schoolId, error } = await supabase.rpc(
-    "create_school_for_user"
-  );
+        const { data: schoolId, error } = await supabase.rpc(
+          "create_school_for_user",
+        );
 
-  if (!error && schoolId) {
-    // نعيد تحميل الـ roles بعد الإنشاء
-    const { data: newRoles } = await supabase
-      .from("user_school_roles")
-      .select("*, schools(*)")
-      .eq("user_id", user.id);
+        if (!error && schoolId) {
+          // نعيد تحميل الـ roles بعد الإنشاء
+          const { data: newRoles } = await supabase
+            .from("user_school_roles")
+            .select("*, schools(*)")
+            .eq("user_id", user.id);
 
-    rolesData = newRoles || [];
-  }
-}
+          rolesData = newRoles || [];
+        }
+      }
       // اختيار المدرسة
       const savedSchoolId = localStorage.getItem(`current_school_${user.id}`);
 
@@ -191,7 +191,7 @@ if (rolesData.length === 0) {
           setCurrentRole(selectedRole.role);
           setSubscriptionPlan(selectedRole.schools.subscription_plan);
           setSubscriptionExpiresAt(
-            selectedRole.schools.subscription_expires_at
+            selectedRole.schools.subscription_expires_at,
           );
           setSchoolFeatures(selectedRole.schools.features || []);
         } else {
@@ -214,12 +214,12 @@ if (rolesData.length === 0) {
     initializedRef.current = true;
 
     const init = async () => {
-const { data } = await supabase.auth.getSession();
+      const { data } = await supabase.auth.getSession();
 
-if (!data.session) {
-  setLoading(false);
-  return;
-}
+      if (!data.session) {
+        setLoading(false);
+        return;
+      }
       if (data.session?.user) {
         await loadUserData(data.session.user);
       } else {
@@ -240,7 +240,7 @@ if (!data.session) {
           setCurrentRole(null);
           setLoading(false);
         }
-      }
+      },
     );
 
     return () => {
