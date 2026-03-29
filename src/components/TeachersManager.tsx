@@ -14,6 +14,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { Teacher, TeacherSalary } from "../types/database";
 
+
 interface TeachersManagerProps {
   onUpdate: () => void;
   onSalaryProcessed?: () => void;
@@ -65,6 +66,7 @@ export default function TeachersManager({ onUpdate, onSalaryProcessed }: Teacher
     ];
     return months[month - 1];
   };
+
 
   const loadTeachers = async () => {
     if (!authUser) return;
