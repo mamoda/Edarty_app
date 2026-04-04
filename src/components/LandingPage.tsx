@@ -115,7 +115,7 @@ export default function LandingPage() {
         "نظام إداري متكامل للمدارس والجامعات والمعاهد. يدير شؤون الطلاب، الرسوم الدراسية، الحضور والغياب، والتقارير الأكاديمية.",
       icon: <School className="w-8 h-8" />,
       image: educationalProject,
-      link: "https://edarty-app.vercel.app", 
+      link: "https://edarty-app-buad.vercel.app", 
       features: [
         "إدارة الطلاب والموظفين",
         "الرسوم الدراسية والمصروفات",
@@ -395,7 +395,7 @@ export default function LandingPage() {
             <div className="flex justify-center mt-6">
               <button
                 onClick={() =>
-                  window.open("https://talee-1.onrender.com/", "_blank")
+                  window.open("https://edarty-app-buad.vercel.app", "_blank")
                 }
                 className="group relative px-8 py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 text-white rounded-full font-bold text-lg hover:shadow-2xl hover:shadow-indigo-600/30 transition-all duration-300 transform hover:scale-105 overflow-hidden"
               >
