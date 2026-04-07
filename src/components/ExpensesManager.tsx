@@ -26,9 +26,12 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
     notes: "",
   });
 
+  // ✅ التحقق من وجود currentSchool قبل التحميل
   useEffect(() => {
-    loadExpenses();
-  }, [selectedMonth, selectedYear, currentSchool]); // ✅ إضافة currentSchool
+    if (currentSchool) {
+      loadExpenses();
+    }
+  }, [selectedMonth, selectedYear, currentSchool]);
 
   const formatNumber = (num: number, fractionDigits: number = 2) => {
     return Number(num).toLocaleString("ar-EG", {
@@ -38,10 +41,8 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
   };
 
   const getLastDayOfMonth = (year: number, month: number): number => {
-  // month: 1 = يناير, 12 = ديسمبر
-  return new Date(year, month, 0).getDate();
-};
-
+    return new Date(year, month, 0).getDate();
+  };
 
   const getMonthName = (month: number) => {
     const months = [
@@ -51,39 +52,44 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
     return months[month - 1];
   };
 
-const loadExpenses = async () => {
-  if (!currentSchool) {
-    console.log("⏳ No school selected, skipping load");
-    return;
-  }
+  const loadExpenses = async () => {
+    if (!currentSchool) {
+      console.log("⏳ No school selected, skipping load");
+      setLoading(false);
+      return;
+    }
 
-  setLoading(true);
-  try {
-    const startDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`;
-    const lastDay = getLastDayOfMonth(selectedYear, selectedMonth);
-    const endDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`;
+    setLoading(true);
+    try {
+      const startDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`;
+      const lastDay = getLastDayOfMonth(selectedYear, selectedMonth);
+      const endDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`;
 
-    console.log(`📊 Fetching expenses from ${startDate} to ${endDate}`);
+      console.log(`📊 Fetching expenses from ${startDate} to ${endDate}`);
 
-    const { data, error } = await supabase
-      .from("expenses")
-      .select("*")
-      .eq("school_id", currentSchool.id)
-      .gte("expense_date", startDate)
-      .lte("expense_date", endDate)
-      .order("expense_date", { ascending: false });
+      const { data, error } = await supabase
+        .from("expenses")
+        .select("*")
+        .eq("school_id", currentSchool.id)
+        .gte("expense_date", startDate)
+        .lte("expense_date", endDate)
+        .order("expense_date", { ascending: false });
 
-    if (error) throw error;
-    setExpenses(data || []);
-  } catch (error) {
-    console.error("Error loading expenses:", error);
-  } finally {
-    setLoading(false);
-  }
-};
+      if (error) throw error;
+      setExpenses(data || []);
+    } catch (error) {
+      console.error("Error loading expenses:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!authUser || !currentSchool) return;
+    if (!authUser || !currentSchool) {
+      alert("لم يتم تحديد المدرسة");
+      return;
+    }
 
     try {
       const expenseData = {
@@ -93,7 +99,7 @@ const loadExpenses = async () => {
         expense_date: formData.expense_date,
         notes: formData.notes,
         user_id: authUser.id,
-        school_id: currentSchool.id, // ✅ إضافة school_id
+        school_id: currentSchool.id,
       };
 
       if (editingExpense) {
@@ -101,7 +107,7 @@ const loadExpenses = async () => {
           .from("expenses")
           .update(expenseData)
           .eq("id", editingExpense.id)
-          .eq("school_id", currentSchool.id); // ✅ التأكد من المدرسة
+          .eq("school_id", currentSchool.id);
 
         if (error) throw error;
       } else {
@@ -113,11 +119,11 @@ const loadExpenses = async () => {
       }
 
       resetForm();
-      loadExpenses();
+      await loadExpenses();
       onUpdate();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving expense:", error);
-      alert("حدث خطأ أثناء حفظ البيانات");
+      alert(error?.message || "حدث خطأ أثناء حفظ البيانات");
     }
   };
 
@@ -134,14 +140,14 @@ const loadExpenses = async () => {
         .from("expenses")
         .delete()
         .eq("id", id)
-        .eq("school_id", currentSchool?.id); // ✅ التأكد من المدرسة
+        .eq("school_id", currentSchool?.id);
 
       if (error) throw error;
-      loadExpenses();
+      await loadExpenses();
       onUpdate();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting expense:", error);
-      alert("حدث خطأ أثناء حذف المصروف");
+      alert(error?.message || "حدث خطأ أثناء حذف المصروف");
     }
   };
 
@@ -193,10 +199,8 @@ const loadExpenses = async () => {
     "أخرى",
   ];
 
-  // حساب إجمالي المصروفات للشهر الحالي
   const totalExpensesThisMonth = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
 
-  // حساب المصروفات حسب الفئة للشهر الحالي
   const categoryTotals = categories
     .map((cat) => ({
       category: cat,
@@ -207,7 +211,6 @@ const loadExpenses = async () => {
     .filter((c) => c.total > 0)
     .sort((a, b) => b.total - a.total);
 
-  // التحقق من صلاحية إضافة المصروفات
   const canAddExpense = hasPermission('add_expenses') || hasPermission('edit_expenses');
 
   return (
