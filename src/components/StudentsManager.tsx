@@ -54,13 +54,14 @@ const useToast = () => {
     setTimeout(() => setToast(null), 3000);
   }, []);
   return { toast, showToast, ToastComponent: () => toast ? (
-    <div className={`fixed bottom-20 right-4 z-50 px-4 py-3 rounded-lg shadow-lg animate-slide-up ${
+    <div className={`fixed bottom-20 right-4 z-50 px-4 py-3 rounded-lg shadow-lg animate-slide-up flex items-center gap-2 ${
       toast.type === "success" ? "bg-green-600" :
       toast.type === "error" ? "bg-red-600" :
       toast.type === "warning" ? "bg-yellow-600" : "bg-blue-600"
-    } text-white text-sm flex items-center gap-2`}>
+    } text-white text-sm`}>
       {toast.type === "success" && <CheckCircle className="w-4 h-4" />}
       {toast.type === "error" && <AlertCircle className="w-4 h-4" />}
+      {toast.type === "warning" && <AlertCircle className="w-4 h-4" />}
       {toast.message}
     </div>
   ) : null };
@@ -88,15 +89,16 @@ const StudentCardSkeleton = () => (
   </div>
 );
 
-// Stats Card Component
+// Stats Card Component - Fixed Icons
 const StatsCard: React.FC<{
   title: string;
   value: number;
   icon: React.ElementType;
-  color: string;
+  iconColor: string;
+  bgGradient: string;
   trend?: number;
   isLoading?: boolean;
-}> = ({ title, value, icon: Icon, color, trend, isLoading }) => {
+}> = ({ title, value, icon: Icon, iconColor, bgGradient, trend, isLoading }) => {
   if (isLoading) {
     return (
       <div className="bg-white rounded-xl shadow-md p-4 animate-pulse">
@@ -105,29 +107,33 @@ const StatsCard: React.FC<{
             <div className="h-4 w-24 bg-gray-200 rounded"></div>
             <div className="h-8 w-16 bg-gray-200 rounded"></div>
           </div>
-          <div className="w-10 h-10 bg-gray-200 rounded-xl"></div>
+          <div className="w-12 h-12 bg-gray-200 rounded-xl"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`bg-white rounded-xl shadow-md p-4 border-r-4 ${color} hover:shadow-lg transition-all duration-300 group`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900">{value.toLocaleString("ar-EG")}</p>
-          {trend !== undefined && (
-            <div className={`flex items-center gap-1 mt-1 text-xs ${trend >= 0 ? "text-green-600" : "text-red-600"}`}>
-              {trend >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-              <span>{Math.abs(trend)}%</span>
-            </div>
-          )}
-        </div>
-        <div className={`p-3 bg-gradient-to-br ${color} rounded-xl shadow-lg transform group-hover:scale-110 transition-all duration-500`}>
-          <Icon className="w-5 h-5 text-white" />
+    <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 group">
+      <div className="p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-gray-500 mb-1">{title}</p>
+            <p className="text-2xl font-bold text-gray-900">{value.toLocaleString("ar-EG")}</p>
+            {trend !== undefined && (
+              <div className={`flex items-center gap-1 mt-1 text-xs ${trend >= 0 ? "text-green-600" : "text-red-600"}`}>
+                {trend >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                <span>{Math.abs(trend)}%</span>
+                <span className="text-gray-400">عن الشهر الماضي</span>
+              </div>
+            )}
+          </div>
+          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${bgGradient} flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-all duration-500`}>
+            <Icon className={`w-6 h-6 ${iconColor}`} />
+          </div>
         </div>
       </div>
+      <div className={`h-1 w-full bg-gradient-to-r ${bgGradient}`} />
     </div>
   );
 };
@@ -782,12 +788,41 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
         </div>
       </div>
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <StatsCard title="إجمالي الطلاب" value={totalStudents} icon={Users} color="border-blue-600" isLoading={isLoading} />
-        <StatsCard title="الطلاب النشطون" value={totalActive} icon={CheckCircle} color="border-green-600" trend={activePercentage} isLoading={isLoading} />
-        <StatsCard title="الطلاب غير النشطين" value={totalInactive} icon={XCircle} color="border-gray-400" isLoading={isLoading} />
-        <StatsCard title="عدد الصفوف" value={Object.keys(studentsByGrade).length} icon={GraduationCap} color="border-purple-600" isLoading={isLoading} />
+      {/* Statistics Cards - Fixed Icons */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatsCard 
+          title="إجمالي الطلاب" 
+          value={totalStudents} 
+          icon={Users} 
+          iconColor="text-blue-600"
+          bgGradient="from-blue-500 to-indigo-600"
+          isLoading={isLoading} 
+        />
+        <StatsCard 
+          title="الطلاب النشطون" 
+          value={totalActive} 
+          icon={CheckCircle} 
+          iconColor="text-green-600"
+          bgGradient="from-green-500 to-emerald-600"
+          trend={activePercentage} 
+          isLoading={isLoading} 
+        />
+        <StatsCard 
+          title="الطلاب غير النشطين" 
+          value={totalInactive} 
+          icon={XCircle} 
+          iconColor="text-gray-500"
+          bgGradient="from-gray-400 to-gray-500"
+          isLoading={isLoading} 
+        />
+        <StatsCard 
+          title="عدد الصفوف" 
+          value={Object.keys(studentsByGrade).length} 
+          icon={GraduationCap} 
+          iconColor="text-purple-600"
+          bgGradient="from-purple-500 to-pink-600"
+          isLoading={isLoading} 
+        />
       </div>
 
       {/* Search and Filters */}
