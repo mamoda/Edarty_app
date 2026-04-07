@@ -26,7 +26,6 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
     notes: "",
   });
 
-  // ✅ التحقق من وجود currentSchool قبل التحميل
   useEffect(() => {
     if (currentSchool) {
       loadExpenses();
@@ -40,7 +39,9 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
     });
   };
 
+  // ✅ دالة صحيحة لحساب آخر يوم في الشهر
   const getLastDayOfMonth = (year: number, month: number): number => {
+    // month هنا يمثل الشهر العددي (1-12)، new Date(year, month, 0) يعيد اليوم الأخير
     return new Date(year, month, 0).getDate();
   };
 
