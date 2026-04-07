@@ -15,6 +15,9 @@ import {
   User,
 } from "lucide-react";
 
+import logo from "../assets/logo.png";
+import bg from "../assets/background-wave.png";
+
 export default function Login() {
   const navigate = useNavigate();
   const { signIn, signUp, isAuthenticated } = useAuth();
@@ -22,15 +25,16 @@ export default function Login() {
   const emailRef = useRef<HTMLInputElement>(null);
 
   const [isLogin, setIsLogin] = useState(true);
+  const [currentStep, setCurrentStep] = useState(1);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const [fieldErrors, setFieldErrors] = useState({
     email: "",
@@ -51,7 +55,7 @@ export default function Login() {
     emailRef.current?.focus();
   }, []);
 
-  // 🔁 Redirect
+  // 🔁 Redirect بعد تسجيل الدخول
   useEffect(() => {
     if (isAuthenticated && !hasRedirected.current) {
       hasRedirected.current = true;
@@ -78,7 +82,7 @@ export default function Login() {
       errors.password = "كلمة المرور يجب أن تكون 6 أحرف على الأقل";
     }
 
-    if (!isLogin && !schoolData.fullName) {
+    if (!isLogin && currentStep === 1 && !schoolData.fullName) {
       errors.fullName = "الاسم مطلوب";
     }
 
@@ -163,160 +167,180 @@ export default function Login() {
   const prevStep = () => setCurrentStep(1);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" dir="rtl">
-      <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl">
+    <div
+      className="min-h-screen bg-cover bg-center flex items-center justify-center p-4"
+      dir="rtl"
+      style={{ backgroundImage: `url(${bg})` }}
+    >
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-xl p-8">
 
-        {/* 🔵 Header */}
-        <h2 className="text-xl font-bold text-center mb-6">
-          {isLogin ? "تسجيل الدخول" : "إنشاء حساب جديد"}
-        </h2>
-
-        {/* 🔴 Error */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded mb-4 text-sm">
-            {error}
+          {/* 🔷 Logo */}
+          <div className="flex flex-col items-center mb-6">
+            <img src={logo} className="h-24 mb-2" />
+            <p className="text-gray-600 text-sm text-center">
+              بيانات أكثر وتقارير أدق وسهولة استخدام
+            </p>
           </div>
-        )}
 
-        {/* 🟢 Success */}
-        {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 p-3 rounded mb-4 text-sm">
-            {success}
-          </div>
-        )}
+          {/* 🔵 Title */}
+          <h2 className="text-lg font-bold text-center mb-4">
+            {isLogin ? "تسجيل الدخول" : "إنشاء حساب جديد"}
+          </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-
-          {/* 🟡 Step 1 */}
-          {(!isLogin && currentStep === 1) && (
-            <>
-              <input
-                type="text"
-                placeholder="الاسم الكامل"
-                value={schoolData.fullName}
-                disabled={loading}
-                onChange={(e) =>
-                  setSchoolData({ ...schoolData, fullName: e.target.value })
-                }
-                className="w-full p-3 border rounded-lg"
-              />
-              {fieldErrors.fullName && (
-                <p className="text-red-500 text-xs">{fieldErrors.fullName}</p>
-              )}
-            </>
+          {/* 🔴 Error */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded mb-3 text-sm">
+              {error}
+            </div>
           )}
 
-          {/* 📧 Email */}
-          <input
-            ref={emailRef}
-            type="email"
-            placeholder="example@school.com"
-            value={email}
-            disabled={loading}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              validateFields();
-            }}
-            className={`w-full p-3 border rounded-lg ${
-              fieldErrors.email ? "border-red-500" : ""
-            }`}
-          />
-          {fieldErrors.email && (
-            <p className="text-red-500 text-xs">{fieldErrors.email}</p>
+          {/* 🟢 Success */}
+          {success && (
+            <div className="bg-green-50 border border-green-200 text-green-700 p-3 rounded mb-3 text-sm">
+              {success}
+            </div>
           )}
 
-          {/* 🔒 Password */}
-          <div className="relative">
+          <form onSubmit={handleSubmit} className="space-y-4">
+
+            {/* Step 1 */}
+            {!isLogin && currentStep === 1 && (
+              <>
+                <input
+                  type="text"
+                  placeholder="الاسم الكامل"
+                  value={schoolData.fullName}
+                  disabled={loading}
+                  onChange={(e) =>
+                    setSchoolData({ ...schoolData, fullName: e.target.value })
+                  }
+                  className="w-full p-3 border rounded-lg"
+                />
+                {fieldErrors.fullName && (
+                  <p className="text-red-500 text-xs">
+                    {fieldErrors.fullName}
+                  </p>
+                )}
+              </>
+            )}
+
+            {/* Email */}
             <input
-              type={showPassword ? "text" : "password"}
-              placeholder="كلمة المرور"
-              value={password}
+              ref={emailRef}
+              type="email"
+              placeholder="example@school.com"
+              value={email}
               disabled={loading}
               onChange={(e) => {
-                setPassword(e.target.value);
+                setEmail(e.target.value);
                 validateFields();
               }}
               className={`w-full p-3 border rounded-lg ${
-                fieldErrors.password ? "border-red-500" : ""
+                fieldErrors.email ? "border-red-500" : ""
               }`}
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute left-3 top-3"
-            >
-              {showPassword ? <EyeOff /> : <Eye />}
-            </button>
-          </div>
-          {fieldErrors.password && (
-            <p className="text-red-500 text-xs">{fieldErrors.password}</p>
-          )}
+            {fieldErrors.email && (
+              <p className="text-red-500 text-xs">{fieldErrors.email}</p>
+            )}
 
-          {/* 🟢 Step 2 */}
-          {!isLogin && currentStep === 2 && (
-            <>
+            {/* Password */}
+            <div className="relative">
               <input
-                type="text"
-                placeholder="اسم المدرسة"
-                value={schoolData.schoolName}
-                onChange={(e) =>
-                  setSchoolData({
-                    ...schoolData,
-                    schoolName: e.target.value,
-                  })
-                }
-                className="w-full p-3 border rounded-lg"
+                type={showPassword ? "text" : "password"}
+                placeholder="كلمة المرور"
+                value={password}
+                disabled={loading}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  validateFields();
+                }}
+                className={`w-full p-3 border rounded-lg ${
+                  fieldErrors.password ? "border-red-500" : ""
+                }`}
               />
-            </>
-          )}
-
-          {/* 🔘 Buttons */}
-          {isLogin ? (
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 text-white p-3 rounded-lg"
-            >
-              {loading ? "⏳ جاري التحميل..." : "تسجيل الدخول"}
-            </button>
-          ) : currentStep === 1 ? (
-            <button
-              type="button"
-              onClick={nextStep}
-              className="w-full bg-blue-600 text-white p-3 rounded-lg"
-            >
-              التالي
-            </button>
-          ) : (
-            <div className="flex gap-2">
               <button
                 type="button"
-                onClick={prevStep}
-                className="w-full bg-gray-300 p-3 rounded-lg"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute left-3 top-3"
               >
-                رجوع
+                {showPassword ? <EyeOff /> : <Eye />}
               </button>
+            </div>
+            {fieldErrors.password && (
+              <p className="text-red-500 text-xs">{fieldErrors.password}</p>
+            )}
+
+            {/* Step 2 */}
+            {!isLogin && currentStep === 2 && (
+              <>
+                <input
+                  type="text"
+                  placeholder="اسم المدرسة"
+                  value={schoolData.schoolName}
+                  onChange={(e) =>
+                    setSchoolData({
+                      ...schoolData,
+                      schoolName: e.target.value,
+                    })
+                  }
+                  className="w-full p-3 border rounded-lg"
+                />
+              </>
+            )}
+
+            {/* Buttons */}
+            {isLogin ? (
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-green-600 text-white p-3 rounded-lg"
+                className="w-full bg-blue-600 text-white p-3 rounded-lg"
               >
-                {loading ? "⏳ جاري الإنشاء..." : "إنشاء حساب"}
+                {loading ? "⏳ جاري التحميل..." : "تسجيل الدخول"}
               </button>
-            </div>
-          )}
-        </form>
+            ) : currentStep === 1 ? (
+              <button
+                type="button"
+                onClick={nextStep}
+                className="w-full bg-blue-600 text-white p-3 rounded-lg"
+              >
+                التالي
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={prevStep}
+                  className="w-full bg-gray-300 p-3 rounded-lg"
+                >
+                  رجوع
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-green-600 text-white p-3 rounded-lg"
+                >
+                  {loading ? "⏳ جاري الإنشاء..." : "إنشاء حساب"}
+                </button>
+              </div>
+            )}
+          </form>
 
-        {/* 🔁 Switch */}
-        <p className="text-center text-sm mt-4">
-          {isLogin ? "ليس لديك حساب؟" : "لديك حساب بالفعل؟"}
-          <button
-            onClick={() => setIsLogin(!isLogin)}
-            className="text-blue-600 mr-2"
-          >
-            {isLogin ? "إنشاء حساب" : "تسجيل الدخول"}
-          </button>
-        </p>
+          {/* Switch */}
+          <p className="text-center text-sm mt-4">
+            {isLogin ? "ليس لديك حساب؟" : "لديك حساب بالفعل؟"}
+            <button
+              onClick={() => setIsLogin(!isLogin)}
+              className="text-blue-600 mr-2"
+            >
+              {isLogin ? "إنشاء حساب" : "تسجيل الدخول"}
+            </button>
+          </p>
+        </div>
+
+        <div className="mt-6 text-center text-sm text-gray-600">
+          نظام إداري لحسابات المدارس
+        </div>
       </div>
     </div>
   );
