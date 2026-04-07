@@ -59,7 +59,6 @@ import backgroundPattern from "../assets/background-pattern.png";
 import backgroundWave from "../assets/background-wave.png";
 import backgroundDots from "../assets/background-dots.png";
 
-// ✅ Lazy loading for better performance
 const StudentsManager = lazy(() => import("./StudentsManager"));
 const TeachersManager = lazy(() => import("./TeachersManager"));
 const FeesManager = lazy(() => import("./FeesManager"));
@@ -78,7 +77,6 @@ type View =
   | "financial"
   | "users";
 
-// ✅ Types
 interface StatCardProps {
   title: string;
   value: number;
@@ -103,7 +101,6 @@ interface MenuItemProps {
   shortcut?: string;
 }
 
-// ✅ Custom Hooks
 const useKeyboardShortcuts = (handlers: Record<string, () => void>) => {
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -139,7 +136,6 @@ const useToast = () => {
   ) : null };
 };
 
-// ✅ Skeleton Loader Component
 const StatCardSkeleton = () => (
   <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-sm p-6 animate-pulse">
     <div className="flex items-start justify-between">
@@ -152,7 +148,6 @@ const StatCardSkeleton = () => (
   </div>
 );
 
-// ✅ Modern Stat Card with loading state
 const ModernStatCard: React.FC<StatCardProps> = ({
   title,
   value,
@@ -228,7 +223,6 @@ const ModernStatCard: React.FC<StatCardProps> = ({
   );
 };
 
-// ✅ Modern Menu Item with keyboard support
 const ModernMenuItem: React.FC<MenuItemProps> = ({
   label,
   icon: Icon,
@@ -287,7 +281,6 @@ const ModernMenuItem: React.FC<MenuItemProps> = ({
   );
 };
 
-// ✅ Quick Action Card
 const QuickActionCard: React.FC<{
   title: string;
   description: string;
@@ -314,7 +307,6 @@ const QuickActionCard: React.FC<{
   </button>
 );
 
-// ✅ Modern Header with improved UX
 const ModernHeader: React.FC<{
   user: any;
   onSignOut: () => void;
@@ -350,7 +342,6 @@ const ModernHeader: React.FC<{
   const [showSearchResults, setShowSearchResults] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Keyboard shortcut: Ctrl+K to focus search
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
@@ -578,7 +569,6 @@ const ModernHeader: React.FC<{
   );
 };
 
-// ✅ Modern Chat Component
 const ModernChat: React.FC<{ isOpen: boolean; onClose: () => void; language: "ar" | "en"; t: (key: string) => string }> = ({
   isOpen,
   onClose,
@@ -672,7 +662,6 @@ const ModernChat: React.FC<{ isOpen: boolean; onClose: () => void; language: "ar
   );
 };
 
-// ✅ Lazy Loaded View Renderer
 const ViewRenderer: React.FC<{ view: View; onUpdate: () => void; loading?: boolean }> = ({ view, onUpdate, loading = false }) => {
   if (loading) {
     return (
@@ -696,7 +685,6 @@ const ViewRenderer: React.FC<{ view: View; onUpdate: () => void; loading?: boole
   return <Suspense fallback={<Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto" />}>{components[view]}</Suspense>;
 };
 
-// Formatting utilities
 const formatCurrency = (num: number, language: string): string => {
   const formatted = num.toLocaleString(language === "ar" ? "ar-EG" : "en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return language === "ar" ? `${formatted} ج.م` : `EGP ${formatted}`;
@@ -706,7 +694,6 @@ const formatPercentage = (num: number, language: string): string => `${num.toLoc
 
 const formatNumber = (num: number, language: string): string => num.toLocaleString(language === "ar" ? "ar-EG" : "en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
-// Enhanced Statistics Interface
 interface EnhancedStatistics extends Statistics {
   totalRefunds: number;
   netRevenue: number;
@@ -759,7 +746,6 @@ export default function Dashboard() {
     { image: backgroundDots, overlay: "from-purple-50/30 to-pink-50/30" },
   ];
 
-  // Background rotation
   useEffect(() => {
     const interval = setInterval(() => setCurrentBackground((prev) => (prev + 1) % backgrounds.length), 30000);
     return () => clearInterval(interval);
@@ -920,7 +906,6 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-50/50 relative" dir={language === "ar" ? "rtl" : "ltr"}>
       <ToastComponent />
 
-      {/* Animated Background */}
       <div className="fixed inset-0 z-0">
         <div className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000" style={{ backgroundImage: `url(${backgrounds[currentBackground].image})`, opacity: 0.15 }} />
         <div className={`absolute inset-0 bg-gradient-to-br ${backgrounds[currentBackground].overlay} transition-all duration-1000`} />
@@ -956,7 +941,6 @@ export default function Dashboard() {
           sidebarVisible={showSidebar}
         />
 
-        {/* School Status Bar */}
         <div className="relative border-b border-gray-200/50 bg-white/40 backdrop-blur-xl">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between py-2.5">
@@ -1001,7 +985,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Floating Chat Button */}
         <div className="fixed bottom-6 left-6 z-50">
           <button
             onClick={() => setIsChatOpen(!isChatOpen)}
@@ -1058,7 +1041,6 @@ export default function Dashboard() {
               </button>
             )}
 
-            {/* Main Content */}
             <main className="flex-1 min-w-0">
               {currentView === "dashboard" ? (
                 <div className="space-y-6">
@@ -1134,7 +1116,6 @@ export default function Dashboard() {
                     </>
                   )}
 
-                  {/* Revenue Chart */}
                   <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-6 border border-gray-100/50">
                     <div className="flex items-center justify-between mb-4">
                       <div>
@@ -1156,7 +1137,6 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  {/* Quick Actions */}
                   <div>
                     <h3 className="text-sm font-medium text-gray-700 mb-3">{t("quickActions")}</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -1176,7 +1156,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Add global styles for animations */}
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes fade-in-up {
           from { opacity: 0; transform: translateY(20px); }

@@ -1,5 +1,5 @@
 // src/components/StudentsManager.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   UserPlus,
   Edit2,
@@ -9,6 +9,25 @@ import {
   ChevronDown,
   ChevronUp,
   BookOpen,
+  Users,
+  GraduationCap,
+  Phone,
+  User,
+  CheckCircle,
+  XCircle,
+  Loader2,
+  Filter,
+  Download,
+  Printer,
+  Mail,
+  MessageSquare,
+  MoreVertical,
+  Eye,
+  Archive,
+  RefreshCw,
+  TrendingUp,
+  TrendingDown,
+  AlertCircle,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
@@ -18,55 +37,566 @@ interface StudentsManagerProps {
   onUpdate: () => void;
 }
 
+// Custom Hooks
+const useDebounce = <T,>(value: T, delay: number): T => {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debouncedValue;
+};
+
+const useToast = () => {
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" | "warning" } | null>(null);
+  const showToast = useCallback((message: string, type: "success" | "error" | "info" | "warning" = "info") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  }, []);
+  return { toast, showToast, ToastComponent: () => toast ? (
+    <div className={`fixed bottom-20 right-4 z-50 px-4 py-3 rounded-lg shadow-lg animate-slide-up ${
+      toast.type === "success" ? "bg-green-600" :
+      toast.type === "error" ? "bg-red-600" :
+      toast.type === "warning" ? "bg-yellow-600" : "bg-blue-600"
+    } text-white text-sm flex items-center gap-2`}>
+      {toast.type === "success" && <CheckCircle className="w-4 h-4" />}
+      {toast.type === "error" && <AlertCircle className="w-4 h-4" />}
+      {toast.message}
+    </div>
+  ) : null };
+};
+
+// Skeleton Loader Component
+const StudentCardSkeleton = () => (
+  <div className="bg-gray-50 rounded-lg p-4 animate-pulse">
+    <div className="flex items-start justify-between">
+      <div className="flex-1">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="h-5 w-32 bg-gray-200 rounded"></div>
+          <div className="h-4 w-16 bg-gray-200 rounded-full"></div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="h-4 w-40 bg-gray-200 rounded"></div>
+          <div className="h-4 w-32 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+      <div className="flex gap-1">
+        <div className="w-8 h-8 bg-gray-200 rounded-lg"></div>
+        <div className="w-8 h-8 bg-gray-200 rounded-lg"></div>
+      </div>
+    </div>
+  </div>
+);
+
+// Stats Card Component
+const StatsCard: React.FC<{
+  title: string;
+  value: number;
+  icon: React.ElementType;
+  color: string;
+  trend?: number;
+  isLoading?: boolean;
+}> = ({ title, value, icon: Icon, color, trend, isLoading }) => {
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-xl shadow-md p-4 animate-pulse">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-4 w-24 bg-gray-200 rounded"></div>
+            <div className="h-8 w-16 bg-gray-200 rounded"></div>
+          </div>
+          <div className="w-10 h-10 bg-gray-200 rounded-xl"></div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`bg-white rounded-xl shadow-md p-4 border-r-4 ${color} hover:shadow-lg transition-all duration-300 group`}>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-gray-600">{title}</p>
+          <p className="text-2xl font-bold text-gray-900">{value.toLocaleString("ar-EG")}</p>
+          {trend !== undefined && (
+            <div className={`flex items-center gap-1 mt-1 text-xs ${trend >= 0 ? "text-green-600" : "text-red-600"}`}>
+              {trend >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+              <span>{Math.abs(trend)}%</span>
+            </div>
+          )}
+        </div>
+        <div className={`p-3 bg-gradient-to-br ${color} rounded-xl shadow-lg transform group-hover:scale-110 transition-all duration-500`}>
+          <Icon className="w-5 h-5 text-white" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Student Card Component
+const StudentCard: React.FC<{
+  student: Student;
+  onEdit: (student: Student) => void;
+  onDelete: (id: string) => void;
+  onViewDetails: (student: Student) => void;
+  canEdit: boolean;
+  canDelete: boolean;
+}> = ({ student, onEdit, onDelete, onViewDetails, canEdit, canDelete }) => {
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="bg-white rounded-lg p-4 hover:shadow-md transition-all duration-300 border border-gray-100 group">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <h4 className="font-bold text-gray-900 text-lg">{student.full_name}</h4>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${
+              student.status === "active"
+                ? "bg-green-100 text-green-700"
+                : "bg-gray-100 text-gray-600"
+            }`}>
+              {student.status === "active" ? (
+                <CheckCircle className="w-3 h-3" />
+              ) : (
+                <XCircle className="w-3 h-3" />
+              )}
+              {student.status === "active" ? "نشط" : "غير نشط"}
+            </span>
+            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+              {student.grade}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+            <div className="flex items-center gap-1">
+              <User className="w-3.5 h-3.5 text-gray-400" />
+              <span className="text-gray-600">ولي الأمر:</span>
+              <span className="font-medium text-gray-900">{student.parent_name}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Phone className="w-3.5 h-3.5 text-gray-400" />
+              <span className="text-gray-600">الهاتف:</span>
+              <span className="font-medium text-gray-900 font-mono text-sm" dir="ltr">
+                {student.parent_phone}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
+            aria-label="خيارات"
+          >
+            <MoreVertical className="w-4 h-4" />
+          </button>
+
+          {showMenu && (
+            <div className="absolute left-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-10 animate-fade-in">
+              <button
+                onClick={() => {
+                  onViewDetails(student);
+                  setShowMenu(false);
+                }}
+                className="w-full text-right px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+              >
+                <Eye className="w-4 h-4" />
+                عرض التفاصيل
+              </button>
+              {canEdit && (
+                <button
+                  onClick={() => {
+                    onEdit(student);
+                    setShowMenu(false);
+                  }}
+                  className="w-full text-right px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  تعديل
+                </button>
+              )}
+              {canDelete && (
+                <button
+                  onClick={() => {
+                    onDelete(student.id);
+                    setShowMenu(false);
+                  }}
+                  className="w-full text-right px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  حذف
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Student Details Modal
+const StudentDetailsModal: React.FC<{
+  student: Student | null;
+  onClose: () => void;
+}> = ({ student, onClose }) => {
+  if (!student) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in">
+      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto animate-scale-up">
+        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+          <h3 className="text-xl font-bold text-gray-900">تفاصيل الطالب</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-lg">
+              {student.full_name.charAt(0).toUpperCase()}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+              <span className="text-gray-600">الاسم الكامل</span>
+              <span className="font-medium text-gray-900">{student.full_name}</span>
+            </div>
+            <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+              <span className="text-gray-600">الصف الدراسي</span>
+              <span className="font-medium text-gray-900">{student.grade}</span>
+            </div>
+            <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+              <span className="text-gray-600">ولي الأمر</span>
+              <span className="font-medium text-gray-900">{student.parent_name}</span>
+            </div>
+            <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+              <span className="text-gray-600">رقم الهاتف</span>
+              <span className="font-medium text-gray-900 font-mono" dir="ltr">{student.parent_phone}</span>
+            </div>
+            <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+              <span className="text-gray-600">الحالة</span>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                student.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+              }`}>
+                {student.status === "active" ? "نشط" : "غير نشط"}
+              </span>
+            </div>
+            <div className="flex justify-between items-center pb-2">
+              <span className="text-gray-600">تاريخ التسجيل</span>
+              <span className="font-medium text-gray-900">
+                {new Date(student.created_at).toLocaleDateString("ar-EG")}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              onClick={() => {
+                window.location.href = `tel:${student.parent_phone}`;
+              }}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-2"
+            >
+              <Phone className="w-4 h-4" />
+              اتصل
+            </button>
+            <button
+              onClick={() => {
+                window.location.href = `mailto:?subject=بيانات الطالب ${student.full_name}`;
+              }}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-2"
+            >
+              <Mail className="w-4 h-4" />
+              إرسال بريد
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Grade Filter Component
+const GradeFilter: React.FC<{
+  grades: { grade: string; count: number; activeCount: number }[];
+  selectedGrade: string;
+  onSelectGrade: (grade: string) => void;
+  searchTerm: string;
+  totalFilteredCount: number;
+}> = ({ grades, selectedGrade, onSelectGrade, searchTerm, totalFilteredCount }) => (
+  <div className="flex flex-wrap items-center gap-2">
+    <Filter className="w-4 h-4 text-gray-400" />
+    <span className="text-sm font-medium text-gray-700">تصفية حسب الصف:</span>
+    <button
+      onClick={() => onSelectGrade("")}
+      className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 ${
+        selectedGrade === ""
+          ? "bg-blue-600 text-white shadow-md"
+          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+      }`}
+    >
+      الكل {searchTerm && `(${totalFilteredCount})`}
+    </button>
+    {grades.map(({ grade, count }) => (
+      <button
+        key={grade}
+        onClick={() => onSelectGrade(grade)}
+        className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 ${
+          selectedGrade === grade
+            ? "bg-blue-600 text-white shadow-md"
+            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+        }`}
+      >
+        {grade} ({count})
+      </button>
+    ))}
+  </div>
+);
+
+// Grade Section Component
+const GradeSection: React.FC<{
+  grade: string;
+  students: Student[];
+  isExpanded: boolean;
+  onToggle: () => void;
+  onViewAll: () => void;
+  onEdit: (student: Student) => void;
+  onDelete: (id: string) => void;
+  onViewDetails: (student: Student) => void;
+  canEdit: boolean;
+  canDelete: boolean;
+  searchTerm: string;
+}> = ({
+  grade,
+  students,
+  isExpanded,
+  onToggle,
+  onViewAll,
+  onEdit,
+  onDelete,
+  onViewDetails,
+  canEdit,
+  canDelete,
+  searchTerm,
+}) => {
+  const activeCount = students.filter(s => s.status === "active").length;
+
+  return (
+    <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-all duration-300">
+      <div
+        onClick={onToggle}
+        className="bg-gradient-to-l from-gray-50 to-white px-6 py-4 border-b cursor-pointer hover:bg-gray-50 transition-all duration-200"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              {isExpanded ? (
+                <ChevronUp className="w-5 h-5 text-gray-400" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-gray-400" />
+              )}
+              <GraduationCap className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-900">{grade}</h3>
+              <div className="flex items-center gap-3 mt-1 text-sm">
+                <span className="text-gray-600">إجمالي: {students.length}</span>
+                <span className="text-green-600">نشط: {activeCount}</span>
+                <span className="text-gray-400">غير نشط: {students.length - activeCount}</span>
+                {searchTerm && <span className="text-blue-600 text-xs">(نتائج البحث)</span>}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewAll();
+            }}
+            className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
+          >
+            عرض الكل
+          </button>
+        </div>
+      </div>
+
+      {isExpanded && (
+        <div className="p-4 animate-fade-in">
+          <div className="grid gap-3">
+            {students.map((student) => (
+              <StudentCard
+                key={student.id}
+                student={student}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onViewDetails={onViewDetails}
+                canEdit={canEdit}
+                canDelete={canDelete}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
   const { authUser, currentSchool, hasPermission } = useAuth();
+  const { toast, showToast, ToastComponent } = useToast();
+
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedGrade, setSelectedGrade] = useState("");
   const [expandedGrades, setExpandedGrades] = useState<Set<string>>(new Set());
-  const [selectedGrade, setSelectedGrade] = useState<string>("");
-  const [formData, setFormData] = useState({
-    full_name: "",
-    grade: "",
-    parent_name: "",
-    parent_phone: "",
-    status: "active" as "active" | "inactive",
-  });
+  const [selectedStudentDetails, setSelectedStudentDetails] = useState<Student | null>(null);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [sortBy, setSortBy] = useState<"name" | "grade" | "date">("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
-  useEffect(() => {
-    loadStudents();
-  }, [currentSchool]); // ✅ إضافة currentSchool كـ dependency
+  const debouncedSearch = useDebounce(searchTerm, 300);
 
-  const loadStudents = async () => {
+  // Load students
+  const loadStudents = useCallback(async (showRefreshIndicator = false) => {
     if (!currentSchool) {
       console.log("⏳ No school selected, skipping load");
+      setLoading(false);
       return;
     }
 
-    setLoading(true);
+    if (showRefreshIndicator) {
+      setIsRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
     try {
       const { data, error } = await supabase
         .from("students")
         .select("*")
-        .eq("school_id", currentSchool.id) // ✅ استخدام school_id بدلاً من user_id
+        .eq("school_id", currentSchool.id)
         .order("grade", { ascending: true })
         .order("full_name", { ascending: true });
 
       if (error) throw error;
       setStudents(data || []);
-      
-      // توسيع جميع الصفوف بعد تحميل البيانات
+
+      // Expand all grades by default
       const grades = new Set((data || []).map(s => s.grade || "غير محدد"));
       setExpandedGrades(grades);
     } catch (error) {
       console.error("Error loading students:", error);
+      showToast("حدث خطأ في تحميل البيانات", "error");
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
-  };
+  }, [currentSchool, showToast]);
 
+  useEffect(() => {
+    loadStudents();
+  }, [loadStudents]);
+
+  // Group students by grade
+  const studentsByGrade = useMemo(() => {
+    return students.reduce((acc, student) => {
+      const grade = student.grade || "غير محدد";
+      if (!acc[grade]) acc[grade] = [];
+      acc[grade].push(student);
+      return acc;
+    }, {} as Record<string, Student[]>);
+  }, [students]);
+
+  // Grade statistics
+  const gradeStats = useMemo(() => {
+    return Object.entries(studentsByGrade)
+      .map(([grade, students]) => ({
+        grade,
+        count: students.length,
+        activeCount: students.filter(s => s.status === "active").length,
+      }))
+      .sort((a, b) => a.grade.localeCompare(b.grade, "ar"));
+  }, [studentsByGrade]);
+
+  // Filter students by search
+  const filterStudents = useCallback((studentList: Student[]) => {
+    if (!debouncedSearch.trim()) return studentList;
+    const term = debouncedSearch.toLowerCase().trim();
+    return studentList.filter(
+      (student) =>
+        student.full_name.toLowerCase().includes(term) ||
+        student.parent_name.toLowerCase().includes(term) ||
+        student.parent_phone.includes(term) ||
+        student.grade.toLowerCase().includes(term)
+    );
+  }, [debouncedSearch]);
+
+  // Sort students
+  const sortStudents = useCallback((studentList: Student[]) => {
+    return [...studentList].sort((a, b) => {
+      let comparison = 0;
+      switch (sortBy) {
+        case "name":
+          comparison = a.full_name.localeCompare(b.full_name, "ar");
+          break;
+        case "grade":
+          comparison = a.grade.localeCompare(b.grade, "ar");
+          break;
+        case "date":
+          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          break;
+      }
+      return sortOrder === "asc" ? comparison : -comparison;
+    });
+  }, [sortBy, sortOrder]);
+
+  // Get filtered and sorted students
+  const filteredStudentsByGrade = useMemo(() => {
+    const result: Record<string, Student[]> = {};
+    Object.entries(studentsByGrade).forEach(([grade, gradeStudents]) => {
+      const filtered = filterStudents(gradeStudents);
+      const sorted = sortStudents(filtered);
+      if (sorted.length > 0) {
+        result[grade] = sorted;
+      }
+    });
+    return result;
+  }, [studentsByGrade, filterStudents, sortStudents]);
+
+  const allFilteredStudents = useMemo(() => {
+    const filtered = filterStudents(students);
+    return sortStudents(filtered);
+  }, [students, filterStudents, sortStudents]);
+
+  const totalFilteredCount = allFilteredStudents.length;
+
+  // Statistics
+  const totalStudents = students.length;
+  const totalActive = students.filter(s => s.status === "active").length;
+  const totalInactive = students.filter(s => s.status === "inactive").length;
+  const activePercentage = totalStudents > 0 ? (totalActive / totalStudents) * 100 : 0;
+
+  // Permissions
+  const canAddStudent = hasPermission('edit_students') || hasPermission('add_students');
+  const canEdit = hasPermission('edit_students');
+  const canDelete = hasPermission('delete_students');
+
+  // Handlers
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authUser || !currentSchool) return;
@@ -77,36 +607,39 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
           .from("students")
           .update({ ...formData, updated_at: new Date().toISOString() })
           .eq("id", editingStudent.id)
-          .eq("school_id", currentSchool.id); // ✅ التأكد من المدرسة
+          .eq("school_id", currentSchool.id);
 
         if (error) throw error;
+        showToast("تم تحديث بيانات الطالب بنجاح", "success");
       } else {
         const { error } = await supabase
           .from("students")
-          .insert([{ 
-            ...formData, 
+          .insert([{
+            ...formData,
             user_id: authUser.id,
-            school_id: currentSchool.id // ✅ إضافة school_id
+            school_id: currentSchool.id,
+            enrollment_date: new Date().toISOString().split("T")[0],
           }]);
 
         if (error) throw error;
+        showToast("تم إضافة الطالب بنجاح", "success");
       }
 
       resetForm();
-      loadStudents();
+      loadStudents(true);
       onUpdate();
     } catch (error) {
       console.error("Error saving student:", error);
-      alert("حدث خطأ أثناء حفظ البيانات");
+      showToast("حدث خطأ أثناء حفظ البيانات", "error");
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!hasPermission('delete_students')) {
-      alert("ليس لديك صلاحية لحذف الطلاب");
+    if (!canDelete) {
+      showToast("ليس لديك صلاحية لحذف الطلاب", "error");
       return;
     }
-    
+
     if (!confirm("هل أنت متأكد من حذف هذا الطالب؟")) return;
 
     try {
@@ -114,23 +647,23 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
         .from("students")
         .delete()
         .eq("id", id)
-        .eq("school_id", currentSchool?.id); // ✅ التأكد من المدرسة
+        .eq("school_id", currentSchool?.id);
 
       if (error) throw error;
-      loadStudents();
+      loadStudents(true);
       onUpdate();
+      showToast("تم حذف الطالب بنجاح", "success");
     } catch (error) {
       console.error("Error deleting student:", error);
-      alert("حدث خطأ أثناء حذف الطالب");
+      showToast("حدث خطأ أثناء حذف الطالب", "error");
     }
   };
 
   const handleEdit = (student: Student) => {
-    if (!hasPermission('edit_students')) {
-      alert("ليس لديك صلاحية لتعديل الطلاب");
+    if (!canEdit) {
+      showToast("ليس لديك صلاحية لتعديل الطلاب", "error");
       return;
     }
-    
     setEditingStudent(student);
     setFormData({
       full_name: student.full_name,
@@ -140,6 +673,10 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
       status: student.status,
     });
     setShowForm(true);
+  };
+
+  const handleViewDetails = (student: Student) => {
+    setSelectedStudentDetails(student);
   };
 
   const resetForm = () => {
@@ -165,7 +702,7 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
   };
 
   const expandAll = () => {
-    const allGrades = new Set(gradeStats.map((stat) => stat.grade));
+    const allGrades = new Set(Object.keys(filteredStudentsByGrade));
     setExpandedGrades(allGrades);
   };
 
@@ -173,136 +710,87 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
     setExpandedGrades(new Set());
   };
 
-  // Group students by grade
-  const studentsByGrade = students.reduce(
-    (acc, student) => {
-      const grade = student.grade || "غير محدد";
-      if (!acc[grade]) {
-        acc[grade] = [];
-      }
-      acc[grade].push(student);
-      return acc;
-    },
-    {} as Record<string, Student[]>,
-  );
+  const exportToCSV = () => {
+    const headers = ["الاسم", "الصف", "ولي الأمر", "الهاتف", "الحالة", "تاريخ التسجيل"];
+    const rows = allFilteredStudents.map(s => [
+      s.full_name,
+      s.grade,
+      s.parent_name,
+      s.parent_phone,
+      s.status === "active" ? "نشط" : "غير نشط",
+      new Date(s.created_at).toLocaleDateString("ar-EG"),
+    ]);
 
-  // Calculate statistics for each grade
-  const gradeStats = Object.entries(studentsByGrade)
-    .map(([grade, students]) => ({
-      grade,
-      count: students.length,
-      activeCount: students.filter((s) => s.status === "active").length,
-      inactiveCount: students.filter((s) => s.status === "inactive").length,
-    }))
-    .sort((a, b) => a.grade.localeCompare(b.grade, "ar"));
-
-  // Filter students by search term
-  const filterStudentsBySearch = (studentList: Student[]) => {
-    if (!searchTerm.trim()) return studentList;
-    
-    const term = searchTerm.toLowerCase().trim();
-    return studentList.filter(
-      (student) =>
-        student.full_name.toLowerCase().includes(term) ||
-        student.parent_name.toLowerCase().includes(term) ||
-        student.parent_phone.includes(term) ||
-        student.grade.toLowerCase().includes(term)
-    );
+    const csvContent = [headers, ...rows].map(row => row.join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute("download", `students_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast("تم تصدير البيانات بنجاح", "success");
   };
 
-  // Filter students by search term and selected grade
-  const getFilteredStudents = () => {
-    if (selectedGrade) {
-      const gradeStudents = studentsByGrade[selectedGrade] || [];
-      return filterStudentsBySearch(gradeStudents);
-    } else {
-      return filterStudentsBySearch(students);
-    }
-  };
+  const [formData, setFormData] = useState({
+    full_name: "",
+    grade: "",
+    parent_name: "",
+    parent_phone: "",
+    status: "active" as "active" | "inactive",
+  });
 
-  // Create filtered students by grade object
-  const getFilteredStudentsByGrade = () => {
-    const filtered: Record<string, Student[]> = {};
-    
-    Object.entries(studentsByGrade).forEach(([grade, gradeStudents]) => {
-      const filteredGradeStudents = filterStudentsBySearch(gradeStudents);
-      if (filteredGradeStudents.length > 0) {
-        filtered[grade] = filteredGradeStudents;
-      }
-    });
-    
-    return filtered;
-  };
-
-  const filteredStudentsByGrade = getFilteredStudentsByGrade();
-  const filteredStudents = getFilteredStudents();
-  const totalFilteredCount = filteredStudents.length;
-
-  const totalStudents = students.length;
-  const totalActive = students.filter((s) => s.status === "active").length;
-  const totalInactive = students.filter((s) => s.status === "inactive").length;
-
-  // التحقق من صلاحية إضافة الطلاب
-  const canAddStudent = hasPermission('edit_students') || hasPermission('add_students');
+  const isLoading = loading && !isRefreshing;
 
   return (
     <div className="space-y-6">
+      <ToastComponent />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold text-gray-900">إدارة الطلاب</h2>
-        {canAddStudent && (
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">إدارة الطلاب</h2>
+          <p className="text-sm text-gray-500 mt-1">إدارة بيانات الطلاب وملفاتهم الدراسية</p>
+        </div>
+        <div className="flex gap-2">
           <button
-            onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all shadow-md w-full sm:w-auto justify-center"
+            onClick={() => loadStudents(true)}
+            disabled={isRefreshing}
+            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-all disabled:opacity-50"
+            aria-label="تحديث"
           >
-            <UserPlus className="w-5 h-5" />
-            <span>إضافة طالب</span>
+            <RefreshCw className={`w-5 h-5 ${isRefreshing ? "animate-spin" : ""}`} />
           </button>
-        )}
+          <button
+            onClick={exportToCSV}
+            className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-all shadow-md"
+          >
+            <Download className="w-5 h-5" />
+            <span>تصدير Excel</span>
+          </button>
+          {canAddStudent && (
+            <button
+              onClick={() => setShowForm(true)}
+              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2 rounded-lg transition-all shadow-md"
+            >
+              <UserPlus className="w-5 h-5" />
+              <span>إضافة طالب</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl shadow-md p-4 border-r-4 border-blue-600">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">إجمالي الطلاب</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {totalStudents.toLocaleString("ar-EG")}
-              </p>
-            </div>
-            <BookOpen className="w-8 h-8 text-blue-600 opacity-75" />
-          </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-md p-4 border-r-4 border-green-600">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">الطلاب النشطون</p>
-              <p className="text-2xl font-bold text-green-600">
-                {totalActive.toLocaleString("ar-EG")}
-              </p>
-            </div>
-            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-              <span className="text-green-600 font-bold">✓</span>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-md p-4 border-r-4 border-gray-400">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">الطلاب غير النشطين</p>
-              <p className="text-2xl font-bold text-gray-600">
-                {totalInactive.toLocaleString("ar-EG")}
-              </p>
-            </div>
-            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-              <span className="text-gray-600 font-bold">○</span>
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <StatsCard title="إجمالي الطلاب" value={totalStudents} icon={Users} color="border-blue-600" isLoading={isLoading} />
+        <StatsCard title="الطلاب النشطون" value={totalActive} icon={CheckCircle} color="border-green-600" trend={activePercentage} isLoading={isLoading} />
+        <StatsCard title="الطلاب غير النشطين" value={totalInactive} icon={XCircle} color="border-gray-400" isLoading={isLoading} />
+        <StatsCard title="عدد الصفوف" value={Object.keys(studentsByGrade).length} icon={GraduationCap} color="border-purple-600" isLoading={isLoading} />
       </div>
 
-      {/* Search and Filter */}
+      {/* Search and Filters */}
       <div className="bg-white rounded-xl shadow-md p-4 space-y-4">
         <div className="relative">
           <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -311,7 +799,7 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="البحث عن طالب (بالاسم، ولي الأمر، رقم الهاتف، أو الصف)..."
-            className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
           />
           {searchTerm && (
             <button
@@ -323,65 +811,78 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
           )}
         </div>
 
-        {/* Grade Filter */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium text-gray-700">
-            تصفية حسب الصف:
-          </span>
-          <button
-            onClick={() => setSelectedGrade("")}
-            className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${
-              selectedGrade === ""
-                ? "bg-blue-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            الكل {searchTerm && `(${totalFilteredCount})`}
-          </button>
-          {gradeStats.map(({ grade }) => {
-            const countInGrade = searchTerm 
-              ? filterStudentsBySearch(studentsByGrade[grade] || []).length
-              : studentsByGrade[grade]?.length || 0;
-            
-            if (countInGrade === 0 && searchTerm) return null;
-            
-            return (
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <GradeFilter
+            grades={gradeStats}
+            selectedGrade={selectedGrade}
+            onSelectGrade={setSelectedGrade}
+            searchTerm={searchTerm}
+            totalFilteredCount={totalFilteredCount}
+          />
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
               <button
-                key={grade}
-                onClick={() => setSelectedGrade(grade)}
-                className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${
-                  selectedGrade === grade
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+                onClick={() => setViewMode("grid")}
+                className={`p-1.5 rounded-md transition-all ${viewMode === "grid" ? "bg-white shadow-sm text-blue-600" : "text-gray-500"}`}
+                aria-label="عرض شبكي"
               >
-                {grade} ({countInGrade})
+                <div className="w-4 h-4 grid grid-cols-2 gap-0.5">
+                  <div className="bg-current rounded-sm"></div>
+                  <div className="bg-current rounded-sm"></div>
+                  <div className="bg-current rounded-sm"></div>
+                  <div className="bg-current rounded-sm"></div>
+                </div>
               </button>
-            );
-          })}
+              <button
+                onClick={() => setViewMode("list")}
+                className={`p-1.5 rounded-md transition-all ${viewMode === "list" ? "bg-white shadow-sm text-blue-600" : "text-gray-500"}`}
+                aria-label="عرض قائمة"
+              >
+                <div className="w-4 h-4 flex flex-col gap-0.5">
+                  <div className="h-0.5 bg-current rounded-full"></div>
+                  <div className="h-0.5 bg-current rounded-full"></div>
+                  <div className="h-0.5 bg-current rounded-full"></div>
+                </div>
+              </button>
+            </div>
+
+            <select
+              value={`${sortBy}-${sortOrder}`}
+              onChange={(e) => {
+                const [newSortBy, newSortOrder] = e.target.value.split("-");
+                setSortBy(newSortBy as "name" | "grade" | "date");
+                setSortOrder(newSortOrder as "asc" | "desc");
+              }}
+              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            >
+              <option value="name-asc">الاسم (أ-ي)</option>
+              <option value="name-desc">الاسم (ي-أ)</option>
+              <option value="grade-asc">الصف (تصاعدي)</option>
+              <option value="grade-desc">الصف (تنازلي)</option>
+              <option value="date-asc">الأقدم أولاً</option>
+              <option value="date-desc">الأحدث أولاً</option>
+            </select>
+          </div>
         </div>
 
-        {/* Search Result Info */}
         {searchTerm && (
-          <div className="text-sm text-gray-600 bg-blue-50 p-2 rounded-lg">
-            تم العثور على {totalFilteredCount} نتيجة للبحث "{searchTerm}"
+          <div className="text-sm text-gray-600 bg-blue-50 p-2 rounded-lg flex items-center justify-between">
+            <span>تم العثور على {totalFilteredCount} نتيجة للبحث "{searchTerm}"</span>
+            <button onClick={() => setSearchTerm("")} className="text-blue-600 hover:text-blue-700 text-sm">
+              مسح البحث
+            </button>
           </div>
         )}
 
         {/* Expand/Collapse Controls */}
         {!selectedGrade && Object.keys(filteredStudentsByGrade).length > 0 && (
           <div className="flex justify-end gap-2">
-            <button
-              onClick={expandAll}
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-            >
+            <button onClick={expandAll} className="text-sm text-blue-600 hover:text-blue-700 font-medium">
               فتح الكل
             </button>
             <span className="text-gray-300">|</span>
-            <button
-              onClick={collapseAll}
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-            >
+            <button onClick={collapseAll} className="text-sm text-blue-600 hover:text-blue-700 font-medium">
               إغلاق الكل
             </button>
           </div>
@@ -389,21 +890,19 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
       </div>
 
       {/* Students List */}
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      {isLoading ? (
+        <div className="space-y-4">
+          {[...Array(5)].map((_, i) => <StudentCardSkeleton key={i} />)}
         </div>
       ) : students.length === 0 ? (
         <div className="bg-white rounded-xl shadow-md p-12 text-center">
-          <UserPlus className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            لا توجد بيانات
-          </h3>
+          <GraduationCap className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد بيانات</h3>
           <p className="text-gray-600 mb-6">لم يتم إضافة أي طلاب بعد</p>
           {canAddStudent && (
             <button
               onClick={() => setShowForm(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-all"
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-2 rounded-lg transition-all shadow-md"
             >
               إضافة أول طالب
             </button>
@@ -415,126 +914,58 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <BookOpen className="w-6 h-6 text-blue-600" />
-                <h3 className="text-lg font-bold text-gray-900">
-                  {selectedGrade}
-                </h3>
+                <GraduationCap className="w-6 h-6 text-blue-600" />
+                <h3 className="text-lg font-bold text-gray-900">{selectedGrade}</h3>
                 <span className="bg-blue-600 text-white px-2 py-1 rounded-full text-xs">
-                  {filteredStudents.length} طالب
+                  {allFilteredStudents.length} طالب
                 </span>
               </div>
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm("")}
-                  className="text-sm text-gray-600 hover:text-gray-900"
-                >
-                  مسح البحث
-                </button>
-              )}
+              <button onClick={() => setSelectedGrade("")} className="text-sm text-gray-600 hover:text-gray-900">
+                عرض الكل
+              </button>
             </div>
           </div>
-          {filteredStudents.length > 0 ? (
-            <StudentList
-              students={filteredStudents}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              hasPermission={hasPermission}
-            />
-          ) : (
-            <div className="bg-white rounded-xl p-8 text-center">
-              <p className="text-gray-600">لا توجد نتائج للبحث "{searchTerm}"</p>
-            </div>
-          )}
+
+          <div className={`grid gap-3 ${viewMode === "grid" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"}`}>
+            {allFilteredStudents.map((student) => (
+              <StudentCard
+                key={student.id}
+                student={student}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onViewDetails={handleViewDetails}
+                canEdit={canEdit}
+                canDelete={canDelete}
+              />
+            ))}
+          </div>
         </div>
       ) : (
         // Grouped by Grade View
         <div className="space-y-4">
-          {Object.entries(filteredStudentsByGrade).map(([grade, gradeStudents]) => {
-            const isExpanded = expandedGrades.has(grade);
-            const activeCount = gradeStudents.filter(s => s.status === "active").length;
+          {Object.entries(filteredStudentsByGrade).map(([grade, gradeStudents]) => (
+            <GradeSection
+              key={grade}
+              grade={grade}
+              students={gradeStudents}
+              isExpanded={expandedGrades.has(grade)}
+              onToggle={() => toggleGrade(grade)}
+              onViewAll={() => setSelectedGrade(grade)}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onViewDetails={handleViewDetails}
+              canEdit={canEdit}
+              canDelete={canDelete}
+              searchTerm={searchTerm}
+            />
+          ))}
 
-            return (
-              <div
-                key={grade}
-                className="bg-white rounded-xl shadow-md overflow-hidden"
-              >
-                {/* Grade Header */}
-                <div
-                  onClick={() => toggleGrade(grade)}
-                  className="bg-gradient-to-l from-gray-50 to-white px-6 py-4 border-b cursor-pointer hover:bg-gray-50 transition-all"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        {isExpanded ? (
-                          <ChevronUp className="w-5 h-5 text-gray-400" />
-                        ) : (
-                          <ChevronDown className="w-5 h-5 text-gray-400" />
-                        )}
-                        <BookOpen className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-bold text-gray-900">
-                          {grade}
-                        </h3>
-                        <div className="flex items-center gap-3 mt-1 text-sm">
-                          <span className="text-gray-600">
-                            إجمالي: {gradeStudents.length}
-                          </span>
-                          <span className="text-green-600">
-                            نشط: {activeCount}
-                          </span>
-                          <span className="text-gray-400">
-                            غير نشط: {gradeStudents.length - activeCount}
-                          </span>
-                          {searchTerm && (
-                            <span className="text-blue-600 text-xs">
-                              (نتائج البحث)
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedGrade(grade);
-                      }}
-                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                    >
-                      عرض الكل
-                    </button>
-                  </div>
-                </div>
-
-                {/* Grade Students */}
-                {isExpanded && (
-                  <div className="p-4">
-                    <StudentList
-                      students={gradeStudents}
-                      onEdit={handleEdit}
-                      onDelete={handleDelete}
-                      hasPermission={hasPermission}
-                    />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          
           {Object.keys(filteredStudentsByGrade).length === 0 && searchTerm && (
             <div className="bg-white rounded-xl p-12 text-center">
               <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                لا توجد نتائج
-              </h3>
-              <p className="text-gray-600">
-                لم يتم العثور على طلاب يطابقون بحث "{searchTerm}"
-              </p>
-              <button
-                onClick={() => setSearchTerm("")}
-                className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
-              >
+              <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد نتائج</h3>
+              <p className="text-gray-600">لم يتم العثور على طلاب يطابقون بحث "{searchTerm}"</p>
+              <button onClick={() => setSearchTerm("")} className="mt-4 text-blue-600 hover:text-blue-700 font-medium">
                 مسح البحث
               </button>
             </div>
@@ -544,83 +975,62 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
 
       {/* Add/Edit Student Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto animate-scale-up">
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
               <h3 className="text-xl font-bold text-gray-900">
                 {editingStudent ? "تعديل بيانات الطالب" : "إضافة طالب جديد"}
               </h3>
-              <button
-                onClick={resetForm}
-                className="text-gray-400 hover:text-gray-600"
-              >
+              <button onClick={resetForm} className="text-gray-400 hover:text-gray-600">
                 <X className="w-6 h-6" />
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  اسم الطالب
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">اسم الطالب *</label>
                 <input
                   type="text"
                   value={formData.full_name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, full_name: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  الصف الدراسي
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">الصف الدراسي *</label>
                 <input
                   type="text"
                   value={formData.grade}
-                  onChange={(e) =>
-                    setFormData({ ...formData, grade: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   placeholder="مثال: الصف الأول الابتدائي"
                   required
                   list="grades"
                 />
                 <datalist id="grades">
-                  {gradeStats.map(({ grade }) => (
-                    <option key={grade} value={grade} />
-                  ))}
+                  {gradeStats.map(({ grade }) => <option key={grade} value={grade} />)}
                 </datalist>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  اسم ولي الأمر
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">اسم ولي الأمر *</label>
                 <input
                   type="text"
                   value={formData.parent_name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, parent_name: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, parent_name: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  رقم الهاتف
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">رقم الهاتف *</label>
                 <input
                   type="tel"
                   value={formData.parent_phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, parent_phone: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, parent_phone: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   placeholder="01xxxxxxxxx"
                   required
@@ -628,17 +1038,10 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  الحالة
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">الحالة</label>
                 <select
                   value={formData.status}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      status: e.target.value as "active" | "inactive",
-                    })
-                  }
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as "active" | "inactive" })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 >
                   <option value="active">نشط</option>
@@ -647,17 +1050,10 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
               </div>
 
               <div className="flex gap-3 pt-4">
-                <button
-                  type="submit"
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-all"
-                >
+                <button type="submit" className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 px-4 rounded-lg transition-all">
                   {editingStudent ? "حفظ التعديلات" : "إضافة الطالب"}
                 </button>
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg transition-all"
-                >
+                <button type="button" onClick={resetForm} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg transition-all">
                   إلغاء
                 </button>
               </div>
@@ -665,92 +1061,20 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
           </div>
         </div>
       )}
-    </div>
-  );
-}
 
-// Separate component for student list
-function StudentList({
-  students,
-  onEdit,
-  onDelete,
-  hasPermission,
-}: {
-  students: Student[];
-  onEdit: (student: Student) => void;
-  onDelete: (id: string) => void;
-  hasPermission: (permission: string) => boolean;
-}) {
-  const canEdit = hasPermission('edit_students');
-  const canDelete = hasPermission('delete_students');
+      {/* Student Details Modal */}
+      {selectedStudentDetails && (
+        <StudentDetailsModal student={selectedStudentDetails} onClose={() => setSelectedStudentDetails(null)} />
+      )}
 
-  if (students.length === 0) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-gray-500">لا يوجد طلاب في هذا الصف</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid gap-3">
-      {students.map((student) => (
-        <div
-          key={student.id}
-          className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-all"
-        >
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <h4 className="font-bold text-gray-900">{student.full_name}</h4>
-                <span
-                  className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                    student.status === "active"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-gray-200 text-gray-700"
-                  }`}
-                >
-                  {student.status === "active" ? "نشط" : "غير نشط"}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                <div>
-                  <span className="text-gray-600">ولي الأمر:</span>
-                  <span className="font-medium text-gray-900 mr-2">
-                    {student.parent_name}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-600">الهاتف:</span>
-                  <span className="font-medium text-gray-900 mr-2" dir="ltr">
-                    {student.parent_phone}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-1 mr-4">
-              {canEdit && (
-                <button
-                  onClick={() => onEdit(student)}
-                  className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-all"
-                  title="تعديل"
-                >
-                  <Edit2 className="w-4 h-4" />
-                </button>
-              )}
-              {canDelete && (
-                <button
-                  onClick={() => onDelete(student.id)}
-                  className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-all"
-                  title="حذف"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      ))}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slide-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes scale-up { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .animate-fade-in { animation: fade-in 0.2s ease-out forwards; }
+        .animate-slide-up { animation: slide-up 0.3s ease-out forwards; }
+        .animate-scale-up { animation: scale-up 0.2s ease-out forwards; }
+      ` }} />
     </div>
   );
 }
