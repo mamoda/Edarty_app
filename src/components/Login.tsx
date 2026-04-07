@@ -222,9 +222,6 @@ export default function Login() {
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full blur-2xl opacity-30 animate-pulse" />
               <img src={logo} alt="شعار التطبيق" className="h-28 w-auto mb-3 relative" />
             </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              نظام إدارتــي
-            </h1>
             <p className="text-gray-600 text-center text-sm mt-2 font-medium">
               بيانات أكثر • تقارير أدق • سهولة استخدام
             </p>
