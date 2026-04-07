@@ -37,6 +37,12 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
     });
   };
 
+  const getLastDayOfMonth = (year: number, month: number): number => {
+  // month: 1 = يناير, 12 = ديسمبر
+  return new Date(year, month, 0).getDate();
+};
+
+
   const getMonthName = (month: number) => {
     const months = [
       'يناير', 'فبراير', 'مارس', 'إبريل', 'مايو', 'يونيو',
@@ -45,35 +51,36 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
     return months[month - 1];
   };
 
-  const loadExpenses = async () => {
-    if (!currentSchool) {
-      console.log("⏳ No school selected, skipping load");
-      return;
-    }
+const loadExpenses = async () => {
+  if (!currentSchool) {
+    console.log("⏳ No school selected, skipping load");
+    return;
+  }
 
-    setLoading(true);
-    try {
-      // فلترة المصروفات حسب الشهر والسنة
-      const startDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`;
-      const endDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-31`;
+  setLoading(true);
+  try {
+    const startDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`;
+    const lastDay = getLastDayOfMonth(selectedYear, selectedMonth);
+    const endDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`;
 
-      const { data, error } = await supabase
-        .from("expenses")
-        .select("*")
-        .eq("school_id", currentSchool.id) // ✅ استخدام school_id بدلاً من user_id
-        .gte("expense_date", startDate)
-        .lte("expense_date", endDate)
-        .order("expense_date", { ascending: false });
+    console.log(`📊 Fetching expenses from ${startDate} to ${endDate}`);
 
-      if (error) throw error;
-      setExpenses(data || []);
-    } catch (error) {
-      console.error("Error loading expenses:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const { data, error } = await supabase
+      .from("expenses")
+      .select("*")
+      .eq("school_id", currentSchool.id)
+      .gte("expense_date", startDate)
+      .lte("expense_date", endDate)
+      .order("expense_date", { ascending: false });
 
+    if (error) throw error;
+    setExpenses(data || []);
+  } catch (error) {
+    console.error("Error loading expenses:", error);
+  } finally {
+    setLoading(false);
+  }
+};
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authUser || !currentSchool) return;
