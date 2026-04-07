@@ -13,6 +13,14 @@ import {
   Phone,
   CreditCard,
   User,
+  ArrowLeft,
+  CheckCircle,
+  Building2,
+  GraduationCap,
+  Sparkles,
+  Shield,
+  ChevronLeft,
+  AlertCircle,
 } from "lucide-react";
 import logo from "../assets/logo.png";
 import bg from "../assets/background-wave.png";
@@ -26,11 +34,14 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [adminCode, setAdminCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const [schoolData, setSchoolData] = useState({
     fullName: "",
@@ -42,7 +53,6 @@ export default function Login() {
 
   const ADMIN_SECRET_CODE = "Mahmoud17237ESD@";
 
-  // ✅ التوجيه التلقائي عند تسجيل الدخول - مع منع التكرار
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
 
@@ -61,35 +71,27 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSuccess("");
     setLoading(true);
 
     try {
-      // ================= LOGIN =================
       if (isLogin) {
-        console.log("🔐 Attempting login for:", email);
         const { error } = await signIn(email, password);
 
         if (error) {
-          console.error("Login error:", error);
           setError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
           setLoading(false);
         } else {
-          console.log("✅ Login successful, waiting for redirect...");
+          setSuccess("جاري تسجيل الدخول...");
           setLoading(false);
         }
-      }
-
-      // ================= SIGNUP =================
-      else {
+      } else {
         if (!schoolData.fullName || !schoolData.schoolName) {
           setError("يرجى إكمال جميع البيانات المطلوبة");
           setLoading(false);
           return;
         }
 
-        console.log("📝 Attempting signup for:", email);
-
-        // 1. إنشاء حساب في Auth
         const { error: signUpError } = await signUp(
           email,
           password,
@@ -97,21 +99,16 @@ export default function Login() {
         );
 
         if (signUpError) {
-          setError(
-            "فشل في إنشاء الحساب. البريد الإلكتروني قد يكون مستخدماً بالفعل"
-          );
+          setError("فشل في إنشاء الحساب. البريد الإلكتروني قد يكون مستخدماً بالفعل");
           setLoading(false);
           return;
         }
 
-        // 2. الحصول على الجلسة بعد التسجيل
         const {
           data: { session },
         } = await supabase.auth.getSession();
 
-        // 3. إنشاء المدرسة وربط المستخدم (باستخدام RPC)
         if (session?.user) {
-          // ✅ استخدام RPC function لإنشاء المدرسة بشكل آمن
           const { error: rpcError } = await supabase.rpc(
             "create_school_for_user",
             {
@@ -128,18 +125,21 @@ export default function Login() {
           }
         }
 
-        alert("✅ تم إنشاء الحساب بنجاح!");
-        setIsLogin(true);
-        setCurrentStep(1);
-        setEmail("");
-        setPassword("");
-        setSchoolData({
-          fullName: "",
-          schoolName: "",
-          schoolAddress: "",
-          schoolPhone: "",
-          taxNumber: "",
-        });
+        setSuccess("تم إنشاء الحساب بنجاح! جاري التوجيه...");
+        setTimeout(() => {
+          setIsLogin(true);
+          setCurrentStep(1);
+          setEmail("");
+          setPassword("");
+          setSchoolData({
+            fullName: "",
+            schoolName: "",
+            schoolAddress: "",
+            schoolPhone: "",
+            taxNumber: "",
+          });
+          setSuccess("");
+        }, 2000);
 
         setLoading(false);
       }
@@ -156,8 +156,10 @@ export default function Login() {
       setIsLogin(false);
       setCurrentStep(1);
       setAdminCode("");
+      setError("");
     } else {
-      alert("❌ الكود السري غير صحيح");
+      setError("❌ الكود السري غير صحيح");
+      setTimeout(() => setError(""), 3000);
     }
   };
 
@@ -181,53 +183,110 @@ export default function Login() {
     setError("");
   };
 
+  const inputClasses = (fieldName: string) => `
+    w-full pr-12 pl-12 py-3.5 
+    border-2 rounded-xl 
+    transition-all duration-200 
+    outline-none
+    ${focusedField === fieldName 
+      ? 'border-blue-500 ring-4 ring-blue-500/10 bg-white' 
+      : 'border-gray-200 bg-gray-50/50 hover:bg-white'
+    }
+    focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:bg-white
+  `;
+
   return (
     <div
-      className="min-h-screen bg-cover bg-center flex items-center justify-center p-4"
+      className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4 relative overflow-hidden"
       dir="rtl"
-      style={{ backgroundImage: `url(${bg})` }}
     >
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-grid-gray-900/[0.02] -z-10" />
+      <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-blue-400/20 to-purple-400/20 rounded-full blur-3xl -z-10" />
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-indigo-400/20 to-pink-400/20 rounded-full blur-3xl -z-10" />
+
+      <div className="w-full max-w-md animate-fadeIn">
+        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/50">
+          {/* Logo & Brand */}
           <div className="flex flex-col items-center mb-8">
-            <img src={logo} alt="شعار التطبيق" className="h-28 w-auto mb-3" />
-            <p className="text-gray-600 text-center text-lg">
-              بيانات أكثر وتقارير أدق وسهولة استخدام
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full blur-2xl opacity-20" />
+              <img src={logo} alt="شعار التطبيق" className="h-28 w-auto mb-3 relative" />
+            </div>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              نظام إدارتــي
+            </h1>
+            <p className="text-gray-500 text-center text-sm mt-2">
+              بيانات أكثر • تقارير أدق • سهولة استخدام
             </p>
           </div>
 
+          {/* Success Message */}
+          {success && (
+            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-xl animate-slideDown">
+              <div className="flex items-center gap-2 text-green-700">
+                <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                <span className="text-sm font-medium">{success}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Tabs */}
           {!showAdminPanel && (
-            <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-lg">
+            <div className="flex gap-2 mb-8 bg-gray-100/80 p-1 rounded-xl backdrop-blur-sm">
               <button
                 type="button"
-                onClick={() => setIsLogin(true)}
-                className={`flex-1 py-3 px-4 rounded-md font-medium transition-all text-base ${
+                onClick={() => {
+                  setIsLogin(true);
+                  setError("");
+                }}
+                className={`flex-1 py-3 rounded-lg font-semibold transition-all duration-200 relative ${
                   isLogin
-                    ? "bg-white text-blue-600 shadow-sm"
+                    ? "bg-white text-blue-600 shadow-md"
                     : "text-gray-600 hover:text-gray-900"
                 }`}
               >
-                تسجيل الدخول
+                <span className="relative z-10">تسجيل الدخول</span>
+                {isLogin && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLogin(false);
+                  setError("");
+                  setCurrentStep(1);
+                }}
+                className={`flex-1 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                  !isLogin
+                    ? "bg-white text-purple-600 shadow-md"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                حساب جديد
               </button>
             </div>
           )}
 
+          {/* Admin Panel Mode */}
           {showAdminPanel && (
-            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl">
               <div className="flex items-center gap-2 mb-3">
-                <Lock className="w-5 h-5 text-yellow-600" />
-                <h3 className="font-medium text-yellow-800">
-                  لوحة تحكم المسؤول
-                </h3>
+                <div className="p-1.5 bg-amber-100 rounded-lg">
+                  <Shield className="w-5 h-5 text-amber-600" />
+                </div>
+                <h3 className="font-bold text-amber-800">لوحة تحكم المسؤول</h3>
               </div>
-              <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
+              <div className="flex gap-2 bg-white/50 p-1 rounded-lg">
                 <button
                   type="button"
                   onClick={() => {
                     setIsLogin(true);
                     setCurrentStep(1);
+                    setError("");
                   }}
-                  className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
+                  className={`flex-1 py-2 rounded-md font-medium transition-all ${
                     isLogin
                       ? "bg-white text-blue-600 shadow-sm"
                       : "text-gray-600 hover:text-gray-900"
@@ -240,181 +299,202 @@ export default function Login() {
                   onClick={() => {
                     setIsLogin(false);
                     setCurrentStep(1);
+                    setError("");
                   }}
-                  className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
+                  className={`flex-1 py-2 rounded-md font-medium transition-all ${
                     !isLogin
-                      ? "bg-white text-blue-600 shadow-sm"
+                      ? "bg-white text-purple-600 shadow-sm"
                       : "text-gray-600 hover:text-gray-900"
                   }`}
                 >
-                  إنشاء حساب جديد
+                  إنشاء حساب
                 </button>
               </div>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {isLogin ? (
               <>
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
+                {/* Email Field */}
+                <div className="group">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
                     البريد الإلكتروني
                   </label>
                   <div className="relative">
-                    <Mail className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <Mail className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 transition-colors group-focus-within:text-blue-500" />
                     <input
-                      id="email"
-                      name="email"
                       type="email"
-                      autoComplete="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                      onFocus={() => setFocusedField('email')}
+                      onBlur={() => setFocusedField(null)}
+                      className={inputClasses('email')}
                       placeholder="example@school.com"
                       required
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label
-                    htmlFor="password"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
+                {/* Password Field */}
+                <div className="group">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
                     كلمة المرور
                   </label>
                   <div className="relative">
-                    <Lock className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <Lock className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                     <input
-                      id="password"
-                      name="password"
                       type={showPassword ? "text" : "password"}
-                      autoComplete="current-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pr-10 pl-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                      onFocus={() => setFocusedField('password')}
+                      onBlur={() => setFocusedField(null)}
+                      className={inputClasses('password')}
                       placeholder="••••••••"
                       required
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                     >
-                      {showPassword ? (
-                        <EyeOff className="w-5 h-5" />
-                      ) : (
-                        <Eye className="w-5 h-5" />
-                      )}
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
                 </div>
 
+                {/* Remember Me & Forgot Password */}
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-600">تذكرني</span>
+                  </label>
+                  <button
+                    type="button"
+                    className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
+                  >
+                    نسيت كلمة المرور؟
+                  </button>
+                </div>
+
+                {/* Submit Button */}
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-3.5 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
                 >
-                  {loading ? "جارٍ التحميل..." : "تسجيل الدخول"}
+                  {loading ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>جاري التحميل...</span>
+                    </div>
+                  ) : (
+                    "تسجيل الدخول"
+                  )}
                 </button>
               </>
             ) : (
               <>
+                {/* Step Indicator */}
                 <div className="mb-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <span
-                      className={`text-sm font-medium ${currentStep === 1 ? "text-blue-600" : "text-gray-400"}`}
-                    >
-                      الخطوة 1: بيانات الدخول
-                    </span>
-                    <span className="text-gray-300">→</span>
-                    <span
-                      className={`text-sm font-medium ${currentStep === 2 ? "text-blue-600" : "text-gray-400"}`}
-                    >
-                      الخطوة 2: بيانات المدرسة
-                    </span>
-                  </div>
-                  <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-blue-600 transition-all duration-300"
-                      style={{ width: currentStep === 1 ? "50%" : "100%" }}
-                    />
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                        currentStep === 1 
+                          ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-md"
+                          : "bg-gray-200 text-gray-500"
+                      }`}>
+                        1
+                      </div>
+                      <span className={`text-sm font-medium ${
+                        currentStep === 1 ? "text-blue-600" : "text-gray-400"
+                      }`}>
+                        بيانات الدخول
+                      </span>
+                    </div>
+                    <div className="flex-1 h-0.5 bg-gray-200 mx-4">
+                      <div className={`h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500 ${
+                        currentStep === 2 ? "w-full" : "w-0"
+                      }`} />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                        currentStep === 2 
+                          ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-md"
+                          : "bg-gray-200 text-gray-500"
+                      }`}>
+                        2
+                      </div>
+                      <span className={`text-sm font-medium ${
+                        currentStep === 2 ? "text-purple-600" : "text-gray-400"
+                      }`}>
+                        بيانات المدرسة
+                      </span>
+                    </div>
                   </div>
                 </div>
 
                 {currentStep === 1 ? (
                   <>
+                    {/* Full Name */}
                     <div>
-                      <label
-                        htmlFor="fullName"
-                        className="block text-sm font-medium text-gray-700 mb-2"
-                      >
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
                         الاسم الكامل
                       </label>
                       <div className="relative">
-                        <User className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <User className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                         <input
-                          id="fullName"
-                          name="fullName"
                           type="text"
-                          autoComplete="name"
                           value={schoolData.fullName}
-                          onChange={(e) =>
-                            setSchoolData({
-                              ...schoolData,
-                              fullName: e.target.value,
-                            })
-                          }
-                          className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                          onChange={(e) => setSchoolData({ ...schoolData, fullName: e.target.value })}
+                          onFocus={() => setFocusedField('fullName')}
+                          onBlur={() => setFocusedField(null)}
+                          className={inputClasses('fullName')}
                           placeholder="أحمد محمد"
                           required
                         />
                       </div>
                     </div>
 
+                    {/* Email */}
                     <div>
-                      <label
-                        htmlFor="signupEmail"
-                        className="block text-sm font-medium text-gray-700 mb-2"
-                      >
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
                         البريد الإلكتروني
                       </label>
                       <div className="relative">
-                        <Mail className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <Mail className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                         <input
-                          id="signupEmail"
-                          name="signupEmail"
                           type="email"
-                          autoComplete="email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                          onFocus={() => setFocusedField('signupEmail')}
+                          onBlur={() => setFocusedField(null)}
+                          className={inputClasses('signupEmail')}
                           placeholder="example@school.com"
                           required
                         />
                       </div>
                     </div>
 
+                    {/* Password */}
                     <div>
-                      <label
-                        htmlFor="signupPassword"
-                        className="block text-sm font-medium text-gray-700 mb-2"
-                      >
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
                         كلمة المرور
                       </label>
                       <div className="relative">
-                        <Lock className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <Lock className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                         <input
-                          id="signupPassword"
-                          name="signupPassword"
                           type={showPassword ? "text" : "password"}
-                          autoComplete="new-password"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
-                          className="w-full pr-10 pl-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                          onFocus={() => setFocusedField('signupPassword')}
+                          onBlur={() => setFocusedField(null)}
+                          className={inputClasses('signupPassword')}
                           placeholder="••••••••"
                           required
                           minLength={6}
@@ -422,185 +502,163 @@ export default function Login() {
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                         >
-                          {showPassword ? (
-                            <EyeOff className="w-5 h-5" />
-                          ) : (
-                            <Eye className="w-5 h-5" />
-                          )}
+                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
                         كلمة المرور يجب أن تكون 6 أحرف على الأقل
                       </p>
                     </div>
 
+                    {/* Next Button */}
                     <button
                       type="button"
                       onClick={nextStep}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-all shadow-lg hover:shadow-xl"
+                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3.5 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
                     >
                       التالي: بيانات المدرسة
                     </button>
                   </>
                 ) : (
                   <>
+                    {/* Back Button */}
+                    <button
+                      type="button"
+                      onClick={prevStep}
+                      className="flex items-center gap-2 text-gray-600 hover:text-gray-800 font-medium transition-colors mb-4"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                      العودة
+                    </button>
+
+                    {/* School Name */}
                     <div>
-                      <label
-                        htmlFor="schoolName"
-                        className="block text-sm font-medium text-gray-700 mb-2"
-                      >
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
                         اسم المدرسة <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
-                        <School className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <School className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                         <input
-                          id="schoolName"
-                          name="schoolName"
                           type="text"
-                          autoComplete="organization"
                           value={schoolData.schoolName}
-                          onChange={(e) =>
-                            setSchoolData({
-                              ...schoolData,
-                              schoolName: e.target.value,
-                            })
-                          }
-                          className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                          onChange={(e) => setSchoolData({ ...schoolData, schoolName: e.target.value })}
+                          onFocus={() => setFocusedField('schoolName')}
+                          onBlur={() => setFocusedField(null)}
+                          className={inputClasses('schoolName')}
                           placeholder="مدارس الإدارة التعليمية"
                           required
                         />
                       </div>
                     </div>
 
+                    {/* School Address */}
                     <div>
-                      <label
-                        htmlFor="schoolAddress"
-                        className="block text-sm font-medium text-gray-700 mb-2"
-                      >
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
                         عنوان المدرسة
                       </label>
                       <div className="relative">
-                        <MapPin className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <MapPin className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                         <input
-                          id="schoolAddress"
-                          name="schoolAddress"
                           type="text"
-                          autoComplete="address-line1"
                           value={schoolData.schoolAddress}
-                          onChange={(e) =>
-                            setSchoolData({
-                              ...schoolData,
-                              schoolAddress: e.target.value,
-                            })
-                          }
-                          className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                          onChange={(e) => setSchoolData({ ...schoolData, schoolAddress: e.target.value })}
+                          onFocus={() => setFocusedField('schoolAddress')}
+                          onBlur={() => setFocusedField(null)}
+                          className={inputClasses('schoolAddress')}
                           placeholder="القاهرة، مصر"
                         />
                       </div>
                     </div>
 
+                    {/* School Phone */}
                     <div>
-                      <label
-                        htmlFor="schoolPhone"
-                        className="block text-sm font-medium text-gray-700 mb-2"
-                      >
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
                         هاتف المدرسة
                       </label>
                       <div className="relative">
-                        <Phone className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <Phone className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                         <input
-                          id="schoolPhone"
-                          name="schoolPhone"
                           type="tel"
-                          autoComplete="tel"
                           value={schoolData.schoolPhone}
-                          onChange={(e) =>
-                            setSchoolData({
-                              ...schoolData,
-                              schoolPhone: e.target.value,
-                            })
-                          }
-                          className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                          onChange={(e) => setSchoolData({ ...schoolData, schoolPhone: e.target.value })}
+                          onFocus={() => setFocusedField('schoolPhone')}
+                          onBlur={() => setFocusedField(null)}
+                          className={inputClasses('schoolPhone')}
                           placeholder="01234567890"
                           dir="ltr"
                         />
                       </div>
                     </div>
 
+                    {/* Tax Number */}
                     <div>
-                      <label
-                        htmlFor="taxNumber"
-                        className="block text-sm font-medium text-gray-700 mb-2"
-                      >
-                        الرقم الضريبي (اختياري)
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        الرقم الضريبي <span className="text-gray-400 text-xs">(اختياري)</span>
                       </label>
                       <div className="relative">
-                        <CreditCard className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <CreditCard className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                         <input
-                          id="taxNumber"
-                          name="taxNumber"
                           type="text"
-                          autoComplete="off"
                           value={schoolData.taxNumber}
-                          onChange={(e) =>
-                            setSchoolData({
-                              ...schoolData,
-                              taxNumber: e.target.value,
-                            })
-                          }
-                          className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                          onChange={(e) => setSchoolData({ ...schoolData, taxNumber: e.target.value })}
+                          onFocus={() => setFocusedField('taxNumber')}
+                          onBlur={() => setFocusedField(null)}
+                          className={inputClasses('taxNumber')}
                           placeholder="123-456-789"
                         />
                       </div>
                     </div>
 
-                    <div className="flex gap-3">
-                      <button
-                        type="button"
-                        onClick={prevStep}
-                        className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-3 px-4 rounded-lg transition-all"
-                      >
-                        السابق
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-all disabled:opacity-50 shadow-lg hover:shadow-xl"
-                      >
-                        {loading ? "جارٍ الإنشاء..." : "إنشاء الحساب"}
-                      </button>
-                    </div>
+                    {/* Submit Button */}
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-3.5 rounded-xl transition-all duration-200 disabled:opacity-50 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+                    >
+                      {loading ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>جاري إنشاء الحساب...</span>
+                        </div>
+                      ) : (
+                        "إنشاء الحساب"
+                      )}
+                    </button>
                   </>
                 )}
               </>
             )}
 
+            {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                {error}
+              <div className="p-4 bg-red-50 border border-red-200 rounded-xl animate-shake">
+                <div className="flex items-center gap-2 text-red-700">
+                  <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                  <span className="text-sm font-medium">{error}</span>
+                </div>
               </div>
             )}
           </form>
 
+          {/* Admin Access */}
           {!showAdminPanel && (
-            <div className="mt-4">
+            <div className="mt-6 pt-4 border-t border-gray-200">
               <div className="relative">
                 <input
-                  id="adminCode"
-                  name="adminCode"
                   type="password"
-                  autoComplete="off"
                   value={adminCode}
                   onChange={(e) => setAdminCode(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAdminAccess()}
                   placeholder="كود المسؤول"
-                  className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                  className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-gray-50/50"
                 />
                 <button
                   type="button"
                   onClick={handleAdminAccess}
-                  className="absolute left-2 top-1/2 transform -translate-y-1/2 text-xs bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition-colors"
+                  className="absolute left-2 top-1/2 transform -translate-y-1/2 text-xs bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-1.5 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all"
                 >
                   دخول
                 </button>
@@ -609,10 +667,55 @@ export default function Login() {
           )}
         </div>
 
-        <div className="mt-6 text-center text-sm text-gray-600">
-          <p>نظام إدارتــي لحسابات المدارس والمؤسسات التعليمية</p>
+        {/* Footer */}
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-500">
+            نظام إدارتــي لحسابات المدارس والمؤسسات التعليمية
+          </p>
         </div>
       </div>
+
+      <style>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          75% { transform: translateX(5px); }
+        }
+        
+        .animate-fadeIn {
+          animation: fadeIn 0.5s ease-out;
+        }
+        
+        .animate-slideDown {
+          animation: slideDown 0.3s ease-out;
+        }
+        
+        .animate-shake {
+          animation: shake 0.3s ease-in-out;
+        }
+      `}</style>
     </div>
   );
 }
