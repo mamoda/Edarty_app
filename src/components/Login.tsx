@@ -189,38 +189,50 @@ export default function Login() {
     transition-all duration-200 
     outline-none
     ${focusedField === fieldName 
-      ? 'border-blue-500 ring-4 ring-blue-500/10 bg-white' 
-      : 'border-gray-200 bg-gray-50/50 hover:bg-white'
+      ? 'border-blue-500 ring-4 ring-blue-500/10 bg-white/90' 
+      : 'border-gray-200 bg-white/60 hover:bg-white/80'
     }
-    focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:bg-white
+    focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:bg-white/90
   `;
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4 relative overflow-hidden"
+      className="min-h-screen bg-cover bg-center bg-no-repeat flex items-center justify-center p-4 relative overflow-hidden"
       dir="rtl"
+      style={{ 
+        backgroundImage: `url(${bg})`,
+        backgroundAttachment: 'fixed'
+      }}
     >
-      {/* Background Pattern */}
-      <div className="absolute inset-0 bg-grid-gray-900/[0.02] -z-10" />
-      <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-blue-400/20 to-purple-400/20 rounded-full blur-3xl -z-10" />
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-indigo-400/20 to-pink-400/20 rounded-full blur-3xl -z-10" />
+      {/* Overlay for better readability */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-indigo-900/10 to-purple-900/20 backdrop-blur-[2px] -z-0" />
+      
+      {/* Animated particles effect */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-400/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-400/20 rounded-full blur-3xl animate-pulse delay-1000" />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-400/10 rounded-full blur-3xl animate-pulse delay-2000" />
+      </div>
 
-      <div className="w-full max-w-md animate-fadeIn">
-        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/50">
+      <div className="w-full max-w-md animate-fadeIn relative z-10">
+        <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/50">
           {/* Logo & Brand */}
           <div className="flex flex-col items-center mb-8">
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full blur-2xl opacity-20" />
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full blur-2xl opacity-30 animate-pulse" />
               <img src={logo} alt="شعار التطبيق" className="h-28 w-auto mb-3 relative" />
             </div>
-            <p className="text-gray-500 text-center text-sm mt-2">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              نظام إدارتــي
+            </h1>
+            <p className="text-gray-600 text-center text-sm mt-2 font-medium">
               بيانات أكثر • تقارير أدق • سهولة استخدام
             </p>
           </div>
 
           {/* Success Message */}
           {success && (
-            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-xl animate-slideDown">
+            <div className="mb-4 p-4 bg-green-50/90 backdrop-blur-sm border border-green-200 rounded-xl animate-slideDown">
               <div className="flex items-center gap-2 text-green-700">
                 <CheckCircle className="w-5 h-5 flex-shrink-0" />
                 <span className="text-sm font-medium">{success}</span>
@@ -230,7 +242,7 @@ export default function Login() {
 
           {/* Tabs */}
           {!showAdminPanel && (
-            <div className="flex gap-2 mb-8 bg-gray-100/80 p-1 rounded-xl backdrop-blur-sm">
+            <div className="flex gap-2 mb-8 bg-gray-100/80 backdrop-blur-sm p-1 rounded-xl">
               <button
                 type="button"
                 onClick={() => {
@@ -268,14 +280,14 @@ export default function Login() {
 
           {/* Admin Panel Mode */}
           {showAdminPanel && (
-            <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl">
+            <div className="mb-6 p-4 bg-gradient-to-r from-amber-50/90 to-yellow-50/90 backdrop-blur-sm border border-amber-200 rounded-xl">
               <div className="flex items-center gap-2 mb-3">
                 <div className="p-1.5 bg-amber-100 rounded-lg">
                   <Shield className="w-5 h-5 text-amber-600" />
                 </div>
                 <h3 className="font-bold text-amber-800">لوحة تحكم المسؤول</h3>
               </div>
-              <div className="flex gap-2 bg-white/50 p-1 rounded-lg">
+              <div className="flex gap-2 bg-white/50 backdrop-blur-sm p-1 rounded-lg">
                 <button
                   type="button"
                   onClick={() => {
@@ -631,7 +643,7 @@ export default function Login() {
 
             {/* Error Message */}
             {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-xl animate-shake">
+              <div className="p-4 bg-red-50/90 backdrop-blur-sm border border-red-200 rounded-xl animate-shake">
                 <div className="flex items-center gap-2 text-red-700">
                   <AlertCircle className="w-5 h-5 flex-shrink-0" />
                   <span className="text-sm font-medium">{error}</span>
@@ -650,7 +662,7 @@ export default function Login() {
                   onChange={(e) => setAdminCode(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleAdminAccess()}
                   placeholder="كود المسؤول"
-                  className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-gray-50/50"
+                  className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white/60 backdrop-blur-sm"
                 />
                 <button
                   type="button"
@@ -666,7 +678,7 @@ export default function Login() {
 
         {/* Footer */}
         <div className="mt-6 text-center">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-white/80 font-medium drop-shadow-lg">
             نظام إدارتــي لحسابات المدارس والمؤسسات التعليمية
           </p>
         </div>
@@ -711,6 +723,14 @@ export default function Login() {
         
         .animate-shake {
           animation: shake 0.3s ease-in-out;
+        }
+        
+        .delay-1000 {
+          animation-delay: 1s;
+        }
+        
+        .delay-2000 {
+          animation-delay: 2s;
         }
       `}</style>
     </div>
