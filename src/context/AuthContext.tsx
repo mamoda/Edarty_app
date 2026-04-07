@@ -51,19 +51,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentSchool, setCurrentSchool] = useState<School | null>(null);
   const [currentSchoolId, setCurrentSchoolId] = useState<string | null>(null);
   const [currentRole, setCurrentRole] = useState<string | null>(null);
-
   const [subscriptionPlan, setSubscriptionPlan] = useState<string | null>(null);
   const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<string | null>(null);
   const [schoolFeatures, setSchoolFeatures] = useState<string[]>([]);
-
   const loadingUserRef = useRef(false);
   const initializedRef = useRef(false);
-
   const isAuthenticated = useMemo(() => !!authUser, [authUser]);
 
-  // ============================================
-  // Load School Data
-  // ============================================
+
   const loadCurrentSchoolData = async (schoolId: string) => {
     const { data } = await supabase
       .from("schools")
@@ -79,9 +74,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // ============================================
-  // 🔥 Load User Data (RPC Driven)
-  // ============================================
   const loadUserData = async (user: any) => {
     if (loadingUserRef.current) return;
     loadingUserRef.current = true;
@@ -91,7 +83,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setAuthUser({ id: user.id, email: user.email });
 
-      // profile
       const { data: profileData } = await supabase
         .from("users")
         .select("*")
@@ -107,8 +98,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq("user_id", user.id);
 
       let rolesData = roles || [];
-
-      // 🔥 لو المستخدم جديد → أنشئ مدرسة بـ RPC
       if (rolesData.length === 0) {
         console.log("🚀 Creating school via RPC...");
 
@@ -118,7 +107,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error("RPC error:", error);
         }
 
-        // إعادة تحميل roles
         const { data: newRoles } = await supabase
           .from("user_school_roles")
           .select("*, schools(*)")
@@ -126,12 +114,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         rolesData = newRoles || [];
       }
-
       setUserRoles(rolesData);
 
-      // اختيار المدرسة
       const savedSchoolId = localStorage.getItem(`current_school_${user.id}`);
-
       const selectedRole =
         rolesData.find((r) => r.school_id === savedSchoolId) ||
         rolesData.find((r: any) => r.is_primary) ||
@@ -161,9 +146,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // ============================================
-  // Init Auth
-  // ============================================
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
@@ -178,9 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       await loadUserData(data.session.user);
     };
-
     init();
-
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === "SIGNED_OUT") {
@@ -194,15 +174,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     );
-
     return () => {
       listener.subscription.unsubscribe();
     };
   }, []);
 
-  // ============================================
-  // Switch School
-  // ============================================
+
+
   const switchSchool = async (schoolId: string) => {
     const role = userRoles.find((r) => r.school_id === schoolId);
 
@@ -219,9 +197,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // ============================================
-  // Permissions
-  // ============================================
+
+
   const hasPermission = (permission: string): boolean => {
     if (!currentRole) return false;
     if (currentRole === "admin") return true;
