@@ -1,17 +1,8 @@
-// src/types/database.ts
-
-// ============================================
-// Types متوافقة مع Supabase Auth
-// ============================================
-
 export interface AuthUser {
   id: string;
   email?: string | null;
 }
 
-// ============================================
-// School
-// ============================================
 
 export interface School {
   id: string;
@@ -51,9 +42,6 @@ export interface SchoolData {
   features?: string[];
 }
 
-// ============================================
-// User Profile (public.users)
-// ============================================
 
 export interface UserProfile {
   id: string;
@@ -74,9 +62,6 @@ export interface UserProfile {
   updated_at: string;
 }
 
-// ============================================
-// User Roles
-// ============================================
 
 export interface UserSchoolRole {
   id: string;
@@ -90,9 +75,6 @@ export interface UserSchoolRole {
   school?: School;
 }
 
-// ============================================
-// Students
-// ============================================
 
 export interface Student {
   id: string;
@@ -108,9 +90,6 @@ export interface Student {
   updated_at: string;
 }
 
-// ============================================
-// Teachers
-// ============================================
 
 export interface Teacher {
   id: string;
@@ -131,9 +110,6 @@ export interface Teacher {
   school?: School;
 }
 
-// ============================================
-// Fees
-// ============================================
 
 export interface Fee {
   id: string;
@@ -149,9 +125,6 @@ export interface Fee {
   student?: Student;
 }
 
-// ============================================
-// Expenses
-// ============================================
 
 export interface Expense {
   id: string;
@@ -167,9 +140,6 @@ export interface Expense {
   school?: School;
 }
 
-// ============================================
-// Activity Logs
-// ============================================
 
 export interface ActivityLog {
   id: string;
@@ -185,9 +155,6 @@ export interface ActivityLog {
   created_at: string;
 }
 
-// ============================================
-// Subscriptions
-// ============================================
 
 export interface Subscription {
   id: string;
@@ -205,9 +172,6 @@ export interface Subscription {
   updated_at: string;
 }
 
-// ============================================
-// Payments
-// ============================================
 
 export interface Payment {
   id: string;
@@ -224,9 +188,6 @@ export interface Payment {
   updated_at: string;
 }
 
-// ============================================
-// Plans
-// ============================================
 
 export interface Plan {
   id: string;
@@ -243,9 +204,6 @@ export interface Plan {
   updated_at: string;
 }
 
-// ============================================
-// Notifications
-// ============================================
 
 export interface Notification {
   id: string;
@@ -259,9 +217,6 @@ export interface Notification {
   created_at: string;
 }
 
-// ============================================
-// Permissions
-// ============================================
 
 export interface Permission {
   id: string;
@@ -281,9 +236,6 @@ export interface UserPermission {
   school_id: string;
 }
 
-// ============================================
-// Teacher Salaries
-// ============================================
 
 export interface TeacherSalary {
   id: string;
@@ -330,10 +282,6 @@ export interface Statistics {
 // }
 
 
-
-// ============================================
-// Helper Types
-// ============================================
 
 export interface ApiResponse<T> {
   data: T | null;
