@@ -813,42 +813,41 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
       </div>
 
       {/* Statistics Cards - Fixed Icons */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatsCard 
-          title="إجمالي الطلاب" 
-          value={totalStudents} 
-          icon={Users} 
-          iconColor="text-blue-600"
-          bgGradient="from-blue-500 to-indigo-600"
-          isLoading={isLoading} 
-        />
-        <StatsCard 
-          title="الطلاب النشطون" 
-          value={totalActive} 
-          icon={CheckCircle} 
-          iconColor="text-green-600"
-          bgGradient="from-green-500 to-emerald-600"
-          trend={activePercentage} 
-          isLoading={isLoading} 
-        />
-        <StatsCard 
-          title="الطلاب غير النشطين" 
-          value={totalInactive} 
-          icon={XCircle} 
-          iconColor="text-gray-500"
-          bgGradient="from-gray-400 to-gray-500"
-          isLoading={isLoading} 
-        />
-        <StatsCard 
-          title="عدد الصفوف" 
-          value={Object.keys(studentsByGrade).length} 
-          icon={GraduationCap} 
-          iconColor="text-purple-600"
-          bgGradient="from-purple-500 to-pink-600"
-          isLoading={isLoading} 
-        />
-      </div>
-
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  <StatsCard 
+    title="إجمالي الطلاب" 
+    value={totalStudents} 
+    icon={Users} 
+    iconColor="text-white"
+    bgGradient="from-blue-500 to-blue-600"
+    isLoading={isLoading} 
+  />
+  <StatsCard 
+    title="الطلاب النشطون" 
+    value={totalActive} 
+    icon={CheckCircle} 
+    iconColor="text-white"
+    bgGradient="from-emerald-500 to-green-600"
+    trend={activePercentage} 
+    isLoading={isLoading} 
+  />
+  <StatsCard 
+    title="الطلاب غير النشطين" 
+    value={totalInactive} 
+    icon={XCircle} 
+    iconColor="text-white"
+    bgGradient="from-gray-500 to-gray-600"
+    isLoading={isLoading} 
+  />
+  <StatsCard 
+    title="عدد الصفوف" 
+    value={Object.keys(studentsByGrade).length} 
+    icon={GraduationCap} 
+    iconColor="text-white"
+    bgGradient="from-purple-500 to-purple-600"
+    isLoading={isLoading} 
+  />
+</div>
       {/* Search and Filters */}
       <div className="bg-white rounded-xl shadow-md p-4 space-y-4">
         <div className="relative">
