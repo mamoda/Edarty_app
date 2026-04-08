@@ -618,6 +618,19 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
         if (error) throw error;
         showToast("تم تحديث بيانات الطالب بنجاح", "success");
       } else {
+        // ✅ التحقق من عدم وجود رقم هاتف مكرر
+        const { data: existingStudent, error: checkError } = await supabase
+          .from("students")
+          .select("id, full_name")
+          .eq("parent_phone", formData.parent_phone)
+          .eq("school_id", currentSchool.id)
+          .maybeSingle();
+
+        if (existingStudent) {
+          showToast(`رقم الهاتف "${formData.parent_phone}" مستخدم بالفعل للطالب ${existingStudent.full_name}`, "error");
+          return;
+        }
+
         const { error } = await supabase
           .from("students")
           .insert([{
@@ -627,16 +640,27 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
             enrollment_date: new Date().toISOString().split("T")[0],
           }]);
 
-        if (error) throw error;
+        if (error) {
+          if (error.code === "23505") {
+            showToast("رقم الهاتف مستخدم بالفعل لطالب آخر", "error");
+          } else {
+            throw error;
+          }
+          return;
+        }
         showToast("تم إضافة الطالب بنجاح", "success");
       }
 
       resetForm();
       loadStudents(true);
       onUpdate();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving student:", error);
-      showToast("حدث خطأ أثناء حفظ البيانات", "error");
+      if (error.code === "23505") {
+        showToast("رقم الهاتف موجود بالفعل في النظام", "error");
+      } else {
+        showToast(error.message || "حدث خطأ أثناء حفظ البيانات", "error");
+      }
     }
   };
 
