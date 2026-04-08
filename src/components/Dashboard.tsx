@@ -40,13 +40,6 @@ import {
   LogOut,
   HelpCircle,
   TrendingUp as TrendingUpIcon,
-  Calendar,
-  Download,
-  Filter,
-  Grid3x3,
-  List,
-  Check,
-  ChevronDown,
   Loader2,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
