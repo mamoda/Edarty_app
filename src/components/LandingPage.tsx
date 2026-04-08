@@ -653,7 +653,6 @@ export default function LandingPage() {
 
 
 
-{/* Video Section - استخدام YouTube */}
 <section className="py-24 bg-white">
   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div className="text-center mb-12">
@@ -663,9 +662,6 @@ export default function LandingPage() {
           فيديو تعريفي
         </span>
       </div>
-      <h2 className="text-3xl lg:text-4xl font-black text-slate-900 mb-4">
-        شاهد منصة إدارتي في العمل
-      </h2>
       <p className="text-lg text-slate-600 max-w-2xl mx-auto">
         اكتشف المميزات والحلول التي نقدمها من خلال هذا الفيديو
       </p>
@@ -675,7 +671,7 @@ export default function LandingPage() {
       <div className="relative w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl border border-slate-200">
         <div className="relative aspect-video w-full bg-slate-900">
           <iframe
-            src="https://www.youtube.com/embed/iFq83D68Cdg?si=rL-lXlkLFqyeaPXR" // استبدل YOUR_VIDEO_ID بمعرف الفيديو
+            src="https://www.youtube.com/embed/iFq83D68Cdg?si=rL-lXlkLFqyeaPXR" 
             className="absolute inset-0 w-full h-full"
             title="Edarty Platform Demo"
             frameBorder="0"
