@@ -1,5 +1,5 @@
 // src/components/Dashboard.tsx
-import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from "react";
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Users,
@@ -39,7 +39,6 @@ import {
   Menu,
   LogOut,
   HelpCircle,
-  TrendingUp as TrendingUpIcon,
   Loader2,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
