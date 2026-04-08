@@ -83,7 +83,7 @@ export default function Login() {
           setLoading(false);
         } else {
           setSuccess("جاري تسجيل الدخول...");
-          setLoading(false);
+          setLoading(true);
         }
       } else {
         if (!schoolData.fullName || !schoolData.schoolName) {
