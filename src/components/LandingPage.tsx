@@ -650,6 +650,52 @@ export default function LandingPage() {
     </Swiper>
   </div>
 </section>
+  {/* NEW SECTION: Facebook Video Section */}
+      <section className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-50 to-sky-50 text-blue-700 px-4 py-1.5 rounded-full mb-6 border border-blue-100">
+              <PlayCircle className="w-4 h-4" />
+              <span className="text-xs font-bold uppercase tracking-wider">
+                شاهد الفيديو التعريفي
+              </span>
+            </div>
+            <h2 className="text-3xl lg:text-4xl font-black text-slate-900 mb-4">
+              تعرف على منصة إدارتي من خلال الفيديو
+            </h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+              اكتشف كيف يمكن لمنصة إدارتي أن تغير طريقة إدارة أعمالك
+            </p>
+          </div>
+
+          <div className="flex justify-center">
+            <div className="relative w-full max-w-3xl rounded-2xl overflow-hidden shadow-2xl border border-slate-200">
+              <div className="relative aspect-video w-full bg-slate-900">
+                <iframe
+                  src="https://www.facebook.com/plugins/video.php?height=314&href=https%3A%2F%2Fwww.facebook.com%2Freel%2F2006363973260901%2F&show_text=false&width=560&t=0"
+                  className="absolute inset-0 w-full h-full"
+                  style={{ border: "none", overflow: "hidden" }}
+                  scrolling="no"
+                  frameBorder="0"
+                  allowFullScreen={true}
+                  allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                  title="Edarty Facebook Video"
+                ></iframe>
+              </div>
+            </div>
+          </div>
+
+          {/* Optional: Video caption */}
+          <div className="text-center mt-6">
+            <p className="text-sm text-slate-500 flex items-center justify-center gap-2">
+              <span className="inline-block w-1 h-1 bg-blue-500 rounded-full"></span>
+              فيديو تعريفي لمنصة إدارتي - الحل المتكامل لإدارة الأعمال
+              <span className="inline-block w-1 h-1 bg-blue-500 rounded-full"></span>
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Pricing Section - يبقى كما هو */}
       <section
         id="pricing"
