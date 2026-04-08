@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.10",
     "@supabase/supabase-js": "^2.57.4",
     "date-fns": "^4.1.0",
     "file-saver": "^2.0.5",
@@ -20,6 +21,7 @@
     "next-auth": "^4.24.13",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.13.1",
     "recharts": "^3.8.0",
     "swiper": "^12.1.2",

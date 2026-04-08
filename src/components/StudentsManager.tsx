@@ -48,23 +48,43 @@ const useDebounce = <T,>(value: T, delay: number): T => {
 };
 
 const useToast = () => {
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" | "warning" } | null>(null);
-  const showToast = useCallback((message: string, type: "success" | "error" | "info" | "warning" = "info") => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  }, []);
-  return { toast, showToast, ToastComponent: () => toast ? (
-    <div className={`fixed bottom-20 right-4 z-50 px-4 py-3 rounded-lg shadow-lg animate-slide-up flex items-center gap-2 ${
-      toast.type === "success" ? "bg-green-600" :
-      toast.type === "error" ? "bg-red-600" :
-      toast.type === "warning" ? "bg-yellow-600" : "bg-blue-600"
-    } text-white text-sm`}>
-      {toast.type === "success" && <CheckCircle className="w-4 h-4" />}
-      {toast.type === "error" && <AlertCircle className="w-4 h-4" />}
-      {toast.type === "warning" && <AlertCircle className="w-4 h-4" />}
-      {toast.message}
-    </div>
-  ) : null };
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error" | "info" | "warning";
+  } | null>(null);
+  const showToast = useCallback(
+    (
+      message: string,
+      type: "success" | "error" | "info" | "warning" = "info",
+    ) => {
+      setToast({ message, type });
+      setTimeout(() => setToast(null), 3000);
+    },
+    [],
+  );
+  return {
+    toast,
+    showToast,
+    ToastComponent: () =>
+      toast ? (
+        <div
+          className={`fixed bottom-20 right-4 z-50 px-4 py-3 rounded-lg shadow-lg animate-slide-up flex items-center gap-2 ${
+            toast.type === "success"
+              ? "bg-green-600"
+              : toast.type === "error"
+                ? "bg-red-600"
+                : toast.type === "warning"
+                  ? "bg-yellow-600"
+                  : "bg-blue-600"
+          } text-white text-sm`}
+        >
+          {toast.type === "success" && <CheckCircle className="w-4 h-4" />}
+          {toast.type === "error" && <AlertCircle className="w-4 h-4" />}
+          {toast.type === "warning" && <AlertCircle className="w-4 h-4" />}
+          {toast.message}
+        </div>
+      ) : null,
+  };
 };
 
 // Skeleton Loader Component
@@ -98,7 +118,15 @@ const StatsCard: React.FC<{
   bgGradient: string;
   trend?: number;
   isLoading?: boolean;
-}> = ({ title, value, icon: Icon, iconColor, bgGradient, trend, isLoading }) => {
+}> = ({
+  title,
+  value,
+  icon: Icon,
+  iconColor,
+  bgGradient,
+  trend,
+  isLoading,
+}) => {
   if (isLoading) {
     return (
       <div className="bg-white rounded-xl shadow-md p-4 animate-pulse">
@@ -119,16 +147,26 @@ const StatsCard: React.FC<{
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-gray-500 mb-1">{title}</p>
-            <p className="text-2xl font-bold text-gray-900">{value.toLocaleString("ar-EG")}</p>
+            <p className="text-2xl font-bold text-gray-900">
+              {value.toLocaleString("ar-EG")}
+            </p>
             {trend !== undefined && (
-              <div className={`flex items-center gap-1 mt-1 text-xs ${trend >= 0 ? "text-green-600" : "text-red-600"}`}>
-                {trend >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+              <div
+                className={`flex items-center gap-1 mt-1 text-xs ${trend >= 0 ? "text-green-600" : "text-red-600"}`}
+              >
+                {trend >= 0 ? (
+                  <TrendingUp className="w-3 h-3" />
+                ) : (
+                  <TrendingDown className="w-3 h-3" />
+                )}
                 <span>{Math.abs(trend)}%</span>
                 <span className="text-gray-400">عن الشهر الماضي</span>
               </div>
             )}
           </div>
-          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${bgGradient} flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-all duration-500`}>
+          <div
+            className={`w-12 h-12 rounded-xl bg-gradient-to-br ${bgGradient} flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-all duration-500`}
+          >
             <Icon className={`w-6 h-6 ${iconColor}`} />
           </div>
         </div>
@@ -165,12 +203,16 @@ const StudentCard: React.FC<{
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <h4 className="font-bold text-gray-900 text-lg">{student.full_name}</h4>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${
-              student.status === "active"
-                ? "bg-green-100 text-green-700"
-                : "bg-gray-100 text-gray-600"
-            }`}>
+            <h4 className="font-bold text-gray-900 text-lg">
+              {student.full_name}
+            </h4>
+            <span
+              className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${
+                student.status === "active"
+                  ? "bg-green-100 text-green-700"
+                  : "bg-gray-100 text-gray-600"
+              }`}
+            >
               {student.status === "active" ? (
                 <CheckCircle className="w-3 h-3" />
               ) : (
@@ -186,12 +228,17 @@ const StudentCard: React.FC<{
             <div className="flex items-center gap-1">
               <User className="w-3.5 h-3.5 text-gray-400" />
               <span className="text-gray-600">ولي الأمر:</span>
-              <span className="font-medium text-gray-900">{student.parent_name}</span>
+              <span className="font-medium text-gray-900">
+                {student.parent_name}
+              </span>
             </div>
             <div className="flex items-center gap-1">
               <Phone className="w-3.5 h-3.5 text-gray-400" />
               <span className="text-gray-600">الهاتف:</span>
-              <span className="font-medium text-gray-900 font-mono text-sm" dir="ltr">
+              <span
+                className="font-medium text-gray-900 font-mono text-sm"
+                dir="ltr"
+              >
                 {student.parent_phone}
               </span>
             </div>
@@ -263,7 +310,10 @@ const StudentDetailsModal: React.FC<{
       <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto animate-scale-up">
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
           <h3 className="text-xl font-bold text-gray-900">تفاصيل الطالب</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -278,7 +328,9 @@ const StudentDetailsModal: React.FC<{
           <div className="space-y-3">
             <div className="flex justify-between items-center pb-2 border-b border-gray-100">
               <span className="text-gray-600">الاسم الكامل</span>
-              <span className="font-medium text-gray-900">{student.full_name}</span>
+              <span className="font-medium text-gray-900">
+                {student.full_name}
+              </span>
             </div>
             <div className="flex justify-between items-center pb-2 border-b border-gray-100">
               <span className="text-gray-600">الصف الدراسي</span>
@@ -286,17 +338,25 @@ const StudentDetailsModal: React.FC<{
             </div>
             <div className="flex justify-between items-center pb-2 border-b border-gray-100">
               <span className="text-gray-600">ولي الأمر</span>
-              <span className="font-medium text-gray-900">{student.parent_name}</span>
+              <span className="font-medium text-gray-900">
+                {student.parent_name}
+              </span>
             </div>
             <div className="flex justify-between items-center pb-2 border-b border-gray-100">
               <span className="text-gray-600">رقم الهاتف</span>
-              <span className="font-medium text-gray-900 font-mono" dir="ltr">{student.parent_phone}</span>
+              <span className="font-medium text-gray-900 font-mono" dir="ltr">
+                {student.parent_phone}
+              </span>
             </div>
             <div className="flex justify-between items-center pb-2 border-b border-gray-100">
               <span className="text-gray-600">الحالة</span>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                student.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
-              }`}>
+              <span
+                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  student.status === "active"
+                    ? "bg-green-100 text-green-700"
+                    : "bg-gray-100 text-gray-600"
+                }`}
+              >
                 {student.status === "active" ? "نشط" : "غير نشط"}
               </span>
             </div>
@@ -341,7 +401,13 @@ const GradeFilter: React.FC<{
   onSelectGrade: (grade: string) => void;
   searchTerm: string;
   totalFilteredCount: number;
-}> = ({ grades, selectedGrade, onSelectGrade, searchTerm, totalFilteredCount }) => (
+}> = ({
+  grades,
+  selectedGrade,
+  onSelectGrade,
+  searchTerm,
+  totalFilteredCount,
+}) => (
   <div className="flex flex-wrap items-center gap-2">
     <Filter className="w-4 h-4 text-gray-400" />
     <span className="text-sm font-medium text-gray-700">تصفية حسب الصف:</span>
@@ -397,7 +463,7 @@ const GradeSection: React.FC<{
   canDelete,
   searchTerm,
 }) => {
-  const activeCount = students.filter(s => s.status === "active").length;
+  const activeCount = students.filter((s) => s.status === "active").length;
 
   return (
     <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-all duration-300">
@@ -420,8 +486,12 @@ const GradeSection: React.FC<{
               <div className="flex items-center gap-3 mt-1 text-sm">
                 <span className="text-gray-600">إجمالي: {students.length}</span>
                 <span className="text-green-600">نشط: {activeCount}</span>
-                <span className="text-gray-400">غير نشط: {students.length - activeCount}</span>
-                {searchTerm && <span className="text-blue-600 text-xs">(نتائج البحث)</span>}
+                <span className="text-gray-400">
+                  غير نشط: {students.length - activeCount}
+                </span>
+                {searchTerm && (
+                  <span className="text-blue-600 text-xs">(نتائج البحث)</span>
+                )}
               </div>
             </div>
           </div>
@@ -470,7 +540,8 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedGrade, setSelectedGrade] = useState("");
   const [expandedGrades, setExpandedGrades] = useState<Set<string>>(new Set());
-  const [selectedStudentDetails, setSelectedStudentDetails] = useState<Student | null>(null);
+  const [selectedStudentDetails, setSelectedStudentDetails] =
+    useState<Student | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState<"name" | "grade" | "date">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -478,41 +549,44 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
   const debouncedSearch = useDebounce(searchTerm, 300);
 
   // Load students
-  const loadStudents = useCallback(async (showRefreshIndicator = false) => {
-    if (!currentSchool) {
-      console.log("⏳ No school selected, skipping load");
-      setLoading(false);
-      return;
-    }
+  const loadStudents = useCallback(
+    async (showRefreshIndicator = false) => {
+      if (!currentSchool) {
+        console.log("⏳ No school selected, skipping load");
+        setLoading(false);
+        return;
+      }
 
-    if (showRefreshIndicator) {
-      setIsRefreshing(true);
-    } else {
-      setLoading(true);
-    }
+      if (showRefreshIndicator) {
+        setIsRefreshing(true);
+      } else {
+        setLoading(true);
+      }
 
-    try {
-      const { data, error } = await supabase
-        .from("students")
-        .select("*")
-        .eq("school_id", currentSchool.id)
-        .order("grade", { ascending: true })
-        .order("full_name", { ascending: true });
+      try {
+        const { data, error } = await supabase
+          .from("students")
+          .select("*")
+          .eq("school_id", currentSchool.id)
+          .order("grade", { ascending: true })
+          .order("full_name", { ascending: true });
 
-      if (error) throw error;
-      setStudents(data || []);
+        if (error) throw error;
+        setStudents(data || []);
 
-      // Expand all grades by default
-      const grades = new Set((data || []).map(s => s.grade || "غير محدد"));
-      setExpandedGrades(grades);
-    } catch (error) {
-      console.error("Error loading students:", error);
-      showToast("حدث خطأ في تحميل البيانات", "error");
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [currentSchool, showToast]);
+        // Expand all grades by default
+        const grades = new Set((data || []).map((s) => s.grade || "غير محدد"));
+        setExpandedGrades(grades);
+      } catch (error) {
+        console.error("Error loading students:", error);
+        showToast("حدث خطأ في تحميل البيانات", "error");
+      } finally {
+        setLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [currentSchool, showToast],
+  );
 
   useEffect(() => {
     loadStudents();
@@ -520,12 +594,15 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
 
   // Group students by grade
   const studentsByGrade = useMemo(() => {
-    return students.reduce((acc, student) => {
-      const grade = student.grade || "غير محدد";
-      if (!acc[grade]) acc[grade] = [];
-      acc[grade].push(student);
-      return acc;
-    }, {} as Record<string, Student[]>);
+    return students.reduce(
+      (acc, student) => {
+        const grade = student.grade || "غير محدد";
+        if (!acc[grade]) acc[grade] = [];
+        acc[grade].push(student);
+        return acc;
+      },
+      {} as Record<string, Student[]>,
+    );
   }, [students]);
 
   // Grade statistics
@@ -534,42 +611,50 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
       .map(([grade, students]) => ({
         grade,
         count: students.length,
-        activeCount: students.filter(s => s.status === "active").length,
+        activeCount: students.filter((s) => s.status === "active").length,
       }))
       .sort((a, b) => a.grade.localeCompare(b.grade, "ar"));
   }, [studentsByGrade]);
 
   // Filter students by search
-  const filterStudents = useCallback((studentList: Student[]) => {
-    if (!debouncedSearch.trim()) return studentList;
-    const term = debouncedSearch.toLowerCase().trim();
-    return studentList.filter(
-      (student) =>
-        student.full_name.toLowerCase().includes(term) ||
-        student.parent_name.toLowerCase().includes(term) ||
-        student.parent_phone.includes(term) ||
-        student.grade.toLowerCase().includes(term)
-    );
-  }, [debouncedSearch]);
+  const filterStudents = useCallback(
+    (studentList: Student[]) => {
+      if (!debouncedSearch.trim()) return studentList;
+      const term = debouncedSearch.toLowerCase().trim();
+      return studentList.filter(
+        (student) =>
+          student.full_name.toLowerCase().includes(term) ||
+          student.parent_name.toLowerCase().includes(term) ||
+          student.parent_phone.includes(term) ||
+          student.grade.toLowerCase().includes(term),
+      );
+    },
+    [debouncedSearch],
+  );
 
   // Sort students
-  const sortStudents = useCallback((studentList: Student[]) => {
-    return [...studentList].sort((a, b) => {
-      let comparison = 0;
-      switch (sortBy) {
-        case "name":
-          comparison = a.full_name.localeCompare(b.full_name, "ar");
-          break;
-        case "grade":
-          comparison = a.grade.localeCompare(b.grade, "ar");
-          break;
-        case "date":
-          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-          break;
-      }
-      return sortOrder === "asc" ? comparison : -comparison;
-    });
-  }, [sortBy, sortOrder]);
+  const sortStudents = useCallback(
+    (studentList: Student[]) => {
+      return [...studentList].sort((a, b) => {
+        let comparison = 0;
+        switch (sortBy) {
+          case "name":
+            comparison = a.full_name.localeCompare(b.full_name, "ar");
+            break;
+          case "grade":
+            comparison = a.grade.localeCompare(b.grade, "ar");
+            break;
+          case "date":
+            comparison =
+              new Date(a.created_at).getTime() -
+              new Date(b.created_at).getTime();
+            break;
+        }
+        return sortOrder === "asc" ? comparison : -comparison;
+      });
+    },
+    [sortBy, sortOrder],
+  );
 
   // Get filtered and sorted students
   const filteredStudentsByGrade = useMemo(() => {
@@ -593,14 +678,16 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
 
   // Statistics
   const totalStudents = students.length;
-  const totalActive = students.filter(s => s.status === "active").length;
-  const totalInactive = students.filter(s => s.status === "inactive").length;
-  const activePercentage = totalStudents > 0 ? (totalActive / totalStudents) * 100 : 0;
+  const totalActive = students.filter((s) => s.status === "active").length;
+  const totalInactive = students.filter((s) => s.status === "inactive").length;
+  const activePercentage =
+    totalStudents > 0 ? (totalActive / totalStudents) * 100 : 0;
 
   // Permissions
-  const canAddStudent = hasPermission('edit_students') || hasPermission('add_students');
-  const canEdit = hasPermission('edit_students');
-  const canDelete = hasPermission('delete_students');
+  const canAddStudent =
+    hasPermission("edit_students") || hasPermission("add_students");
+  const canEdit = hasPermission("edit_students");
+  const canDelete = hasPermission("delete_students");
 
   // Handlers
   const handleSubmit = async (e: React.FormEvent) => {
@@ -627,18 +714,21 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
           .maybeSingle();
 
         if (existingStudent) {
-          showToast(`رقم الهاتف "${formData.parent_phone}" مستخدم بالفعل للطالب ${existingStudent.full_name}`, "error");
+          showToast(
+            `رقم الهاتف "${formData.parent_phone}" مستخدم بالفعل للطالب ${existingStudent.full_name}`,
+            "error",
+          );
           return;
         }
 
-        const { error } = await supabase
-          .from("students")
-          .insert([{
+        const { error } = await supabase.from("students").insert([
+          {
             ...formData,
             user_id: authUser.id,
             school_id: currentSchool.id,
             enrollment_date: new Date().toISOString().split("T")[0],
-          }]);
+          },
+        ]);
 
         if (error) {
           if (error.code === "23505") {
@@ -741,8 +831,15 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
   };
 
   const exportToCSV = () => {
-    const headers = ["الاسم", "الصف", "ولي الأمر", "الهاتف", "الحالة", "تاريخ التسجيل"];
-    const rows = allFilteredStudents.map(s => [
+    const headers = [
+      "الاسم",
+      "الصف",
+      "ولي الأمر",
+      "الهاتف",
+      "الحالة",
+      "تاريخ التسجيل",
+    ];
+    const rows = allFilteredStudents.map((s) => [
       s.full_name,
       s.grade,
       s.parent_name,
@@ -751,12 +848,19 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
       new Date(s.created_at).toLocaleDateString("ar-EG"),
     ]);
 
-    const csvContent = [headers, ...rows].map(row => row.join(",")).join("\n");
-    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const csvContent = [headers, ...rows]
+      .map((row) => row.join(","))
+      .join("\n");
+    const blob = new Blob(["\uFEFF" + csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.href = url;
-    link.setAttribute("download", `students_${new Date().toISOString().split("T")[0]}.csv`);
+    link.setAttribute(
+      "download",
+      `students_${new Date().toISOString().split("T")[0]}.csv`,
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -782,7 +886,9 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">إدارة الطلاب</h2>
-          <p className="text-sm text-gray-500 mt-1">إدارة بيانات الطلاب وملفاتهم الدراسية</p>
+          <p className="text-sm text-gray-500 mt-1">
+            إدارة بيانات الطلاب وملفاتهم الدراسية
+          </p>
         </div>
         <div className="flex gap-2">
           <button
@@ -791,7 +897,9 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
             className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-all disabled:opacity-50"
             aria-label="تحديث"
           >
-            <RefreshCw className={`w-5 h-5 ${isRefreshing ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`w-5 h-5 ${isRefreshing ? "animate-spin" : ""}`}
+            />
           </button>
           <button
             onClick={exportToCSV}
@@ -813,41 +921,41 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
       </div>
 
       {/* Statistics Cards - Fixed Icons */}
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-  <StatsCard 
-    title="إجمالي الطلاب" 
-    value={totalStudents} 
-    icon={Users} 
-    iconColor="text-white"
-    bgGradient="from-blue-500 to-blue-600"
-    isLoading={isLoading} 
-  />
-  <StatsCard 
-    title="الطلاب النشطون" 
-    value={totalActive} 
-    icon={CheckCircle} 
-    iconColor="text-white"
-    bgGradient="from-emerald-500 to-green-600"
-    trend={activePercentage} 
-    isLoading={isLoading} 
-  />
-  <StatsCard 
-    title="الطلاب غير النشطين" 
-    value={totalInactive} 
-    icon={XCircle} 
-    iconColor="text-white"
-    bgGradient="from-gray-500 to-gray-600"
-    isLoading={isLoading} 
-  />
-  <StatsCard 
-    title="عدد الصفوف" 
-    value={Object.keys(studentsByGrade).length} 
-    icon={GraduationCap} 
-    iconColor="text-white"
-    bgGradient="from-purple-500 to-purple-600"
-    isLoading={isLoading} 
-  />
-</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatsCard
+          title="إجمالي الطلاب"
+          value={totalStudents}
+          icon={Users}
+          iconColor="text-white"
+          bgGradient="from-blue-500 to-blue-600"
+          isLoading={isLoading}
+        />
+        <StatsCard
+          title="الطلاب النشطون"
+          value={totalActive}
+          icon={CheckCircle}
+          iconColor="text-white"
+          bgGradient="from-emerald-500 to-green-600"
+          trend={activePercentage}
+          isLoading={isLoading}
+        />
+        <StatsCard
+          title="الطلاب غير النشطين"
+          value={totalInactive}
+          icon={XCircle}
+          iconColor="text-white"
+          bgGradient="from-gray-500 to-gray-600"
+          isLoading={isLoading}
+        />
+        <StatsCard
+          title="عدد الصفوف"
+          value={Object.keys(studentsByGrade).length}
+          icon={GraduationCap}
+          iconColor="text-white"
+          bgGradient="from-purple-500 to-purple-600"
+          isLoading={isLoading}
+        />
+      </div>
       {/* Search and Filters */}
       <div className="bg-white rounded-xl shadow-md p-4 space-y-4">
         <div className="relative">
@@ -926,8 +1034,13 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
 
         {searchTerm && (
           <div className="text-sm text-gray-600 bg-blue-50 p-2 rounded-lg flex items-center justify-between">
-            <span>تم العثور على {totalFilteredCount} نتيجة للبحث "{searchTerm}"</span>
-            <button onClick={() => setSearchTerm("")} className="text-blue-600 hover:text-blue-700 text-sm">
+            <span>
+              تم العثور على {totalFilteredCount} نتيجة للبحث "{searchTerm}"
+            </span>
+            <button
+              onClick={() => setSearchTerm("")}
+              className="text-blue-600 hover:text-blue-700 text-sm"
+            >
               مسح البحث
             </button>
           </div>
@@ -936,11 +1049,17 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
         {/* Expand/Collapse Controls */}
         {!selectedGrade && Object.keys(filteredStudentsByGrade).length > 0 && (
           <div className="flex justify-end gap-2">
-            <button onClick={expandAll} className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+            <button
+              onClick={expandAll}
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
               فتح الكل
             </button>
             <span className="text-gray-300">|</span>
-            <button onClick={collapseAll} className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+            <button
+              onClick={collapseAll}
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
               إغلاق الكل
             </button>
           </div>
@@ -950,12 +1069,16 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
       {/* Students List */}
       {isLoading ? (
         <div className="space-y-4">
-          {[...Array(5)].map((_, i) => <StudentCardSkeleton key={i} />)}
+          {[...Array(5)].map((_, i) => (
+            <StudentCardSkeleton key={i} />
+          ))}
         </div>
       ) : students.length === 0 ? (
         <div className="bg-white rounded-xl shadow-md p-12 text-center">
           <GraduationCap className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد بيانات</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            لا توجد بيانات
+          </h3>
           <p className="text-gray-600 mb-6">لم يتم إضافة أي طلاب بعد</p>
           {canAddStudent && (
             <button
@@ -973,18 +1096,25 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <GraduationCap className="w-6 h-6 text-blue-600" />
-                <h3 className="text-lg font-bold text-gray-900">{selectedGrade}</h3>
+                <h3 className="text-lg font-bold text-gray-900">
+                  {selectedGrade}
+                </h3>
                 <span className="bg-blue-600 text-white px-2 py-1 rounded-full text-xs">
                   {allFilteredStudents.length} طالب
                 </span>
               </div>
-              <button onClick={() => setSelectedGrade("")} className="text-sm text-gray-600 hover:text-gray-900">
+              <button
+                onClick={() => setSelectedGrade("")}
+                className="text-sm text-gray-600 hover:text-gray-900"
+              >
                 عرض الكل
               </button>
             </div>
           </div>
 
-          <div className={`grid gap-3 ${viewMode === "grid" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"}`}>
+          <div
+            className={`grid gap-3 ${viewMode === "grid" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"}`}
+          >
             {allFilteredStudents.map((student) => (
               <StudentCard
                 key={student.id}
@@ -1001,29 +1131,38 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
       ) : (
         // Grouped by Grade View
         <div className="space-y-4">
-          {Object.entries(filteredStudentsByGrade).map(([grade, gradeStudents]) => (
-            <GradeSection
-              key={grade}
-              grade={grade}
-              students={gradeStudents}
-              isExpanded={expandedGrades.has(grade)}
-              onToggle={() => toggleGrade(grade)}
-              onViewAll={() => setSelectedGrade(grade)}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onViewDetails={handleViewDetails}
-              canEdit={canEdit}
-              canDelete={canDelete}
-              searchTerm={searchTerm}
-            />
-          ))}
+          {Object.entries(filteredStudentsByGrade).map(
+            ([grade, gradeStudents]) => (
+              <GradeSection
+                key={grade}
+                grade={grade}
+                students={gradeStudents}
+                isExpanded={expandedGrades.has(grade)}
+                onToggle={() => toggleGrade(grade)}
+                onViewAll={() => setSelectedGrade(grade)}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onViewDetails={handleViewDetails}
+                canEdit={canEdit}
+                canDelete={canDelete}
+                searchTerm={searchTerm}
+              />
+            ),
+          )}
 
           {Object.keys(filteredStudentsByGrade).length === 0 && searchTerm && (
             <div className="bg-white rounded-xl p-12 text-center">
               <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد نتائج</h3>
-              <p className="text-gray-600">لم يتم العثور على طلاب يطابقون بحث "{searchTerm}"</p>
-              <button onClick={() => setSearchTerm("")} className="mt-4 text-blue-600 hover:text-blue-700 font-medium">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                لا توجد نتائج
+              </h3>
+              <p className="text-gray-600">
+                لم يتم العثور على طلاب يطابقون بحث "{searchTerm}"
+              </p>
+              <button
+                onClick={() => setSearchTerm("")}
+                className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
+              >
                 مسح البحث
               </button>
             </div>
@@ -1039,56 +1178,77 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
               <h3 className="text-xl font-bold text-gray-900">
                 {editingStudent ? "تعديل بيانات الطالب" : "إضافة طالب جديد"}
               </h3>
-              <button onClick={resetForm} className="text-gray-400 hover:text-gray-600">
+              <button
+                onClick={resetForm}
+                className="text-gray-400 hover:text-gray-600"
+              >
                 <X className="w-6 h-6" />
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">اسم الطالب *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  اسم الطالب *
+                </label>
                 <input
                   type="text"
                   value={formData.full_name}
-                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, full_name: e.target.value })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">الصف الدراسي *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  الصف الدراسي *
+                </label>
                 <input
                   type="text"
                   value={formData.grade}
-                  onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, grade: e.target.value })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   placeholder="مثال: الصف الأول الابتدائي"
                   required
                   list="grades"
                 />
                 <datalist id="grades">
-                  {gradeStats.map(({ grade }) => <option key={grade} value={grade} />)}
+                  {gradeStats.map(({ grade }) => (
+                    <option key={grade} value={grade} />
+                  ))}
                 </datalist>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">اسم ولي الأمر *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  اسم ولي الأمر *
+                </label>
                 <input
                   type="text"
                   value={formData.parent_name}
-                  onChange={(e) => setFormData({ ...formData, parent_name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, parent_name: e.target.value })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">رقم الهاتف *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  رقم الهاتف *
+                </label>
                 <input
                   type="tel"
                   value={formData.parent_phone}
-                  onChange={(e) => setFormData({ ...formData, parent_phone: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, parent_phone: e.target.value })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   placeholder="01xxxxxxxxx"
                   required
@@ -1096,10 +1256,17 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">الحالة</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  الحالة
+                </label>
                 <select
                   value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as "active" | "inactive" })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      status: e.target.value as "active" | "inactive",
+                    })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 >
                   <option value="active">نشط</option>
@@ -1108,10 +1275,17 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
               </div>
 
               <div className="flex gap-3 pt-4">
-                <button type="submit" className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 px-4 rounded-lg transition-all">
+                <button
+                  type="submit"
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 px-4 rounded-lg transition-all"
+                >
                   {editingStudent ? "حفظ التعديلات" : "إضافة الطالب"}
                 </button>
-                <button type="button" onClick={resetForm} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg transition-all">
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg transition-all"
+                >
                   إلغاء
                 </button>
               </div>
@@ -1122,17 +1296,24 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
 
       {/* Student Details Modal */}
       {selectedStudentDetails && (
-        <StudentDetailsModal student={selectedStudentDetails} onClose={() => setSelectedStudentDetails(null)} />
+        <StudentDetailsModal
+          student={selectedStudentDetails}
+          onClose={() => setSelectedStudentDetails(null)}
+        />
       )}
 
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slide-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes scale-up { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         .animate-fade-in { animation: fade-in 0.2s ease-out forwards; }
         .animate-slide-up { animation: slide-up 0.3s ease-out forwards; }
         .animate-scale-up { animation: scale-up 0.2s ease-out forwards; }
-      ` }} />
+      `,
+        }}
+      />
     </div>
   );
 }
