@@ -675,7 +675,7 @@ export default function LandingPage() {
       <div className="relative w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl border border-slate-200">
         <div className="relative aspect-video w-full bg-slate-900">
           <iframe
-            src="https://www.youtube.com/embed/YOUR_VIDEO_ID" // استبدل YOUR_VIDEO_ID بمعرف الفيديو
+            src="https://youtu.be/iFq83D68Cdg" // استبدل YOUR_VIDEO_ID بمعرف الفيديو
             className="absolute inset-0 w-full h-full"
             title="Edarty Platform Demo"
             frameBorder="0"
