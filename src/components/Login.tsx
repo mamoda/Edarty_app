@@ -57,7 +57,7 @@ export default function Login() {
       hasRedirected.current = true;
       timeoutId = setTimeout(() => {
         navigate("/dashboard", { replace: true });
-      }, 100);
+      }, 5);
     }
 
     return () => {
