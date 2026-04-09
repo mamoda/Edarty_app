@@ -38,6 +38,7 @@ export default function Login() {
   const [currentStep, setCurrentStep] = useState(1);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false); // ✅ جديد
 
   const [schoolData, setSchoolData] = useState({
     fullName: "",
@@ -64,6 +65,23 @@ export default function Login() {
     };
   }, [isAuthenticated, navigate]);
 
+  // ✅ التحقق من صحة الكود السري
+  const handleAdminAccess = () => {
+    if (adminCode === ADMIN_SECRET_CODE) {
+      setIsAdminAuthenticated(true);
+      setShowAdminPanel(true);
+      setIsLogin(false);
+      setCurrentStep(1);
+      setAdminCode("");
+      setError("");
+      setSuccess("✅ تم التحقق من كود المسؤول");
+      setTimeout(() => setSuccess(""), 2000);
+    } else {
+      setError("❌ الكود السري غير صحيح");
+      setTimeout(() => setError(""), 3000);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -72,6 +90,7 @@ export default function Login() {
 
     try {
       if (isLogin) {
+        // ✅ تسجيل الدخول - متاح للجميع
         const { error } = await signIn(email, password);
 
         if (error) {
@@ -82,6 +101,13 @@ export default function Login() {
           setLoading(true);
         }
       } else {
+        // ✅ إنشاء حساب جديد - يتطلب كود المسؤول
+        if (!isAdminAuthenticated) {
+          setError("⚠️ لا يمكن إنشاء حساب جديد. يرجى إدخال كود المسؤول أولاً");
+          setLoading(false);
+          return;
+        }
+
         if (!schoolData.fullName || !schoolData.schoolName) {
           setError("يرجى إكمال جميع البيانات المطلوبة");
           setLoading(false);
@@ -121,10 +147,12 @@ export default function Login() {
           }
         }
 
-        setSuccess("تم إنشاء الحساب بنجاح! جاري التوجيه...");
+        setSuccess("✅ تم إنشاء الحساب بنجاح! جاري التوجيه...");
         setTimeout(() => {
           setIsLogin(true);
           setCurrentStep(1);
+          setIsAdminAuthenticated(false);
+          setShowAdminPanel(false);
           setEmail("");
           setPassword("");
           setSchoolData({
@@ -143,19 +171,6 @@ export default function Login() {
       console.error("Login error:", err);
       setError("حدث خطأ. يرجى المحاولة مرة أخرى");
       setLoading(false);
-    }
-  };
-
-  const handleAdminAccess = () => {
-    if (adminCode === ADMIN_SECRET_CODE) {
-      setShowAdminPanel(true);
-      setIsLogin(false);
-      setCurrentStep(1);
-      setAdminCode("");
-      setError("");
-    } else {
-      setError("❌ الكود السري غير صحيح");
-      setTimeout(() => setError(""), 3000);
     }
   };
 
@@ -200,10 +215,8 @@ export default function Login() {
         backgroundAttachment: 'fixed'
       }}
     >
-      {/* Overlay for better readability */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-indigo-900/10 to-purple-900/20 backdrop-blur-[2px] -z-0" />
       
-      {/* Animated particles effect */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-72 h-72 bg-blue-400/20 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-400/20 rounded-full blur-3xl animate-pulse delay-1000" />
@@ -233,85 +246,74 @@ export default function Login() {
             </div>
           )}
 
-          {/* Tabs */}
-          {!showAdminPanel && (
-            <div className="flex gap-2 mb-8 bg-gray-100/80 backdrop-blur-sm p-1 rounded-xl">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLogin(true);
-                  setError("");
-                }}
-                className={`flex-1 py-3 rounded-lg font-semibold transition-all duration-200 relative ${
-                  isLogin
-                    ? "bg-white text-blue-600 shadow-md"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                <span className="relative z-10">تسجيل الدخول</span>
-                {isLogin && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full" />
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLogin(false);
-                  setError("");
-                  setCurrentStep(1);
-                }}
-                className={`flex-1 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                  !isLogin
-                    ? "bg-white text-purple-600 shadow-md"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                حساب جديد
-              </button>
+          {/* Admin Authentication Required Banner */}
+          {!isLogin && !isAdminAuthenticated && (
+            <div className="mb-6 p-4 bg-amber-50/90 backdrop-blur-sm border border-amber-200 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <Shield className="w-5 h-5 text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-amber-800">مطلوب كود المسؤول</p>
+                  <p className="text-xs text-amber-600">لإنشاء حساب جديد، يرجى إدخال كود المسؤول أولاً</p>
+                </div>
+              </div>
             </div>
           )}
 
+          {/* Tabs */}
+          <div className="flex gap-2 mb-8 bg-gray-100/80 backdrop-blur-sm p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => {
+                setIsLogin(true);
+                setError("");
+              }}
+              className={`flex-1 py-3 rounded-lg font-semibold transition-all duration-200 relative ${
+                isLogin
+                  ? "bg-white text-blue-600 shadow-md"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <span className="relative z-10">تسجيل الدخول</span>
+              {isLogin && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!isAdminAuthenticated) {
+                  setError("⚠️ يرجى إدخال كود المسؤول أولاً للوصول إلى إنشاء الحساب");
+                  setTimeout(() => setError(""), 3000);
+                  return;
+                }
+                setIsLogin(false);
+                setError("");
+                setCurrentStep(1);
+              }}
+              className={`flex-1 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                !isLogin
+                  ? "bg-white text-purple-600 shadow-md"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              حساب جديد
+            </button>
+          </div>
+
           {/* Admin Panel Mode */}
           {showAdminPanel && (
-            <div className="mb-6 p-4 bg-gradient-to-r from-amber-50/90 to-yellow-50/90 backdrop-blur-sm border border-amber-200 rounded-xl">
+            <div className="mb-6 p-4 bg-gradient-to-r from-green-50/90 to-emerald-50/90 backdrop-blur-sm border border-green-200 rounded-xl">
               <div className="flex items-center gap-2 mb-3">
-                <div className="p-1.5 bg-amber-100 rounded-lg">
-                  <Shield className="w-5 h-5 text-amber-600" />
+                <div className="p-1.5 bg-green-100 rounded-lg">
+                  <Shield className="w-5 h-5 text-green-600" />
                 </div>
-                <h3 className="font-bold text-amber-800">لوحة تحكم المسؤول</h3>
+                <h3 className="font-bold text-green-800">✅ تم التحقق من المسؤول</h3>
               </div>
-              <div className="flex gap-2 bg-white/50 backdrop-blur-sm p-1 rounded-lg">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsLogin(true);
-                    setCurrentStep(1);
-                    setError("");
-                  }}
-                  className={`flex-1 py-2 rounded-md font-medium transition-all ${
-                    isLogin
-                      ? "bg-white text-blue-600 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                >
-                  تسجيل الدخول
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsLogin(false);
-                    setCurrentStep(1);
-                    setError("");
-                  }}
-                  className={`flex-1 py-2 rounded-md font-medium transition-all ${
-                    !isLogin
-                      ? "bg-white text-purple-600 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
-                >
-                  إنشاء حساب
-                </button>
-              </div>
+              <p className="text-sm text-green-700">
+                يمكنك الآن إنشاء حساب جديد للمدرسة
+              </p>
             </div>
           )}
 
@@ -530,7 +532,7 @@ export default function Login() {
                     <button
                       type="button"
                       onClick={prevStep}
-                      className="flex items-center gap-2 text-gray-600 hover:text-gray-800 font-medium transition-colors mb-4"
+                        className="flex items-center gap-2 text-gray-600 hover:text-gray-800 font-medium transition-colors mb-4"
                     >
                       <ChevronLeft className="w-5 h-5" />
                       العودة
@@ -645,28 +647,29 @@ export default function Login() {
             )}
           </form>
 
-          {/* Admin Access */}
-          {!showAdminPanel && (
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <div className="relative">
-                <input
-                  type="password"
-                  value={adminCode}
-                  onChange={(e) => setAdminCode(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleAdminAccess()}
-                  placeholder="كود المسؤول"
-                  className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white/60 backdrop-blur-sm"
-                />
-                <button
-                  type="button"
-                  onClick={handleAdminAccess}
-                  className="absolute left-2 top-1/2 transform -translate-y-1/2 text-xs bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-1.5 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all"
-                >
-                  دخول
-                </button>
-              </div>
+          {/* Admin Access - Required for Signup */}
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <div className="relative">
+              <input
+                type="password"
+                value={adminCode}
+                onChange={(e) => setAdminCode(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAdminAccess()}
+                placeholder="كود المسؤول (مطلوب لإنشاء حساب جديد)"
+                className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white/60 backdrop-blur-sm"
+              />
+              <button
+                type="button"
+                onClick={handleAdminAccess}
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 text-xs bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-1.5 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all"
+              >
+                {isAdminAuthenticated ? "✓ تم التحقق" : "تحقق"}
+              </button>
             </div>
-          )}
+            <p className="text-xs text-gray-500 mt-2 text-center">
+              ⚠️ كود المسؤول مطلوب لإنشاء حساب جديد للمدرسة
+            </p>
+          </div>
         </div>
 
         {/* Footer */}
