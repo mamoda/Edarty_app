@@ -57,7 +57,7 @@ export default function Login() {
       hasRedirected.current = true;
       timeoutId = setTimeout(() => {
         navigate("/dashboard", { replace: true });
-      }, 5);
+      }, 100);
     }
 
     return () => {
@@ -65,7 +65,6 @@ export default function Login() {
     };
   }, [isAuthenticated, navigate]);
 
-  // ✅ التحقق من صحة الكود السري
   const handleAdminAccess = () => {
     if (adminCode === ADMIN_SECRET_CODE) {
       setIsAdminAuthenticated(true);
@@ -90,7 +89,6 @@ export default function Login() {
 
     try {
       if (isLogin) {
-        // ✅ تسجيل الدخول - متاح للجميع
         const { error } = await signIn(email, password);
 
         if (error) {
@@ -101,7 +99,6 @@ export default function Login() {
           setLoading(true);
         }
       } else {
-        // ✅ إنشاء حساب جديد - يتطلب كود المسؤول
         if (!isAdminAuthenticated) {
           setError("⚠️ لا يمكن إنشاء حساب جديد. يرجى إدخال كود المسؤول أولاً");
           setLoading(false);
@@ -225,7 +222,6 @@ export default function Login() {
 
       <div className="w-full max-w-md animate-fadeIn relative z-10">
         <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/50">
-          {/* Logo & Brand */}
           <div className="flex flex-col items-center mb-8">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full blur-2xl opacity-30 animate-pulse" />
@@ -236,7 +232,6 @@ export default function Login() {
             </p>
           </div>
 
-          {/* Success Message */}
           {success && (
             <div className="mb-4 p-4 bg-green-50/90 backdrop-blur-sm border border-green-200 rounded-xl animate-slideDown">
               <div className="flex items-center gap-2 text-green-700">
@@ -246,7 +241,6 @@ export default function Login() {
             </div>
           )}
 
-          {/* Admin Authentication Required Banner */}
           {!isLogin && !isAdminAuthenticated && (
             <div className="mb-6 p-4 bg-amber-50/90 backdrop-blur-sm border border-amber-200 rounded-xl">
               <div className="flex items-center gap-3">
@@ -261,7 +255,6 @@ export default function Login() {
             </div>
           )}
 
-          {/* Tabs */}
           <div className="flex gap-2 mb-8 bg-gray-100/80 backdrop-blur-sm p-1 rounded-xl">
             <button
               type="button"
@@ -302,7 +295,6 @@ export default function Login() {
             </button>
           </div>
 
-          {/* Admin Panel Mode */}
           {showAdminPanel && (
             <div className="mb-6 p-4 bg-gradient-to-r from-green-50/90 to-emerald-50/90 backdrop-blur-sm border border-green-200 rounded-xl">
               <div className="flex items-center gap-2 mb-3">
@@ -320,7 +312,6 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="space-y-5">
             {isLogin ? (
               <>
-                {/* Email Field */}
                 <div className="group">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     البريد الإلكتروني
@@ -340,7 +331,6 @@ export default function Login() {
                   </div>
                 </div>
 
-                {/* Password Field */}
                 <div className="group">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     كلمة المرور
@@ -367,7 +357,6 @@ export default function Login() {
                   </div>
                 </div>
 
-                {/* Remember Me & Forgot Password */}
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -386,7 +375,6 @@ export default function Login() {
                   </button>
                 </div>
 
-                {/* Submit Button */}
                 <button
                   type="submit"
                   disabled={loading}
@@ -404,7 +392,6 @@ export default function Login() {
               </>
             ) : (
               <>
-                {/* Step Indicator */}
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
@@ -445,7 +432,6 @@ export default function Login() {
 
                 {currentStep === 1 ? (
                   <>
-                    {/* Full Name */}
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         الاسم الكامل
@@ -465,7 +451,6 @@ export default function Login() {
                       </div>
                     </div>
 
-                    {/* Email */}
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         البريد الإلكتروني
@@ -485,7 +470,6 @@ export default function Login() {
                       </div>
                     </div>
 
-                    {/* Password */}
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         كلمة المرور
@@ -517,7 +501,6 @@ export default function Login() {
                       </p>
                     </div>
 
-                    {/* Next Button */}
                     <button
                       type="button"
                       onClick={nextStep}
@@ -528,7 +511,6 @@ export default function Login() {
                   </>
                 ) : (
                   <>
-                    {/* Back Button */}
                     <button
                       type="button"
                       onClick={prevStep}
@@ -538,7 +520,6 @@ export default function Login() {
                       العودة
                     </button>
 
-                    {/* School Name */}
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         اسم المدرسة <span className="text-red-500">*</span>
@@ -558,7 +539,6 @@ export default function Login() {
                       </div>
                     </div>
 
-                    {/* School Address */}
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         عنوان المدرسة
@@ -577,7 +557,6 @@ export default function Login() {
                       </div>
                     </div>
 
-                    {/* School Phone */}
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         هاتف المدرسة
@@ -597,7 +576,6 @@ export default function Login() {
                       </div>
                     </div>
 
-                    {/* Tax Number */}
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         الرقم الضريبي <span className="text-gray-400 text-xs">(اختياري)</span>
@@ -616,7 +594,6 @@ export default function Login() {
                       </div>
                     </div>
 
-                    {/* Submit Button */}
                     <button
                       type="submit"
                       disabled={loading}
@@ -636,7 +613,6 @@ export default function Login() {
               </>
             )}
 
-            {/* Error Message */}
             {error && (
               <div className="p-4 bg-red-50/90 backdrop-blur-sm border border-red-200 rounded-xl animate-shake">
                 <div className="flex items-center gap-2 text-red-700">
@@ -647,7 +623,6 @@ export default function Login() {
             )}
           </form>
 
-          {/* Admin Access - Required for Signup */}
           <div className="mt-6 pt-4 border-t border-gray-200">
             <div className="relative">
               <input
@@ -672,7 +647,6 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Footer */}
         <div className="mt-6 text-center">
           <p className="text-sm text-white/80 font-medium drop-shadow-lg">
             نظام إدارتــي لحسابات المدارس والمؤسسات التعليمية
