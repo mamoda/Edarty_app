@@ -25,7 +25,6 @@ export default function Login() {
   const navigate = useNavigate();
   const { signIn, signUp, isAuthenticated } = useAuth();
   const hasRedirected = useRef(false);
-
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,8 +37,7 @@ export default function Login() {
   const [currentStep, setCurrentStep] = useState(1);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false); // ✅ جديد
-
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);   
   const [schoolData, setSchoolData] = useState({
     fullName: "",
     schoolName: "",
