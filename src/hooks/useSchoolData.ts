@@ -3,7 +3,6 @@ import { useAuth } from "../context/AuthContext";
 import { SchoolData } from "../types/database";
 
 export const useSchoolData = (): SchoolData => {
-  // ✅ التغيير: user أصبح authUser
   const { authUser: user, currentSchool, subscriptionPlan, subscriptionExpiresAt, schoolFeatures } = useAuth();
   
   return {

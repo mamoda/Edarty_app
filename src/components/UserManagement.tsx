@@ -1,5 +1,3 @@
-// src/components/UserManagement.tsx - النسخة المعدلة بالكامل
-
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
@@ -70,7 +68,6 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
     role: 'moderator' as 'admin' | 'accountant' | 'moderator' | 'teacher' | 'parent',
   });
 
-  // ✅ التحقق من صلاحية إدارة المستخدمين
   const canManageUsers = hasPermission('manage_users') || currentRole === 'admin';
 
   useEffect(() => {
@@ -84,7 +81,6 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
 
     setLoading(true);
     try {
-      // جلب الأدوار من user_school_roles
       const { data: rolesData, error: rolesError } = await supabase
         .from('user_school_roles')
         .select(`
@@ -102,7 +98,6 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
         return;
       }
 
-      // جلب بيانات المستخدمين
       const userIds = rolesData.map(r => r.user_id);
       const { data: usersData, error: usersError } = await supabase
         .from('users')
@@ -111,7 +106,6 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
 
       if (usersError) throw usersError;
 
-      // دمج البيانات
       const usersMap = new Map(usersData?.map(user => [user.id, user]));
 
       const usersList: SchoolUser[] = rolesData.map(role => {
@@ -161,17 +155,14 @@ const handleAddUser = async (e: React.FormEvent) => {
   try {
     let userId = null;
     
-    // ✅ أولاً: التحقق مما إذا كان المستخدم موجود بالفعل
     const { data: existingUser, error: signInError } = await supabase.auth.signInWithPassword({
       email: formData.email,
       password: formData.password,
     });
     
     if (existingUser?.user) {
-      // المستخدم موجود وكلمة المرور صحيحة
       userId = existingUser.user.id;
     } else {
-      // المستخدم غير موجود، حاول إنشاء حساب جديد
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -183,7 +174,6 @@ const handleAddUser = async (e: React.FormEvent) => {
       });
       
       if (authError) {
-        // ✅ تحسين رسائل الخطأ للمستخدم
         if (authError.message.includes('already registered')) {
           setFormError('البريد الإلكتروني موجود مسبقاً. يرجى استخدام بريد آخر أو التحقق من كلمة المرور');
         } else if (authError.message.includes('password')) {
@@ -202,7 +192,6 @@ const handleAddUser = async (e: React.FormEvent) => {
       return;
     }
     
-    // ✅ إضافة/تحديث المستخدم في جدول users
     const { error: userError } = await supabase
       .from('users')
       .upsert({
@@ -219,7 +208,6 @@ const handleAddUser = async (e: React.FormEvent) => {
       console.error('User upsert error:', userError);
     }
     
-    // ✅ إضافة دور المستخدم (بدون upsert مع onConflict)
     const { error: roleError } = await supabase
       .from('user_school_roles')
       .insert({
@@ -232,7 +220,6 @@ const handleAddUser = async (e: React.FormEvent) => {
       });
     
     if (roleError) {
-      // إذا كان الدور موجود مسبقاً، قم بتحديثه
       if (roleError.code === '23505') { // Unique violation
         const { error: updateError } = await supabase
           .from('user_school_roles')
@@ -263,14 +250,12 @@ const handleAddUser = async (e: React.FormEvent) => {
   const handleUpdateRole = async (userId: string, newRole: string) => {
     if (!currentSchool) return;
     
-    // التحقق من الصلاحية
     if (!canManageUsers) {
       setFormError('ليس لديك صلاحية لتعديل أدوار المستخدمين');
       setTimeout(() => setFormError(''), 3000);
       return;
     }
     
-    // منع تعديل دور الـ Admin الحالي
     if (userId === authUser?.id && newRole !== 'admin') {
       setFormError('لا يمكن تغيير دور حسابك الحالي');
       setTimeout(() => setFormError(''), 3000);
@@ -300,7 +285,6 @@ const handleAddUser = async (e: React.FormEvent) => {
   };
 
   const handleDeleteUser = async (user: SchoolUser) => {
-    // التحقق من الصلاحية
     if (!canManageUsers) {
       setFormError('ليس لديك صلاحية لحذف المستخدمين');
       setTimeout(() => setFormError(''), 3000);
@@ -316,7 +300,6 @@ const handleAddUser = async (e: React.FormEvent) => {
     if (!confirm(`هل أنت متأكد من حذف المستخدم "${user.full_name}" من هذه المدرسة؟`)) return;
     
     try {
-      // حذف دور المستخدم من المدرسة فقط (لا نحذف المستخدم نهائياً)
       const { error: roleError } = await supabase
         .from('user_school_roles')
         .delete()
@@ -360,7 +343,6 @@ const handleAddUser = async (e: React.FormEvent) => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">إدارة المستخدمين</h2>
@@ -379,7 +361,6 @@ const handleAddUser = async (e: React.FormEvent) => {
         )}
       </div>
 
-      {/* Success/Error Messages */}
       {formSuccess && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
           <CheckCircle className="w-5 h-5 text-green-600" />
@@ -394,7 +375,6 @@ const handleAddUser = async (e: React.FormEvent) => {
         </div>
       )}
 
-      {/* Search */}
       <div className="bg-white rounded-xl shadow-md p-4">
         <div className="relative">
           <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -416,7 +396,6 @@ const handleAddUser = async (e: React.FormEvent) => {
         </div>
       </div>
 
-      {/* Users List */}
       {loading ? (
         <div className="text-center py-12">
           <div className="inline-block w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
@@ -532,7 +511,6 @@ const handleAddUser = async (e: React.FormEvent) => {
         </div>
       )}
 
-      {/* Add User Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">

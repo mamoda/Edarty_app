@@ -701,7 +701,6 @@ interface EnhancedStatistics extends Statistics {
   totalTeachers: number;
 }
 
-// دالة لتحديد الصلاحيات حسب الدور
 const getRoleBasedStats = (role: string | null) => {
   switch (role) {
     case 'admin':
@@ -745,7 +744,7 @@ const getRoleBasedStats = (role: string | null) => {
         showAllStats: false,
         showFinancialStats: false,
         showUserManagement: false,
-        showStudentManagement: true,  // عرض الطلاب فقط بدون تعديل
+        showStudentManagement: true,       
         showTeacherManagement: false,
         showFeeManagement: false,
         showExpenseManagement: false,
@@ -757,9 +756,9 @@ const getRoleBasedStats = (role: string | null) => {
         showAllStats: false,
         showFinancialStats: false,
         showUserManagement: false,
-        showStudentManagement: true,  // عرض ابنه فقط
+        showStudentManagement: true,     
         showTeacherManagement: false,
-        showFeeManagement: true,      // عرض رسوم ابنه فقط
+        showFeeManagement: true,          
         showExpenseManagement: false,
         showProfitReports: false,
         showFinancialReports: false,
@@ -1084,7 +1083,6 @@ export default function Dashboard() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex gap-6">
-            {/* Sidebar */}
             {showSidebar && (
               <aside className="w-64 flex-shrink-0">
                 <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-2 sticky top-20 border border-gray-100/50">
@@ -1197,7 +1195,6 @@ export default function Dashboard() {
                     </div>
                   ) : (
                     <>
-                      {/* الصف الأول من الإحصائيات */}
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {rolePermissions.showAllStats && (
                           <>
@@ -1208,7 +1205,6 @@ export default function Dashboard() {
                           </>
                         )}
                         
-                        {/* للمشرف - عرض إحصائيات الطلاب والمعلمين فقط */}
                         {rolePermissions.showStudentManagement && !rolePermissions.showAllStats && (
                           <>
                             <ModernStatCard title={t("totalStudents")} value={stats.totalStudents} icon={Users} color="from-blue-600 to-indigo-600" delay={0} subValue={`${formatNumber(stats.activeStudents, language)} ${t("active")}`} />
@@ -1216,7 +1212,6 @@ export default function Dashboard() {
                           </>
                         )}
                         
-                        {/* للمحاسب - عرض الإحصائيات المالية فقط */}
                         {rolePermissions.showFinancialStats && !rolePermissions.showAllStats && (
                           <>
                             <ModernStatCard title={t("netRevenue")} value={stats.netRevenue} icon={DollarSign} isCurrency color="from-emerald-600 to-teal-600" delay={0} />
@@ -1227,7 +1222,6 @@ export default function Dashboard() {
                         )}
                       </div>
 
-                      {/* الصف الثاني من الإحصائيات - فقط للإداري والمحاسب */}
                       {(rolePermissions.showAllStats || rolePermissions.showFinancialStats) && (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                           <ModernStatCard title={t("collectionRate")} value={stats.collectionRate} icon={Activity} isPercentage color="from-blue-600 to-indigo-600" delay={200} />
@@ -1237,7 +1231,6 @@ export default function Dashboard() {
                         </div>
                       )}
 
-                      {/* الصف الثالث - تفاصيل طرق الدفع - فقط للإداري والمحاسب */}
                       {(rolePermissions.showAllStats || rolePermissions.showFinancialStats) && (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                           <ModernStatCard title={t("cashPayments")} value={stats.cashPayments} icon={Wallet} isCurrency color="from-green-600 to-emerald-600" delay={400} />
@@ -1247,7 +1240,6 @@ export default function Dashboard() {
                         </div>
                       )}
 
-                      {/* الرسم البياني - فقط للإداري والمحاسب */}
                       {(rolePermissions.showAllStats || rolePermissions.showFinancialStats) && (
                         <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-6 border border-gray-100/50">
                           <div className="flex items-center justify-between mb-4">
@@ -1273,7 +1265,6 @@ export default function Dashboard() {
                     </>
                   )}
 
-                  {/* الإجراءات السريعة */}
                   <div>
                     <h3 className="text-sm font-medium text-gray-700 mb-3">{t("quickActions")}</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">

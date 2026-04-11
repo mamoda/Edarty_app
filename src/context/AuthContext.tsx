@@ -1,4 +1,3 @@
-// src/context/AuthContext.tsx
 import {
   createContext,
   useContext,
@@ -74,7 +73,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-// src/context/AuthContext.tsx - نسخة محسنة لجدول users المخصص
 
 const loadUserData = async (user: any) => {
   if (loadingUserRef.current) return;
@@ -85,7 +83,6 @@ const loadUserData = async (user: any) => {
 
     setAuthUser({ id: user.id, email: user.email });
 
-    // ✅ محاولة جلب أو إنشاء البروفايل
     let { data: profileData, error: profileError } = await supabase
       .from("users")
       .select("*")
@@ -96,7 +93,6 @@ const loadUserData = async (user: any) => {
       console.error("Profile error:", profileError);
     }
     
-    // إذا لم يكن هناك بروفايل، حاول إنشائه
     if (!profileData) {
       const { error: insertError } = await supabase
         .from("users")
@@ -112,7 +108,6 @@ const loadUserData = async (user: any) => {
       if (insertError) {
         console.error("Error creating user profile:", insertError);
       } else {
-        // أعد جلب البروفايل بعد الإنشاء
         const { data: newProfile } = await supabase
           .from("users")
           .select("*")
@@ -124,7 +119,6 @@ const loadUserData = async (user: any) => {
     
     setProfile(profileData || null);
 
-    // ✅ جلب الأدوار
     const { data: roles, error: rolesError } = await supabase
       .from("user_school_roles")
       .select("*")
@@ -141,18 +135,15 @@ const loadUserData = async (user: any) => {
     if (rolesData.length === 0) {
       console.log("🚀 Creating school via RPC...");
       
-      // ✅ استدعاء الدالة مع معالجة أفضل للأخطاء
       const { data: rpcResult, error: rpcError } = await supabase
         .rpc("create_school_for_user");
       
       if (rpcError) {
         console.error("RPC error:", rpcError);
-        // ✅ لا نخرج من الدالة، نحاول إنشاء مدرسة يدوياً
       } else {
         console.log("RPC result:", rpcResult);
       }
       
-      // إعادة جلب الأدوار بعد المحاولة
       const { data: newRoles } = await supabase
         .from("user_school_roles")
         .select("*")
@@ -160,17 +151,13 @@ const loadUserData = async (user: any) => {
       
       rolesData = newRoles || [];
       
-      // إذا still لا يوجد أدوار، أنشئ مدرسة يدوياً عبر API
       if (rolesData.length === 0) {
         console.log("Manual school creation fallback...");
-        // يمكن إضافة منطق بديل هنا
       }
     }
     
     setUserRoles(rolesData);
     
-    // ... باقي الكود كما هو    
-    // ✅ جلب بيانات المدارس
     if (rolesData.length > 0) {
       const schoolIds = [...new Set(rolesData.map(r => r.school_id).filter(Boolean))];
       
@@ -270,7 +257,6 @@ const loadUserData = async (user: any) => {
 
 
 
-// تعديل دالة hasPermission في AuthContext.tsx
 const hasPermission = (permission: string): boolean => {
   if (!currentRole) return false;
   if (currentRole === "admin") return true;
@@ -293,9 +279,6 @@ const hasPermission = (permission: string): boolean => {
     }
   };
 
-  // ============================================
-  // Auth Actions
-  // ============================================
   const value = {
     authUser,
     profile,
