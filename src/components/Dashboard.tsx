@@ -415,7 +415,6 @@ const ModernHeader: React.FC<{
             </nav>
           </div>
 
-          {/* Search Bar */}
           <div className="hidden md:block flex-1 max-w-md mx-8">
             <div className="relative group">
               <input
@@ -450,7 +449,6 @@ const ModernHeader: React.FC<{
               {isDarkMode ? <Sun className="w-4 h-4 text-gray-600" /> : <Moon className="w-4 h-4 text-gray-600" />}
             </button>
 
-            {/* Notifications */}
             <div className="relative">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
@@ -490,7 +488,6 @@ const ModernHeader: React.FC<{
               )}
             </div>
 
-            {/* Upgrade Button */}
             {subscriptionPlan !== "enterprise" && (
               <button
                 onClick={onUpgrade}
@@ -510,7 +507,6 @@ const ModernHeader: React.FC<{
               </button>
             )}
 
-            {/* User Menu */}
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
@@ -705,6 +701,84 @@ interface EnhancedStatistics extends Statistics {
   totalTeachers: number;
 }
 
+// دالة لتحديد الصلاحيات حسب الدور
+const getRoleBasedStats = (role: string | null) => {
+  switch (role) {
+    case 'admin':
+      return {
+        showAllStats: true,
+        showFinancialStats: true,
+        showUserManagement: true,
+        showStudentManagement: true,
+        showTeacherManagement: true,
+        showFeeManagement: true,
+        showExpenseManagement: true,
+        showProfitReports: true,
+        showFinancialReports: true,
+      };
+    case 'accountant':
+      return {
+        showAllStats: true,
+        showFinancialStats: true,
+        showUserManagement: false,
+        showStudentManagement: false,
+        showTeacherManagement: false,
+        showFeeManagement: true,
+        showExpenseManagement: true,
+        showProfitReports: true,
+        showFinancialReports: true,
+      };
+    case 'moderator':
+      return {
+        showAllStats: false,
+        showFinancialStats: false,
+        showUserManagement: true,
+        showStudentManagement: true,
+        showTeacherManagement: true,
+        showFeeManagement: false,
+        showExpenseManagement: false,
+        showProfitReports: false,
+        showFinancialReports: false,
+      };
+    case 'teacher':
+      return {
+        showAllStats: false,
+        showFinancialStats: false,
+        showUserManagement: false,
+        showStudentManagement: true,  // عرض الطلاب فقط بدون تعديل
+        showTeacherManagement: false,
+        showFeeManagement: false,
+        showExpenseManagement: false,
+        showProfitReports: false,
+        showFinancialReports: false,
+      };
+    case 'parent':
+      return {
+        showAllStats: false,
+        showFinancialStats: false,
+        showUserManagement: false,
+        showStudentManagement: true,  // عرض ابنه فقط
+        showTeacherManagement: false,
+        showFeeManagement: true,      // عرض رسوم ابنه فقط
+        showExpenseManagement: false,
+        showProfitReports: false,
+        showFinancialReports: false,
+      };
+    default:
+      return {
+        showAllStats: false,
+        showFinancialStats: false,
+        showUserManagement: false,
+        showStudentManagement: false,
+        showTeacherManagement: false,
+        showFeeManagement: false,
+        showExpenseManagement: false,
+        showProfitReports: false,
+        showFinancialReports: false,
+      };
+  }
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { authUser: user, signOut, currentSchool, currentRole, subscriptionPlan, subscriptionExpiresAt } = useAuth();
@@ -732,6 +806,15 @@ export default function Dashboard() {
   const isLoadingRef = useRef(false);
   const hasInitialLoadedRef = useRef(false);
 
+  // صلاحيات المستخدم
+  const rolePermissions = getRoleBasedStats(currentRole);
+  const canManageUsers = currentRole === "admin" || currentRole === "moderator";
+  const isAdmin = currentRole === "admin";
+  const isAccountant = currentRole === "accountant";
+  const isModerator = currentRole === "moderator";
+  const isTeacher = currentRole === "teacher";
+  const isParent = currentRole === "parent";
+
   const backgrounds = [
     { image: backgroundPattern, overlay: "from-blue-50/30 to-indigo-50/30" },
     { image: backgroundWave, overlay: "from-emerald-50/30 to-teal-50/30" },
@@ -743,15 +826,14 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Keyboard shortcuts
   useKeyboardShortcuts({
     d: () => setCurrentView("dashboard"),
-    s: () => setCurrentView("students"),
-    t: () => setCurrentView("teachers"),
-    f: () => setCurrentView("fees"),
-    e: () => setCurrentView("expenses"),
-    r: () => setCurrentView("reports"),
-    u: () => setCurrentView("users"),
+    s: () => rolePermissions.showStudentManagement && setCurrentView("students"),
+    t: () => rolePermissions.showTeacherManagement && setCurrentView("teachers"),
+    f: () => rolePermissions.showFeeManagement && setCurrentView("fees"),
+    e: () => rolePermissions.showExpenseManagement && setCurrentView("expenses"),
+    r: () => rolePermissions.showProfitReports && setCurrentView("reports"),
+    u: () => canManageUsers && setCurrentView("users"),
     "/": () => setIsChatOpen(true),
   });
 
@@ -891,7 +973,6 @@ export default function Dashboard() {
   const [expensesTrend] = useState(calculateTrend());
   const [profitTrend] = useState(calculateTrend());
 
-  const canManageUsers = currentRole === "admin";
   const statsAreLoading = loading && !hasLoadedStatsRef.current;
 
   return (
@@ -943,7 +1024,14 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <span className="text-sm font-semibold text-gray-900">{schoolName}</span>
-                    {currentRole && <span className="text-xs text-gray-500 mr-2">({currentRole === "admin" ? "مدير" : currentRole === "accountant" ? "محاسب" : "مشرف"})</span>}
+                    {currentRole && (
+                      <span className="text-xs text-gray-500 mr-2">
+                        ({currentRole === "admin" ? "مدير" : 
+                          currentRole === "accountant" ? "محاسب" : 
+                          currentRole === "moderator" ? "مشرف" :
+                          currentRole === "teacher" ? "معلم" : "ولي أمر"})
+                      </span>
+                    )}
                   </div>
                 </div>
                 <span className="text-gray-300 text-lg leading-none">•</span>
@@ -959,19 +1047,23 @@ export default function Dashboard() {
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">نسبة التحصيل</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-bold text-green-600">{stats.collectionRate.toFixed(1)}%</span>
-                    <div className="w-12 h-1 bg-gray-200 rounded-full overflow-hidden">
-                      <div className="h-full bg-green-500 rounded-full" style={{ width: `${stats.collectionRate}%` }} />
+                {(rolePermissions.showAllStats || rolePermissions.showFinancialStats) && (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500">نسبة التحصيل</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-bold text-green-600">{stats.collectionRate.toFixed(1)}%</span>
+                        <div className="w-12 h-1 bg-gray-200 rounded-full overflow-hidden">
+                          <div className="h-full bg-green-500 rounded-full" style={{ width: `${stats.collectionRate}%` }} />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 rounded-full border border-green-100">
-                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                  <span className="text-[10px] font-medium text-green-700">مباشر</span>
-                </div>
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 rounded-full border border-green-100">
+                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                      <span className="text-[10px] font-medium text-green-700">مباشر</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -997,12 +1089,30 @@ export default function Dashboard() {
               <aside className="w-64 flex-shrink-0">
                 <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-2 sticky top-20 border border-gray-100/50">
                   <ModernMenuItem label={t("dashboard")} icon={Home} view="dashboard" currentView={currentView} onClick={() => handleViewChange("dashboard")} shortcut="⌘D" />
-                  <ModernMenuItem label={t("students")} icon={GraduationCap} view="students" count={stats.activeStudents} currentView={currentView} onClick={() => handleViewChange("students")} shortcut="⌘S" />
-                  <ModernMenuItem label={t("teachers")} icon={Briefcase} view="teachers" currentView={currentView} onClick={() => handleViewChange("teachers")} shortcut="⌘T" />
-                  <ModernMenuItem label={t("fees")} icon={Wallet} view="fees" currentView={currentView} onClick={() => handleViewChange("fees")} shortcut="⌘F" />
-                  <ModernMenuItem label={t("expenses")} icon={TrendingDown} view="expenses" currentView={currentView} onClick={() => handleViewChange("expenses")} shortcut="⌘E" />
-                  <ModernMenuItem label={t("profit")} icon={TrendingUp} view="reports" currentView={currentView} onClick={() => handleViewChange("reports")} shortcut="⌘R" />
-                  <ModernMenuItem label={t("financial")} icon={LineChart} view="financial" currentView={currentView} onClick={() => handleViewChange("financial")} />
+                  
+                  {rolePermissions.showStudentManagement && (
+                    <ModernMenuItem label={t("students")} icon={GraduationCap} view="students" count={stats.activeStudents} currentView={currentView} onClick={() => handleViewChange("students")} shortcut="⌘S" />
+                  )}
+                  
+                  {rolePermissions.showTeacherManagement && (
+                    <ModernMenuItem label={t("teachers")} icon={Briefcase} view="teachers" currentView={currentView} onClick={() => handleViewChange("teachers")} shortcut="⌘T" />
+                  )}
+                  
+                  {rolePermissions.showFeeManagement && (
+                    <ModernMenuItem label={t("fees")} icon={Wallet} view="fees" currentView={currentView} onClick={() => handleViewChange("fees")} shortcut="⌘F" />
+                  )}
+                  
+                  {rolePermissions.showExpenseManagement && (
+                    <ModernMenuItem label={t("expenses")} icon={TrendingDown} view="expenses" currentView={currentView} onClick={() => handleViewChange("expenses")} shortcut="⌘E" />
+                  )}
+                  
+                  {rolePermissions.showProfitReports && (
+                    <ModernMenuItem label={t("profit")} icon={TrendingUp} view="reports" currentView={currentView} onClick={() => handleViewChange("reports")} shortcut="⌘R" />
+                  )}
+                  
+                  {rolePermissions.showFinancialReports && (
+                    <ModernMenuItem label={t("financial")} icon={LineChart} view="financial" currentView={currentView} onClick={() => handleViewChange("financial")} />
+                  )}
 
                   <div className="h-px bg-gray-200 my-2" />
 
@@ -1052,22 +1162,24 @@ export default function Dashboard() {
                       >
                         <RefreshCw className={`w-4 h-4 text-gray-600 ${isRefreshing ? "animate-spin" : ""}`} />
                       </button>
-                      <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xl rounded-lg p-1 border border-gray-100/50">
-                        {[t("day"), t("week"), t("month"), t("year")].map((period, index) => {
-                          const periods = ["day", "week", "month", "year"];
-                          return (
-                            <button
-                              key={periods[index]}
-                              onClick={() => setSelectedPeriod(periods[index])}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
-                                selectedPeriod === periods[index] ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm" : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80"
-                              }`}
-                            >
-                              {period}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      {(rolePermissions.showAllStats || rolePermissions.showFinancialStats) && (
+                        <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xl rounded-lg p-1 border border-gray-100/50">
+                          {[t("day"), t("week"), t("month"), t("year")].map((period, index) => {
+                            const periods = ["day", "week", "month", "year"];
+                            return (
+                              <button
+                                key={periods[index]}
+                                onClick={() => setSelectedPeriod(periods[index])}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                                  selectedPeriod === periods[index] ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm" : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80"
+                                }`}
+                              >
+                                {period}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1081,62 +1193,135 @@ export default function Dashboard() {
 
                   {statsAreLoading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {[...Array(8)].map((_, i) => <StatCardSkeleton key={i} />)}
+                      {[...Array(rolePermissions.showAllStats ? 8 : 4)].map((_, i) => <StatCardSkeleton key={i} />)}
                     </div>
                   ) : (
                     <>
+                      {/* الصف الأول من الإحصائيات */}
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <ModernStatCard title={t("totalStudents")} value={stats.totalStudents} icon={Users} trend={studentsTrend.trend} trendValue={studentsTrend.value} color="from-blue-600 to-indigo-600" delay={0} subValue={`${formatNumber(stats.activeStudents, language)} ${t("active")}`} />
-                        <ModernStatCard title={t("netRevenue")} value={stats.netRevenue} icon={DollarSign} isCurrency trend={revenueTrend.trend} trendValue={revenueTrend.value} color="from-emerald-600 to-teal-600" delay={50} subValue={t("afterRefunds")} />
-                        <ModernStatCard title={t("totalExpenses")} value={stats.totalExpenses} icon={TrendingDown} isCurrency trend={expensesTrend.trend} trendValue={expensesTrend.value} color="from-red-600 to-rose-600" delay={100} />
-                        <ModernStatCard title={t("netProfit")} value={stats.netProfit} icon={TrendingUp} isCurrency trend={profitTrend.trend} trendValue={profitTrend.value} color="from-purple-600 to-pink-600" delay={150} />
+                        {rolePermissions.showAllStats && (
+                          <>
+                            <ModernStatCard title={t("totalStudents")} value={stats.totalStudents} icon={Users} trend={studentsTrend.trend} trendValue={studentsTrend.value} color="from-blue-600 to-indigo-600" delay={0} subValue={`${formatNumber(stats.activeStudents, language)} ${t("active")}`} />
+                            <ModernStatCard title={t("netRevenue")} value={stats.netRevenue} icon={DollarSign} isCurrency trend={revenueTrend.trend} trendValue={revenueTrend.value} color="from-emerald-600 to-teal-600" delay={50} subValue={t("afterRefunds")} />
+                            <ModernStatCard title={t("totalExpenses")} value={stats.totalExpenses} icon={TrendingDown} isCurrency trend={expensesTrend.trend} trendValue={expensesTrend.value} color="from-red-600 to-rose-600" delay={100} />
+                            <ModernStatCard title={t("netProfit")} value={stats.netProfit} icon={TrendingUp} isCurrency trend={profitTrend.trend} trendValue={profitTrend.value} color="from-purple-600 to-pink-600" delay={150} />
+                          </>
+                        )}
+                        
+                        {/* للمشرف - عرض إحصائيات الطلاب والمعلمين فقط */}
+                        {rolePermissions.showStudentManagement && !rolePermissions.showAllStats && (
+                          <>
+                            <ModernStatCard title={t("totalStudents")} value={stats.totalStudents} icon={Users} color="from-blue-600 to-indigo-600" delay={0} subValue={`${formatNumber(stats.activeStudents, language)} ${t("active")}`} />
+                            <ModernStatCard title={t("totalTeachers")} value={stats.totalTeachers} icon={Briefcase} color="from-purple-600 to-pink-600" delay={50} subValue={`${formatNumber(stats.activeTeachers, language)} ${t("active")}`} />
+                          </>
+                        )}
+                        
+                        {/* للمحاسب - عرض الإحصائيات المالية فقط */}
+                        {rolePermissions.showFinancialStats && !rolePermissions.showAllStats && (
+                          <>
+                            <ModernStatCard title={t("netRevenue")} value={stats.netRevenue} icon={DollarSign} isCurrency color="from-emerald-600 to-teal-600" delay={0} />
+                            <ModernStatCard title={t("totalExpenses")} value={stats.totalExpenses} icon={TrendingDown} isCurrency color="from-red-600 to-rose-600" delay={50} />
+                            <ModernStatCard title={t("netProfit")} value={stats.netProfit} icon={TrendingUp} isCurrency color="from-purple-600 to-pink-600" delay={100} />
+                            <ModernStatCard title={t("collectionRate")} value={stats.collectionRate} icon={Activity} isPercentage color="from-blue-600 to-indigo-600" delay={150} />
+                          </>
+                        )}
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <ModernStatCard title={t("collectionRate")} value={stats.collectionRate} icon={Activity} isPercentage color="from-blue-600 to-indigo-600" delay={200} />
-                        <ModernStatCard title={t("todayCollections")} value={stats.todayCollections} icon={Wallet} isCurrency color="from-amber-500 to-orange-600" delay={250} />
-                        <ModernStatCard title={t("paidStudents")} value={stats.paidStudents} icon={Users} color="from-green-600 to-emerald-600" delay={300} />
-                        <ModernStatCard title={t("unpaidStudents")} value={stats.unpaidStudents} icon={Users} color="from-red-600 to-rose-600" delay={350} />
-                      </div>
+                      {/* الصف الثاني من الإحصائيات - فقط للإداري والمحاسب */}
+                      {(rolePermissions.showAllStats || rolePermissions.showFinancialStats) && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                          <ModernStatCard title={t("collectionRate")} value={stats.collectionRate} icon={Activity} isPercentage color="from-blue-600 to-indigo-600" delay={200} />
+                          <ModernStatCard title={t("todayCollections")} value={stats.todayCollections} icon={Wallet} isCurrency color="from-amber-500 to-orange-600" delay={250} />
+                          <ModernStatCard title={t("paidStudents")} value={stats.paidStudents} icon={Users} color="from-green-600 to-emerald-600" delay={300} />
+                          <ModernStatCard title={t("unpaidStudents")} value={stats.unpaidStudents} icon={Users} color="from-red-600 to-rose-600" delay={350} />
+                        </div>
+                      )}
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <ModernStatCard title={t("cashPayments")} value={stats.cashPayments} icon={Wallet} isCurrency color="from-green-600 to-emerald-600" delay={400} />
-                        <ModernStatCard title={t("cardPayments")} value={stats.cardPayments} icon={CreditCard} isCurrency color="from-blue-600 to-indigo-600" delay={450} />
-                        <ModernStatCard title={t("bankTransferPayments")} value={stats.bankTransferPayments} icon={Landmark} isCurrency color="from-purple-600 to-pink-600" delay={500} />
-                        <ModernStatCard title={t("checkPayments")} value={stats.checkPayments} icon={FileText} isCurrency color="from-amber-500 to-orange-600" delay={550} />
-                      </div>
+                      {/* الصف الثالث - تفاصيل طرق الدفع - فقط للإداري والمحاسب */}
+                      {(rolePermissions.showAllStats || rolePermissions.showFinancialStats) && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                          <ModernStatCard title={t("cashPayments")} value={stats.cashPayments} icon={Wallet} isCurrency color="from-green-600 to-emerald-600" delay={400} />
+                          <ModernStatCard title={t("cardPayments")} value={stats.cardPayments} icon={CreditCard} isCurrency color="from-blue-600 to-indigo-600" delay={450} />
+                          <ModernStatCard title={t("bankTransferPayments")} value={stats.bankTransferPayments} icon={Landmark} isCurrency color="from-purple-600 to-pink-600" delay={500} />
+                          <ModernStatCard title={t("checkPayments")} value={stats.checkPayments} icon={FileText} isCurrency color="from-amber-500 to-orange-600" delay={550} />
+                        </div>
+                      )}
+
+                      {/* الرسم البياني - فقط للإداري والمحاسب */}
+                      {(rolePermissions.showAllStats || rolePermissions.showFinancialStats) && (
+                        <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-6 border border-gray-100/50">
+                          <div className="flex items-center justify-between mb-4">
+                            <div>
+                              <h3 className="font-semibold text-gray-900">{t("revenueOverview")}</h3>
+                              <p className="text-xs text-gray-500 mt-1">{t("last7Days")}</p>
+                            </div>
+                            <button className="p-2 hover:bg-gray-100/80 rounded-lg transition-colors duration-200" aria-label="Expand chart">
+                              <Maximize2 className="w-4 h-4 text-gray-500" />
+                            </button>
+                          </div>
+
+                          <div className="h-32 flex items-end gap-2">
+                            {revenueData.map((value, i) => (
+                              <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
+                                <div className="w-full bg-gradient-to-t from-blue-600 to-indigo-600 rounded-t-lg transition-all duration-500 hover:from-blue-500 hover:to-indigo-500 group-hover:scale-y-110 origin-bottom" style={{ height: `${value}%` }} />
+                                <span className="text-xs text-gray-500">{days[i]}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </>
                   )}
 
-                  <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-6 border border-gray-100/50">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{t("revenueOverview")}</h3>
-                        <p className="text-xs text-gray-500 mt-1">{t("last7Days")}</p>
-                      </div>
-                      <button className="p-2 hover:bg-gray-100/80 rounded-lg transition-colors duration-200" aria-label="Expand chart">
-                        <Maximize2 className="w-4 h-4 text-gray-500" />
-                      </button>
-                    </div>
-
-                    <div className="h-32 flex items-end gap-2">
-                      {revenueData.map((value, i) => (
-                        <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
-                          <div className="w-full bg-gradient-to-t from-blue-600 to-indigo-600 rounded-t-lg transition-all duration-500 hover:from-blue-500 hover:to-indigo-500 group-hover:scale-y-110 origin-bottom" style={{ height: `${value}%` }} />
-                          <span className="text-xs text-gray-500">{days[i]}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
+                  {/* الإجراءات السريعة */}
                   <div>
                     <h3 className="text-sm font-medium text-gray-700 mb-3">{t("quickActions")}</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                      <QuickActionCard title={t("addStudent")} description={t("addStudentDesc")} icon={UserPlus} color="from-blue-600 to-indigo-600" onClick={() => handleViewChange("students")} />
-                      <QuickActionCard title={t("recordFee")} description={t("recordFeeDesc")} icon={Wallet} color="from-emerald-600 to-teal-600" onClick={() => handleViewChange("fees")} />
-                      <QuickActionCard title={t("addExpense")} description={t("addExpenseDesc")} icon={TrendingDown} color="from-red-600 to-rose-600" onClick={() => handleViewChange("expenses")} />
-                      <QuickActionCard title={t("viewReports")} description={t("viewReportsDesc")} icon={BarChart3} color="from-purple-600 to-pink-600" onClick={() => handleViewChange("reports")} />
-                      <QuickActionCard title={t("processRefund")} description={t("processRefundDesc")} icon={X} color="from-orange-600 to-red-600" onClick={() => handleViewChange("fees")} />
+                      {rolePermissions.showStudentManagement && (
+                        <QuickActionCard 
+                          title={isParent ? "عرض أبنائي" : t("addStudent")} 
+                          description={isParent ? "متابعة بيانات أبنائك" : t("addStudentDesc")} 
+                          icon={UserPlus} 
+                          color="from-blue-600 to-indigo-600" 
+                          onClick={() => handleViewChange("students")} 
+                        />
+                      )}
+                      {rolePermissions.showFeeManagement && (
+                        <QuickActionCard 
+                          title={isParent ? "عرض الرسوم" : t("recordFee")} 
+                          description={isParent ? "متابعة رسوم الأبناء" : t("recordFeeDesc")} 
+                          icon={Wallet} 
+                          color="from-emerald-600 to-teal-600" 
+                          onClick={() => handleViewChange("fees")} 
+                        />
+                      )}
+                      {rolePermissions.showExpenseManagement && (
+                        <QuickActionCard 
+                          title={t("addExpense")} 
+                          description={t("addExpenseDesc")} 
+                          icon={TrendingDown} 
+                          color="from-red-600 to-rose-600" 
+                          onClick={() => handleViewChange("expenses")} 
+                        />
+                      )}
+                      {rolePermissions.showProfitReports && (
+                        <QuickActionCard 
+                          title={t("viewReports")} 
+                          description={t("viewReportsDesc")} 
+                          icon={BarChart3} 
+                          color="from-purple-600 to-pink-600" 
+                          onClick={() => handleViewChange("reports")} 
+                        />
+                      )}
+                      {rolePermissions.showFeeManagement && (
+                        <QuickActionCard 
+                          title={t("processRefund")} 
+                          description={t("processRefundDesc")} 
+                          icon={X} 
+                          color="from-orange-600 to-red-600" 
+                          onClick={() => handleViewChange("fees")} 
+                        />
+                      )}
                     </div>
                   </div>
                 </div>
