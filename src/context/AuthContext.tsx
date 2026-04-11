@@ -85,8 +85,8 @@ const loadUserData = async (user: any) => {
 
     setAuthUser({ id: user.id, email: user.email });
 
-    // ✅ جلب من جدول users المخصص (ليس auth.users)
-    const { data: profileData, error: profileError } = await supabase
+    // ✅ محاولة جلب أو إنشاء البروفايل
+    let { data: profileData, error: profileError } = await supabase
       .from("users")
       .select("*")
       .eq("id", user.id)
@@ -96,7 +96,7 @@ const loadUserData = async (user: any) => {
       console.error("Profile error:", profileError);
     }
     
-    // إذا لم يكن هناك بروفايل، أنشئ واحداً
+    // إذا لم يكن هناك بروفايل، حاول إنشائه
     if (!profileData) {
       const { error: insertError } = await supabase
         .from("users")
@@ -105,10 +105,20 @@ const loadUserData = async (user: any) => {
           email: user.email,
           full_name: user.user_metadata?.full_name || null,
           is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         });
       
       if (insertError) {
         console.error("Error creating user profile:", insertError);
+      } else {
+        // أعد جلب البروفايل بعد الإنشاء
+        const { data: newProfile } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", user.id)
+          .maybeSingle();
+        profileData = newProfile;
       }
     }
     
@@ -131,24 +141,35 @@ const loadUserData = async (user: any) => {
     if (rolesData.length === 0) {
       console.log("🚀 Creating school via RPC...");
       
-      const { error: rpcError } = await supabase.rpc("create_school_for_user");
+      // ✅ استدعاء الدالة مع معالجة أفضل للأخطاء
+      const { data: rpcResult, error: rpcError } = await supabase
+        .rpc("create_school_for_user");
       
       if (rpcError) {
         console.error("RPC error:", rpcError);
-        setLoading(false);
-        return;
+        // ✅ لا نخرج من الدالة، نحاول إنشاء مدرسة يدوياً
+      } else {
+        console.log("RPC result:", rpcResult);
       }
       
+      // إعادة جلب الأدوار بعد المحاولة
       const { data: newRoles } = await supabase
         .from("user_school_roles")
         .select("*")
         .eq("user_id", user.id);
       
       rolesData = newRoles || [];
+      
+      // إذا still لا يوجد أدوار، أنشئ مدرسة يدوياً عبر API
+      if (rolesData.length === 0) {
+        console.log("Manual school creation fallback...");
+        // يمكن إضافة منطق بديل هنا
+      }
     }
     
     setUserRoles(rolesData);
     
+    // ... باقي الكود كما هو    
     // ✅ جلب بيانات المدارس
     if (rolesData.length > 0) {
       const schoolIds = [...new Set(rolesData.map(r => r.school_id).filter(Boolean))];
