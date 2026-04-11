@@ -222,7 +222,7 @@ export default function Login() {
         <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/50">
           <div className="flex flex-col items-center mb-8">
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full blur-2xl opacity-30 animate-pulse" />
+              <div className="absolute inset-0  rounded-full blur-2xl opacity-30 animate-pulse" />
               <img src={logo} alt="شعار التطبيق" className="h-28 w-auto mb-3 relative" />
             </div>
             <p className="text-gray-600 text-center text-sm mt-2 font-medium">
