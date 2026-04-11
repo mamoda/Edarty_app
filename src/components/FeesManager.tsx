@@ -1,4 +1,3 @@
-
 // src/components/FeesManager.tsx
 import { useState, useEffect } from "react";
 import {
@@ -34,6 +33,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { Fee, Student } from "../types/database";
 import { useSchoolData } from "../hooks/useSchoolData";
+import { notifyFeeAdded } from "../lib/notifications";
 
 
 interface FeesManagerProps {
@@ -185,73 +185,70 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
     }
   }, [selectedStudent, fees]);
 
-// src/components/FeesManager.tsx - استبدل دالة loadData بهذه
-
-// src/components/FeesManager.tsx - استبدل دالة loadData فقط
-
-const loadData = async () => {
-  if (!currentSchool) {
-    console.log("⏳ No school selected, skipping load");
-    setLoading(false);
-    return;
-  }
-
-  setLoading(true);
-  console.log("📊 Loading fees for school:", currentSchool.id);
-  
-  try {
-    // ✅ جلب الرسوم أولاً
-    const { data: feesData, error: feesError } = await supabase
-      .from("fees")
-      .select("*")
-      .eq("school_id", currentSchool.id)
-      .order("payment_date", { ascending: false });
-
-    if (feesError) {
-      console.error("Fees error:", feesError);
-      throw feesError;
+  const loadData = async () => {
+    if (!currentSchool) {
+      console.log("⏳ No school selected, skipping load");
+      setLoading(false);
+      return;
     }
-    console.log("✅ Fees loaded:", feesData?.length || 0);
 
-    // ✅ جلب الطلاب
-    const { data: studentsData, error: studentsError } = await supabase
-      .from("students")
-      .select("*")
-      .eq("school_id", currentSchool.id)
-      .order("full_name");
-
-    if (studentsError) {
-      console.error("Students error:", studentsError);
-      throw studentsError;
-    }
-    console.log("✅ Students loaded:", studentsData?.length || 0);
-
-    // ✅ ربط البيانات
-    const studentsMap = new Map();
-    studentsData?.forEach(student => {
-      studentsMap.set(student.id, student);
-    });
-
-    const feesWithStudents = (feesData || []).map(fee => ({
-      ...fee,
-      student: studentsMap.get(fee.student_id) || null
-    }));
-
-    setFees(feesWithStudents);
-    setStudents(studentsData || []);
-
-    // ✅ حساب الإحصائيات
-    calculateStatistics(feesWithStudents, studentsData || []);
-    calculatePaymentMethodStats();
+    setLoading(true);
+    console.log("📊 Loading fees for school:", currentSchool.id);
     
-    console.log("✅ FeesManager ready");
-  } catch (error) {
-    console.error("❌ Error loading fees data:", error);
-  } finally {
-    setLoading(false);
-  }
-};
-const calculateStatistics = (feesData: Fee[], studentsData: Student[]) => {
+    try {
+      // ✅ جلب الرسوم أولاً
+      const { data: feesData, error: feesError } = await supabase
+        .from("fees")
+        .select("*")
+        .eq("school_id", currentSchool.id)
+        .order("payment_date", { ascending: false });
+
+      if (feesError) {
+        console.error("Fees error:", feesError);
+        throw feesError;
+      }
+      console.log("✅ Fees loaded:", feesData?.length || 0);
+
+      // ✅ جلب الطلاب
+      const { data: studentsData, error: studentsError } = await supabase
+        .from("students")
+        .select("*")
+        .eq("school_id", currentSchool.id)
+        .order("full_name");
+
+      if (studentsError) {
+        console.error("Students error:", studentsError);
+        throw studentsError;
+      }
+      console.log("✅ Students loaded:", studentsData?.length || 0);
+
+      // ✅ ربط البيانات
+      const studentsMap = new Map();
+      studentsData?.forEach(student => {
+        studentsMap.set(student.id, student);
+      });
+
+      const feesWithStudents = (feesData || []).map(fee => ({
+        ...fee,
+        student: studentsMap.get(fee.student_id) || null
+      }));
+
+      setFees(feesWithStudents);
+      setStudents(studentsData || []);
+
+      // ✅ حساب الإحصائيات
+      calculateStatistics(feesWithStudents, studentsData || []);
+      calculatePaymentMethodStats();
+      
+      console.log("✅ FeesManager ready");
+    } catch (error) {
+      console.error("❌ Error loading fees data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const calculateStatistics = (feesData: Fee[], studentsData: Student[]) => {
     // إجمالي التحصيل = المدفوعات - الاستردادات
     const total_payments = feesData
       .filter(f => f.amount > 0)
@@ -592,7 +589,7 @@ const calculateStatistics = (feesData: Fee[], studentsData: Student[]) => {
         academic_year: formData.academic_year,
         notes: JSON.stringify(notesData),
         user_id: authUser.id,
-        school_id: currentSchool.id, // ✅ إضافة school_id
+        school_id: currentSchool.id,
       };
 
       if (editingFee) {
@@ -600,12 +597,18 @@ const calculateStatistics = (feesData: Fee[], studentsData: Student[]) => {
           .from("fees")
           .update(feeData)
           .eq("id", editingFee.id)
-          .eq("school_id", currentSchool.id); // ✅ التأكد من المدرسة
+          .eq("school_id", currentSchool.id);
 
         if (error) throw error;
       } else {
         const { error } = await supabase.from("fees").insert([feeData]);
         if (error) throw error;
+        
+        // ✅ إرسال إشعار للأدمن عند إضافة دفعة جديدة
+        const student = students.find(s => s.id === formData.student_id);
+        if (student && formData.transaction_type === "deposit") {
+          await notifyFeeAdded(currentSchool.id, student.full_name, finalAmount);
+        }
       }
 
       resetForm();
@@ -758,7 +761,7 @@ const calculateStatistics = (feesData: Fee[], studentsData: Student[]) => {
         .from("fees")
         .delete()
         .eq("id", id)
-        .eq("school_id", currentSchool?.id); // ✅ التأكد من المدرسة
+        .eq("school_id", currentSchool?.id);
 
       if (error) throw error;
       loadData();

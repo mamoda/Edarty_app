@@ -4,6 +4,8 @@ import { TrendingDown, Plus, Edit2, Trash2, Search, X, Calendar } from "lucide-r
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { Expense } from "../types/database";
+import { notifyExpenseAdded } from "../lib/notifications";
+
 
 interface ExpensesManagerProps {
   onUpdate: () => void;
@@ -111,12 +113,17 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
           .eq("school_id", currentSchool.id);
 
         if (error) throw error;
+        alert("تم تحديث المصروف بنجاح");
       } else {
         const { error } = await supabase
           .from("expenses")
           .insert([expenseData]);
 
         if (error) throw error;
+        alert("تم إضافة المصروف بنجاح");
+        
+        // ✅ إرسال إشعار للأدمن عند إضافة مصروف جديد
+        await notifyExpenseAdded(currentSchool.id, formData.category, parseFloat(formData.amount));
       }
 
       resetForm();
@@ -146,6 +153,7 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
       if (error) throw error;
       await loadExpenses();
       onUpdate();
+      alert("تم حذف المصروف بنجاح");
     } catch (error: any) {
       console.error("Error deleting expense:", error);
       alert(error?.message || "حدث خطأ أثناء حذف المصروف");
