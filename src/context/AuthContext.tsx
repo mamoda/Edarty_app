@@ -74,78 +74,122 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const loadUserData = async (user: any) => {
-    if (loadingUserRef.current) return;
-    loadingUserRef.current = true;
+// src/context/AuthContext.tsx - الجزء المعدل فقط
 
-    try {
-      if (!user) return;
+const loadUserData = async (user: any) => {
+  if (loadingUserRef.current) return;
+  loadingUserRef.current = true;
 
-      setAuthUser({ id: user.id, email: user.email });
+  try {
+    if (!user) return;
 
-      const { data: profileData } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle();
+    setAuthUser({ id: user.id, email: user.email });
 
-      setProfile(profileData || null);
+    const { data: profileData } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", user.id)
+      .maybeSingle();
 
-      // roles
-      const { data: roles } = await supabase
+    setProfile(profileData || null);
+
+    // ✅ التعديل هنا: جلب الأدوار بدون JOIN أولاً
+    const { data: roles, error: rolesError } = await supabase
+      .from("user_school_roles")
+      .select("*")  // بدون schools(*) لتجنب خطأ 500
+      .eq("user_id", user.id);
+
+    if (rolesError) {
+      console.error("Roles fetch error:", rolesError);
+      setLoading(false);
+      return;
+    }
+
+    let rolesData = roles || [];
+    
+    if (rolesData.length === 0) {
+      console.log("🚀 Creating school via RPC...");
+
+      const { error: rpcError } = await supabase.rpc("create_school_for_user");
+
+      if (rpcError) {
+        console.error("RPC error:", rpcError);
+        setLoading(false);
+        return;
+      }
+
+      // جلب الأدوار مرة أخرى بعد إنشاء المدرسة
+      const { data: newRoles, error: newRolesError } = await supabase
         .from("user_school_roles")
-        .select("*, schools(*)")
+        .select("*")
         .eq("user_id", user.id);
 
-      let rolesData = roles || [];
-      if (rolesData.length === 0) {
-        console.log("🚀 Creating school via RPC...");
-
-        const { error } = await supabase.rpc("create_school_for_user");
-
-        if (error) {
-          console.error("RPC error:", error);
-        }
-
-        const { data: newRoles } = await supabase
-          .from("user_school_roles")
-          .select("*, schools(*)")
-          .eq("user_id", user.id);
-
-        rolesData = newRoles || [];
+      if (newRolesError) {
+        console.error("New roles fetch error:", newRolesError);
       }
-      setUserRoles(rolesData);
-
-      const savedSchoolId = localStorage.getItem(`current_school_${user.id}`);
-      const selectedRole =
-        rolesData.find((r) => r.school_id === savedSchoolId) ||
-        rolesData.find((r: any) => r.is_primary) ||
-        rolesData[0];
-
-      if (selectedRole?.school_id) {
-        const schoolId = selectedRole.school_id;
-
-        setCurrentSchoolId(schoolId);
-        localStorage.setItem(`current_school_${user.id}`, schoolId);
-
-        if (selectedRole.schools) {
-          setCurrentSchool(selectedRole.schools);
-          setCurrentRole(selectedRole.role);
-          setSubscriptionPlan(selectedRole.schools.subscription_plan);
-          setSubscriptionExpiresAt(selectedRole.schools.subscription_expires_at);
-          setSchoolFeatures(selectedRole.schools.features || []);
-        } else {
-          await loadCurrentSchoolData(schoolId);
-        }
-      }
-    } catch (error) {
-      console.error("loadUserData error:", error);
-    } finally {
-      loadingUserRef.current = false;
-      setLoading(false);
+      
+      rolesData = newRoles || [];
     }
-  };
 
+    // ✅ جلب بيانات المدارس بشكل منفصل إذا وجدت أدوار
+    if (rolesData.length > 0) {
+      const schoolIds = [...new Set(rolesData.map(r => r.school_id).filter(Boolean))];
+      
+      if (schoolIds.length > 0) {
+        const { data: schoolsData, error: schoolsError } = await supabase
+          .from("schools")
+          .select("*")
+          .in("id", schoolIds);
+        
+        if (schoolsError) {
+          console.error("Schools fetch error:", schoolsError);
+        }
+        
+        // دمج بيانات المدارس مع الأدوار
+        const schoolsMap = new Map(schoolsData?.map(s => [s.id, s]) || []);
+        
+        const rolesWithSchools = rolesData.map(role => ({
+          ...role,
+          schools: schoolsMap.get(role.school_id) || null
+        }));
+        
+        setUserRoles(rolesWithSchools);
+        
+        // اختيار المدرسة الحالية
+        const savedSchoolId = localStorage.getItem(`current_school_${user.id}`);
+        const selectedRole = rolesWithSchools.find(r => r.school_id === savedSchoolId) ||
+          rolesWithSchools.find(r => r.is_primary) ||
+          rolesWithSchools[0];
+        
+        if (selectedRole?.school_id) {
+          const schoolId = selectedRole.school_id;
+          setCurrentSchoolId(schoolId);
+          localStorage.setItem(`current_school_${user.id}`, schoolId);
+          
+          if (selectedRole.schools) {
+            setCurrentSchool(selectedRole.schools);
+            setCurrentRole(selectedRole.role);
+            setSubscriptionPlan(selectedRole.schools.subscription_plan);
+            setSubscriptionExpiresAt(selectedRole.schools.subscription_expires_at);
+            setSchoolFeatures(selectedRole.schools.features || []);
+          } else {
+            await loadCurrentSchoolData(schoolId);
+          }
+        }
+      } else {
+        setUserRoles(rolesData);
+      }
+    } else {
+      setUserRoles([]);
+    }
+    
+  } catch (error) {
+    console.error("loadUserData error:", error);
+  } finally {
+    loadingUserRef.current = false;
+    setLoading(false);
+  }
+};
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
@@ -199,18 +243,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
 
-  const hasPermission = (permission: string): boolean => {
-    if (!currentRole) return false;
-    if (currentRole === "admin") return true;
+// تعديل دالة hasPermission في AuthContext.tsx
+const hasPermission = (permission: string): boolean => {
+  if (!currentRole) return false;
+  if (currentRole === "admin") return true;
 
-    const rolePermissions: Record<string, string[]> = {
-      accountant: ["view_financials", "manage_fees"],
-      moderator: ["view_students", "edit_students"],
-    };
-
-    return rolePermissions[currentRole]?.includes(permission) || false;
+  const rolePermissions: Record<string, string[]> = {
+    admin: ["manage_users", "view_financials", "manage_fees", "view_students", "edit_students"],
+    accountant: ["view_financials", "manage_fees"],
+    moderator: ["view_students", "edit_students", "manage_users"], // أضفنا manage_users هنا
   };
 
+  return rolePermissions[currentRole]?.includes(permission) || false;
+};
   const hasFeature = (feature: string): boolean => {
     return schoolFeatures.includes(feature);
   };
