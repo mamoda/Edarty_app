@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-// src/context/AuthContext.tsx - الجزء المعدل فقط
+// src/context/AuthContext.tsx - نسخة محسنة لجدول users المخصص
 
 const loadUserData = async (user: any) => {
   if (loadingUserRef.current) return;
@@ -85,18 +85,39 @@ const loadUserData = async (user: any) => {
 
     setAuthUser({ id: user.id, email: user.email });
 
-    const { data: profileData } = await supabase
+    // ✅ جلب من جدول users المخصص (ليس auth.users)
+    const { data: profileData, error: profileError } = await supabase
       .from("users")
       .select("*")
       .eq("id", user.id)
       .maybeSingle();
 
+    if (profileError) {
+      console.error("Profile error:", profileError);
+    }
+    
+    // إذا لم يكن هناك بروفايل، أنشئ واحداً
+    if (!profileData) {
+      const { error: insertError } = await supabase
+        .from("users")
+        .insert({
+          id: user.id,
+          email: user.email,
+          full_name: user.user_metadata?.full_name || null,
+          is_active: true,
+        });
+      
+      if (insertError) {
+        console.error("Error creating user profile:", insertError);
+      }
+    }
+    
     setProfile(profileData || null);
 
-    // ✅ التعديل هنا: جلب الأدوار بدون JOIN أولاً
+    // ✅ جلب الأدوار
     const { data: roles, error: rolesError } = await supabase
       .from("user_school_roles")
-      .select("*")  // بدون schools(*) لتجنب خطأ 500
+      .select("*")
       .eq("user_id", user.id);
 
     if (rolesError) {
@@ -109,43 +130,35 @@ const loadUserData = async (user: any) => {
     
     if (rolesData.length === 0) {
       console.log("🚀 Creating school via RPC...");
-
+      
       const { error: rpcError } = await supabase.rpc("create_school_for_user");
-
+      
       if (rpcError) {
         console.error("RPC error:", rpcError);
         setLoading(false);
         return;
       }
-
-      // جلب الأدوار مرة أخرى بعد إنشاء المدرسة
-      const { data: newRoles, error: newRolesError } = await supabase
+      
+      const { data: newRoles } = await supabase
         .from("user_school_roles")
         .select("*")
         .eq("user_id", user.id);
-
-      if (newRolesError) {
-        console.error("New roles fetch error:", newRolesError);
-      }
       
       rolesData = newRoles || [];
     }
-
-    // ✅ جلب بيانات المدارس بشكل منفصل إذا وجدت أدوار
+    
+    setUserRoles(rolesData);
+    
+    // ✅ جلب بيانات المدارس
     if (rolesData.length > 0) {
       const schoolIds = [...new Set(rolesData.map(r => r.school_id).filter(Boolean))];
       
       if (schoolIds.length > 0) {
-        const { data: schoolsData, error: schoolsError } = await supabase
+        const { data: schoolsData } = await supabase
           .from("schools")
           .select("*")
           .in("id", schoolIds);
         
-        if (schoolsError) {
-          console.error("Schools fetch error:", schoolsError);
-        }
-        
-        // دمج بيانات المدارس مع الأدوار
         const schoolsMap = new Map(schoolsData?.map(s => [s.id, s]) || []);
         
         const rolesWithSchools = rolesData.map(role => ({
@@ -155,32 +168,26 @@ const loadUserData = async (user: any) => {
         
         setUserRoles(rolesWithSchools);
         
-        // اختيار المدرسة الحالية
         const savedSchoolId = localStorage.getItem(`current_school_${user.id}`);
         const selectedRole = rolesWithSchools.find(r => r.school_id === savedSchoolId) ||
           rolesWithSchools.find(r => r.is_primary) ||
           rolesWithSchools[0];
         
         if (selectedRole?.school_id) {
-          const schoolId = selectedRole.school_id;
-          setCurrentSchoolId(schoolId);
-          localStorage.setItem(`current_school_${user.id}`, schoolId);
+          setCurrentSchoolId(selectedRole.school_id);
+          setCurrentRole(selectedRole.role);
+          localStorage.setItem(`current_school_${user.id}`, selectedRole.school_id);
           
           if (selectedRole.schools) {
             setCurrentSchool(selectedRole.schools);
-            setCurrentRole(selectedRole.role);
             setSubscriptionPlan(selectedRole.schools.subscription_plan);
             setSubscriptionExpiresAt(selectedRole.schools.subscription_expires_at);
             setSchoolFeatures(selectedRole.schools.features || []);
           } else {
-            await loadCurrentSchoolData(schoolId);
+            await loadCurrentSchoolData(selectedRole.school_id);
           }
         }
-      } else {
-        setUserRoles(rolesData);
       }
-    } else {
-      setUserRoles([]);
     }
     
   } catch (error) {
@@ -189,8 +196,7 @@ const loadUserData = async (user: any) => {
     loadingUserRef.current = false;
     setLoading(false);
   }
-};
-  useEffect(() => {
+};  useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
