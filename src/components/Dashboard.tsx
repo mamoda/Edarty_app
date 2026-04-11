@@ -40,6 +40,7 @@ import {
   LogOut,
   HelpCircle,
   Loader2,
+  CheckCircle,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -93,6 +94,18 @@ interface MenuItemProps {
   shortcut?: string;
 }
 
+interface NotificationItem {
+  id: string;
+  user_id: string;
+  school_id: string;
+  title: string;
+  message: string;
+  type: "info" | "success" | "warning" | "error";
+  is_read: boolean;
+  link: string | null;
+  created_at: string;
+}
+
 const useKeyboardShortcuts = (handlers: Record<string, () => void>) => {
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -118,11 +131,14 @@ const useToast = () => {
   }, []);
   
   return { toast, showToast, ToastComponent: () => toast ? (
-    <div className={`fixed bottom-20 right-4 z-50 px-4 py-3 rounded-lg shadow-lg animate-slide-up ${
+    <div className={`fixed bottom-20 right-4 z-50 px-4 py-3 rounded-lg shadow-lg animate-slide-up flex items-center gap-2 ${
       toast.type === "success" ? "bg-green-600" :
       toast.type === "error" ? "bg-red-600" :
       toast.type === "warning" ? "bg-yellow-600" : "bg-blue-600"
     } text-white text-sm`}>
+      {toast.type === "success" && <CheckCircle className="w-4 h-4" />}
+      {toast.type === "error" && <AlertCircle className="w-4 h-4" />}
+      {toast.type === "warning" && <AlertCircle className="w-4 h-4" />}
       {toast.message}
     </div>
   ) : null };
@@ -313,6 +329,10 @@ const ModernHeader: React.FC<{
   onUpgrade: () => void;
   onToggleSidebar: () => void;
   sidebarVisible: boolean;
+  notifications: NotificationItem[];
+  unreadCount: number;
+  onMarkAsRead: (id: string) => void;
+  onMarkAllAsRead: () => void;
 }> = ({
   user,
   onSignOut,
@@ -326,6 +346,10 @@ const ModernHeader: React.FC<{
   onUpgrade,
   onToggleSidebar,
   sidebarVisible,
+  notifications,
+  unreadCount,
+  onMarkAsRead,
+  onMarkAllAsRead,
 }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -360,6 +384,33 @@ const ModernHeader: React.FC<{
   const getPlanName = () => {
     const plans: Record<string, string> = { free: "مجاني", basic: "أساسي", pro: "احترافي", enterprise: "مؤسسات" };
     return plans[subscriptionPlan || "free"] || "مجاني";
+  };
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case "success":
+        return <CheckCircle className="w-3 h-3 text-green-600" />;
+      case "error":
+        return <AlertCircle className="w-3 h-3 text-red-600" />;
+      case "warning":
+        return <AlertCircle className="w-3 h-3 text-yellow-600" />;
+      default:
+        return <Bell className="w-3 h-3 text-blue-600" />;
+    }
+  };
+
+  const getNotificationBg = (type: string, isRead: boolean) => {
+    if (isRead) return "bg-white hover:bg-gray-50/80";
+    switch (type) {
+      case "success":
+        return "bg-green-50/80 hover:bg-green-100/80";
+      case "error":
+        return "bg-red-50/80 hover:bg-red-100/80";
+      case "warning":
+        return "bg-yellow-50/80 hover:bg-yellow-100/80";
+      default:
+        return "bg-blue-50/80 hover:bg-blue-100/80";
+    }
   };
 
   return (
@@ -449,6 +500,7 @@ const ModernHeader: React.FC<{
               {isDarkMode ? <Sun className="w-4 h-4 text-gray-600" /> : <Moon className="w-4 h-4 text-gray-600" />}
             </button>
 
+            {/* Notifications Dropdown */}
             <div className="relative">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
@@ -456,33 +508,58 @@ const ModernHeader: React.FC<{
                 aria-label={t("notifications")}
               >
                 <Bell className="w-4 h-4 text-gray-600" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-600 rounded-full ring-2 ring-white animate-pulse" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
               </button>
 
               {showNotifications && (
                 <div className="absolute left-0 mt-2 w-80 bg-white/95 backdrop-blur-xl rounded-xl shadow-xl border border-gray-200/50 overflow-hidden z-50 animate-fade-in">
-                  <div className="p-3 border-b border-gray-100">
+                  <div className="p-3 border-b border-gray-100 flex items-center justify-between">
                     <h3 className="font-semibold text-gray-900">{t("notifications")}</h3>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={onMarkAllAsRead}
+                        className="text-xs text-blue-600 hover:text-blue-700"
+                      >
+                        تحديد الكل كمقروء
+                      </button>
+                    )}
                   </div>
+                  
                   <div className="max-h-96 overflow-y-auto">
-                    {isExpiringSoon && (
-                      <div className="p-3 hover:bg-gray-50/80 transition-colors duration-200 border-b border-gray-100">
-                        <div className="flex items-start gap-3">
-                          <div className="p-1.5 bg-orange-100 rounded-lg">
-                            <AlertCircle className="w-3 h-3 text-orange-600" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm text-gray-900">
-                              {language === "ar" ? `اشتراكك سينتهي بعد ${daysRemaining} يوم` : `Your subscription expires in ${daysRemaining} days`}
-                            </p>
-                            <button onClick={onUpgrade} className="text-xs text-blue-600 mt-1 hover:underline">
-                              {language === "ar" ? "جدد الآن" : "Renew now"}
-                            </button>
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center text-sm text-gray-500">
+                        <Bell className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                        لا توجد إشعارات
+                      </div>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div
+                          key={notif.id}
+                          className={`p-3 transition-colors duration-200 border-b border-gray-100 cursor-pointer ${getNotificationBg(notif.type, notif.is_read)}`}
+                          onClick={() => onMarkAsRead(notif.id)}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="p-1.5 rounded-lg bg-white shadow-sm">
+                              {getNotificationIcon(notif.type)}
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900">{notif.title}</p>
+                              <p className="text-xs text-gray-500 mt-0.5">{notif.message}</p>
+                              <p className="text-[10px] text-gray-400 mt-1">
+                                {new Date(notif.created_at).toLocaleString(language === "ar" ? "ar-EG" : "en-US")}
+                              </p>
+                            </div>
+                            {!notif.is_read && (
+                              <div className="w-2 h-2 bg-blue-600 rounded-full" />
+                            )}
                           </div>
                         </div>
-                      </div>
+                      ))
                     )}
-                    <div className="p-3 text-center text-sm text-gray-500">لا توجد إشعارات جديدة</div>
                   </div>
                 </div>
               )}
@@ -801,6 +878,10 @@ export default function Dashboard() {
   const [dataError, setDataError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Notification state
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
   const hasLoadedStatsRef = useRef(false);
   const isLoadingRef = useRef(false);
   const hasInitialLoadedRef = useRef(false);
@@ -824,6 +905,97 @@ export default function Dashboard() {
     const interval = setInterval(() => setCurrentBackground((prev) => (prev + 1) % backgrounds.length), 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // Load notifications
+  const loadNotifications = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      setNotifications(data || []);
+      setUnreadCount(data?.filter(n => !n.is_read).length || 0);
+    } catch (error) {
+      console.error("Error loading notifications:", error);
+    }
+  }, [user]);
+
+  // Real-time notifications subscription
+  useEffect(() => {
+    if (!user) return;
+
+    loadNotifications();
+
+    const channel = supabase
+      .channel("notifications-channel")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newNotification = payload.new as NotificationItem;
+          setNotifications(prev => [newNotification, ...prev]);
+          setUnreadCount(prev => prev + 1);
+          
+          // Show toast notification
+          showToast(newNotification.message, newNotification.type);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [user, loadNotifications, showToast]);
+
+  // Mark notification as read
+  const markAsRead = async (notificationId: string) => {
+    try {
+      await supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("id", notificationId);
+      
+      setNotifications(prev =>
+        prev.map(n =>
+          n.id === notificationId ? { ...n, is_read: true } : n
+        )
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
+  };
+
+  // Mark all as read
+  const markAllAsRead = async () => {
+    const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
+    if (unreadIds.length === 0) return;
+
+    try {
+      await supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .in("id", unreadIds);
+      
+      setNotifications(prev =>
+        prev.map(n => ({ ...n, is_read: true }))
+      );
+      setUnreadCount(0);
+    } catch (error) {
+      console.error("Error marking all as read:", error);
+    }
+  };
 
   useKeyboardShortcuts({
     d: () => setCurrentView("dashboard"),
@@ -1011,6 +1183,10 @@ export default function Dashboard() {
           onUpgrade={handleUpgrade}
           onToggleSidebar={handleToggleSidebar}
           sidebarVisible={showSidebar}
+          notifications={notifications}
+          unreadCount={unreadCount}
+          onMarkAsRead={markAsRead}
+          onMarkAllAsRead={markAllAsRead}
         />
 
         <div className="relative border-b border-gray-200/50 bg-white/40 backdrop-blur-xl">
