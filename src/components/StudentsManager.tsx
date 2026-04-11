@@ -32,12 +32,14 @@ import {
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { Student } from "../types/database";
+import { notifyStudentAdded, notifyStudentDeleted } from "../lib/notifications";
+
+
 
 interface StudentsManagerProps {
   onUpdate: () => void;
 }
 
-// Custom Hooks
 const useDebounce = <T,>(value: T, delay: number): T => {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
   useEffect(() => {
@@ -87,7 +89,6 @@ const useToast = () => {
   };
 };
 
-// Skeleton Loader Component
 const StudentCardSkeleton = () => (
   <div className="bg-gray-50 rounded-lg p-4 animate-pulse">
     <div className="flex items-start justify-between">
@@ -109,7 +110,6 @@ const StudentCardSkeleton = () => (
   </div>
 );
 
-// Stats Card Component - Fixed Icons
 const StatsCard: React.FC<{
   title: string;
   value: number;
@@ -176,7 +176,6 @@ const StatsCard: React.FC<{
   );
 };
 
-// Student Card Component
 const StudentCard: React.FC<{
   student: Student;
   onEdit: (student: Student) => void;
@@ -298,7 +297,6 @@ const StudentCard: React.FC<{
   );
 };
 
-// Student Details Modal
 const StudentDetailsModal: React.FC<{
   student: Student | null;
   onClose: () => void;
@@ -394,7 +392,6 @@ const StudentDetailsModal: React.FC<{
   );
 };
 
-// Grade Filter Component
 const GradeFilter: React.FC<{
   grades: { grade: string; count: number; activeCount: number }[];
   selectedGrade: string;
@@ -437,7 +434,6 @@ const GradeFilter: React.FC<{
   </div>
 );
 
-// Grade Section Component
 const GradeSection: React.FC<{
   grade: string;
   students: Student[];
@@ -548,7 +544,6 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
 
   const debouncedSearch = useDebounce(searchTerm, 300);
 
-  // Load students
   const loadStudents = useCallback(
     async (showRefreshIndicator = false) => {
       if (!currentSchool) {
@@ -574,7 +569,6 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
         if (error) throw error;
         setStudents(data || []);
 
-        // Expand all grades by default
         const grades = new Set((data || []).map((s) => s.grade || "غير محدد"));
         setExpandedGrades(grades);
       } catch (error) {
@@ -592,7 +586,6 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
     loadStudents();
   }, [loadStudents]);
 
-  // Group students by grade
   const studentsByGrade = useMemo(() => {
     return students.reduce(
       (acc, student) => {
@@ -605,7 +598,6 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
     );
   }, [students]);
 
-  // Grade statistics
   const gradeStats = useMemo(() => {
     return Object.entries(studentsByGrade)
       .map(([grade, students]) => ({
@@ -616,7 +608,6 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
       .sort((a, b) => a.grade.localeCompare(b.grade, "ar"));
   }, [studentsByGrade]);
 
-  // Filter students by search
   const filterStudents = useCallback(
     (studentList: Student[]) => {
       if (!debouncedSearch.trim()) return studentList;
@@ -632,7 +623,6 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
     [debouncedSearch],
   );
 
-  // Sort students
   const sortStudents = useCallback(
     (studentList: Student[]) => {
       return [...studentList].sort((a, b) => {
@@ -656,7 +646,6 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
     [sortBy, sortOrder],
   );
 
-  // Get filtered and sorted students
   const filteredStudentsByGrade = useMemo(() => {
     const result: Record<string, Student[]> = {};
     Object.entries(studentsByGrade).forEach(([grade, gradeStudents]) => {
@@ -739,6 +728,9 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
           return;
         }
         showToast("تم إضافة الطالب بنجاح", "success");
+        
+        // ✅ إرسال إشعار للأدمن
+        await notifyStudentAdded(currentSchool.id, formData.full_name);
       }
 
       resetForm();
@@ -763,6 +755,10 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
     if (!confirm("هل أنت متأكد من حذف هذا الطالب؟")) return;
 
     try {
+      // ✅ جلب اسم الطالب قبل الحذف للإشعار
+      const studentToDelete = students.find(s => s.id === id);
+      const studentName = studentToDelete?.full_name || "طالب";
+
       const { error } = await supabase
         .from("students")
         .delete()
@@ -770,9 +766,15 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
         .eq("school_id", currentSchool?.id);
 
       if (error) throw error;
+      
       loadStudents(true);
       onUpdate();
       showToast("تم حذف الطالب بنجاح", "success");
+      
+      // ✅ إرسال إشعار للأدمن
+      if (currentSchool) {
+        await notifyStudentDeleted(currentSchool.id, studentName);
+      }
     } catch (error) {
       console.error("Error deleting student:", error);
       showToast("حدث خطأ أثناء حذف الطالب", "error");

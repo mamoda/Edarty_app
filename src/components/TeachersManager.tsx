@@ -41,6 +41,8 @@ import { toast } from "react-hot-toast";
 import * as XLSX from 'xlsx';
 import { format, parseISO } from "date-fns";
 import { ar } from "date-fns/locale";
+import { notifyTeacherAdded, notifyTeacherDeleted, notifySalaryPaid } from "../lib/notifications";
+
 
 interface TeachersManagerProps {
   onUpdate: () => void;
@@ -578,6 +580,12 @@ export default function TeachersManager({ onUpdate, onSalaryProcessed }: Teacher
       if (error) throw error;
 
       toast.success(`تم تأكيد صرف راتب ${teacherName}`);
+      
+      // ✅ إرسال إشعار للأدمن
+      if (currentSchool) {
+        await notifySalaryPaid(currentSchool.id, teacherName, 0); // المبلغ موجود في الكائن
+      }
+      
       await loadSalaryStatus();
       if (onSalaryProcessed) onSalaryProcessed();
     } catch (error) {
@@ -628,6 +636,9 @@ export default function TeachersManager({ onUpdate, onSalaryProcessed }: Teacher
 
         if (error) throw error;
         toast.success("تم إضافة المعلم بنجاح", { id: loadingToast });
+        
+        // ✅ إرسال إشعار للأدمن عند إضافة معلم جديد
+        await notifyTeacherAdded(currentSchool.id, formData.name);
       }
 
       resetForm();
@@ -646,6 +657,10 @@ export default function TeachersManager({ onUpdate, onSalaryProcessed }: Teacher
       return;
     }
 
+    // ✅ جلب اسم المعلم قبل الحذف للإشعار
+    const teacherToDelete = teachers.find(t => t.id === id);
+    const teacherName = teacherToDelete?.name || "معلم";
+
     try {
       const { error } = await supabase
         .from("teachers")
@@ -656,6 +671,12 @@ export default function TeachersManager({ onUpdate, onSalaryProcessed }: Teacher
       if (error) throw error;
       
       toast.success("تم حذف المعلم بنجاح");
+      
+      // ✅ إرسال إشعار للأدمن عند حذف معلم
+      if (currentSchool) {
+        await notifyTeacherDeleted(currentSchool.id, teacherName);
+      }
+      
       await loadTeachers();
       onUpdate();
       setShowDeleteConfirm(null);
