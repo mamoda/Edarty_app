@@ -1,4 +1,5 @@
-// src/components/UserManagement.tsx
+// src/components/UserManagement.tsx - النسخة المعدلة بالكامل
+
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
@@ -47,13 +48,13 @@ const roleLabels = {
 const roleOptions = [
   { value: 'admin', label: 'مدير - صلاحيات كاملة' },
   { value: 'accountant', label: 'محاسب - إدارة الرسوم والمصروفات' },
-  { value: 'moderator', label: 'مشرف - إدارة الطلاب والمعلمين' },
+  { value: 'moderator', label: 'مشرف - إدارة المستخدمين والطلاب' },
   { value: 'teacher', label: 'معلم - عرض الطلاب فقط' },
   { value: 'parent', label: 'ولي أمر - متابعة الطالب' },
 ];
 
 export default function UserManagement({ onUpdate }: UserManagementProps) {
-  const { currentSchool, authUser, hasPermission } = useAuth();
+  const { currentSchool, authUser, hasPermission, userRoles, currentRole } = useAuth();
   const [users, setUsers] = useState<SchoolUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -69,207 +70,186 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
     role: 'moderator' as 'admin' | 'accountant' | 'moderator' | 'teacher' | 'parent',
   });
 
+  // ✅ التحقق من صلاحية إدارة المستخدمين
+  const canManageUsers = hasPermission('manage_users') || currentRole === 'admin';
+
   useEffect(() => {
     if (currentSchool) {
       loadUsers();
     }
   }, [currentSchool]);
 
-const loadUsers = async () => {
-  if (!currentSchool) return;
+  const loadUsers = async () => {
+    if (!currentSchool) return;
 
-  setLoading(true);
-  try {
-    // ✅ جلب الأدوار من user_school_roles بدون join لتجنب مشاكل RLS
-    const { data: rolesData, error: rolesError } = await supabase
-      .from('user_school_roles')
-      .select(`
-        user_id,
-        school_id,
-        role,
-        created_at
-      `)
-      .eq('school_id', currentSchool.id);
+    setLoading(true);
+    try {
+      // جلب الأدوار من user_school_roles
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('user_school_roles')
+        .select(`
+          user_id,
+          school_id,
+          role,
+          created_at
+        `)
+        .eq('school_id', currentSchool.id);
 
-    if (rolesError) throw rolesError;
+      if (rolesError) throw rolesError;
 
-    if (!rolesData || rolesData.length === 0) {
-      setUsers([]);
-      return;
-    }
-
-    // ✅ جلب بيانات المستخدمين من جدول users
-    const userIds = rolesData.map(r => r.user_id);
-    const { data: usersData, error: usersError } = await supabase
-      .from('users')
-      .select('id, email, full_name, last_login, is_active')
-      .in('id', userIds);
-
-    if (usersError) throw usersError;
-
-    // ✅ دمج البيانات بدون أي join في الـ query
-    const usersMap = new Map(usersData?.map(user => [user.id, user]));
-
-    const usersList: SchoolUser[] = rolesData.map(role => {
-      const user = usersMap.get(role.user_id);
-      return {
-        id: role.user_id,
-        email: user?.email || '',
-        full_name: user?.full_name || '',
-        role: role.role,
-        school_id: role.school_id,
-        created_at: role.created_at,
-        last_login: user?.last_login || null,
-        is_active: user?.is_active ?? true,
-      };
-    });
-
-    setUsers(usersList);
-  } catch (error) {
-    console.error('Error loading users:', error);
-    setFormError('حدث خطأ في تحميل المستخدمين');
-    setTimeout(() => setFormError(''), 3000);
-  } finally {
-    setLoading(false);
-  }
-};
-  // ✅ التحقق من صلاحية إضافة مستخدم
-  const canManageUsers = hasPermission('manage_users') || hasPermission('admin');
-
-const handleAddUser = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setFormError('');
-  setFormSuccess('');
-  
-  if (!currentSchool) {
-    setFormError('لم يتم تحديد المدرسة');
-    return;
-  }
-  
-  if (!formData.email || !formData.password || !formData.full_name) {
-    setFormError('يرجى إكمال جميع البيانات المطلوبة');
-    return;
-  }
-  
-  if (formData.password.length < 6) {
-    setFormError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
-    return;
-  }
-  
-  try {
-    // 1. إنشاء حساب في Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-      options: {
-        data: { 
-          full_name: formData.full_name,
-          school_id: currentSchool.id
-        }
-      }
-    });
-    
-    if (authError) {
-      if (authError.message.includes('already registered')) {
-        // محاولة تسجيل الدخول للمستخدم الموجود
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
-        
-        if (signInError || !signInData.user) {
-          setFormError('المستخدم موجود ولكن كلمة المرور غير صحيحة');
-          return;
-        }
-        
-        // إضافة الدور فقط للمستخدم الموجود
-        const { error: roleError } = await supabase
-          .from('user_school_roles')
-          .upsert({
-            user_id: signInData.user.id,
-            school_id: currentSchool.id,
-            role: formData.role,
-            is_primary: true,
-            created_at: new Date().toISOString(),
-          }, {
-            onConflict: 'user_id,school_id'
-          });
-        
-        if (roleError) {
-          console.error('Role upsert error:', roleError);
-          setFormError('حدث خطأ في إضافة الدور');
-          return;
-        }
-        
-        setFormSuccess(`تم إضافة المستخدم ${formData.full_name} بنجاح`);
-        resetForm();
-        loadUsers();
-        onUpdate();
-        setTimeout(() => setFormSuccess(''), 3000);
+      if (!rolesData || rolesData.length === 0) {
+        setUsers([]);
         return;
       }
-      setFormError(authError.message);
+
+      // جلب بيانات المستخدمين
+      const userIds = rolesData.map(r => r.user_id);
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('id, email, full_name, last_login, is_active')
+        .in('id', userIds);
+
+      if (usersError) throw usersError;
+
+      // دمج البيانات
+      const usersMap = new Map(usersData?.map(user => [user.id, user]));
+
+      const usersList: SchoolUser[] = rolesData.map(role => {
+        const user = usersMap.get(role.user_id);
+        return {
+          id: role.user_id,
+          email: user?.email || '',
+          full_name: user?.full_name || '',
+          role: role.role,
+          school_id: role.school_id,
+          created_at: role.created_at,
+          last_login: user?.last_login || null,
+          is_active: user?.is_active ?? true,
+        };
+      });
+
+      setUsers(usersList);
+    } catch (error) {
+      console.error('Error loading users:', error);
+      setFormError('حدث خطأ في تحميل المستخدمين');
+      setTimeout(() => setFormError(''), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError('');
+    setFormSuccess('');
+    
+    if (!currentSchool) {
+      setFormError('لم يتم تحديد المدرسة');
       return;
     }
     
-    if (!authData.user) {
-      setFormError('فشل في إنشاء المستخدم');
+    if (!formData.email || !formData.password || !formData.full_name) {
+      setFormError('يرجى إكمال جميع البيانات المطلوبة');
       return;
     }
     
-    // 2. إضافة المستخدم إلى جدول users باستخدام upsert
-    const { error: userError } = await supabase
-      .from('users')
-      .upsert({
-        id: authData.user.id,
+    if (formData.password.length < 6) {
+      setFormError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+      return;
+    }
+    
+    try {
+      // 1. محاولة إنشاء حساب جديد
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
-        full_name: formData.full_name,
-        school_id: currentSchool.id,
-        is_active: true,
-        created_at: new Date().toISOString(),
-      }, {
-        onConflict: 'id'
+        password: formData.password,
+        options: {
+          data: { 
+            full_name: formData.full_name
+          }
+        }
       });
-    
-    if (userError) {
-      console.error('User upsert error:', userError);
-      // نكمل حتى لو فشل insert users
+      
+      let userId = authData?.user?.id;
+      
+      if (authError) {
+        if (authError.message.includes('already registered')) {
+          // المستخدم موجود، نحتاج لتسجيل الدخول للحصول على user_id
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: formData.email,
+            password: formData.password,
+          });
+          
+          if (signInError || !signInData.user) {
+            setFormError('المستخدم موجود ولكن كلمة المرور غير صحيحة');
+            return;
+          }
+          
+          userId = signInData.user.id;
+        } else {
+          setFormError(authError.message);
+          return;
+        }
+      }
+      
+      if (!userId) {
+        setFormError('فشل في الحصول على معرف المستخدم');
+        return;
+      }
+      
+      // 2. إضافة/تحديث المستخدم في جدول users
+      const { error: userError } = await supabase
+        .from('users')
+        .upsert({
+          id: userId,
+          email: formData.email,
+          full_name: formData.full_name,
+          is_active: true,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'id'
+        });
+      
+      if (userError) {
+        console.error('User upsert error:', userError);
+      }
+      
+      // 3. إضافة دور المستخدم
+      const { error: roleError } = await supabase
+        .from('user_school_roles')
+        .upsert({
+          user_id: userId,
+          school_id: currentSchool.id,
+          role: formData.role,
+          is_primary: false, // ليس بالضرورة أساسي
+          created_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id,school_id'
+        });
+      
+      if (roleError) {
+        console.error('Role upsert error:', roleError);
+        setFormError('تم إنشاء المستخدم ولكن حدث خطأ في تعيين الدور');
+        return;
+      }
+      
+      setFormSuccess(`تم إضافة المستخدم ${formData.full_name} بنجاح`);
+      resetForm();
+      loadUsers();
+      onUpdate();
+      
+      setTimeout(() => setFormSuccess(''), 3000);
+    } catch (error: any) {
+      console.error('Error adding user:', error);
+      setFormError(error.message || 'حدث خطأ أثناء إضافة المستخدم');
     }
-    
-    // 3. إضافة دور المستخدم باستخدام upsert
-    const { error: roleError } = await supabase
-      .from('user_school_roles')
-      .upsert({
-        user_id: authData.user.id,
-        school_id: currentSchool.id,
-        role: formData.role,
-        is_primary: true,
-        created_at: new Date().toISOString(),
-      }, {
-        onConflict: 'user_id,school_id'
-      });
-    
-    if (roleError) {
-      console.error('Role upsert error:', roleError);
-      setFormError('تم إنشاء المستخدم ولكن حدث خطأ في تعيين الدور');
-      return;
-    }
-    
-    setFormSuccess(`تم إضافة المستخدم ${formData.full_name} بنجاح`);
-    resetForm();
-    loadUsers();
-    onUpdate();
-    
-    setTimeout(() => setFormSuccess(''), 3000);
-  } catch (error: any) {
-    console.error('Error adding user:', error);
-    setFormError(error.message || 'حدث خطأ أثناء إضافة المستخدم');
-  }
-};  const handleUpdateRole = async (userId: string, newRole: string) => {
+  };
+
+  const handleUpdateRole = async (userId: string, newRole: string) => {
     if (!currentSchool) return;
     
-    // ✅ التحقق من الصلاحية
-    if (!hasPermission('manage_users') && !hasPermission('admin')) {
+    // التحقق من الصلاحية
+    if (!canManageUsers) {
       setFormError('ليس لديك صلاحية لتعديل أدوار المستخدمين');
       setTimeout(() => setFormError(''), 3000);
       return;
@@ -305,8 +285,8 @@ const handleAddUser = async (e: React.FormEvent) => {
   };
 
   const handleDeleteUser = async (user: SchoolUser) => {
-    // ✅ التحقق من الصلاحية
-    if (!hasPermission('manage_users') && !hasPermission('admin')) {
+    // التحقق من الصلاحية
+    if (!canManageUsers) {
       setFormError('ليس لديك صلاحية لحذف المستخدمين');
       setTimeout(() => setFormError(''), 3000);
       return;
@@ -318,10 +298,10 @@ const handleAddUser = async (e: React.FormEvent) => {
       return;
     }
     
-    if (!confirm(`هل أنت متأكد من حذف المستخدم "${user.full_name}"؟`)) return;
+    if (!confirm(`هل أنت متأكد من حذف المستخدم "${user.full_name}" من هذه المدرسة؟`)) return;
     
     try {
-      // حذف دور المستخدم من المدرسة
+      // حذف دور المستخدم من المدرسة فقط (لا نحذف المستخدم نهائياً)
       const { error: roleError } = await supabase
         .from('user_school_roles')
         .delete()
@@ -330,16 +310,8 @@ const handleAddUser = async (e: React.FormEvent) => {
       
       if (roleError) throw roleError;
       
-      // تحديث حالة المستخدم (تعطيله بدلاً من حذفه نهائياً)
-      const { error: userError } = await supabase
-        .from('users')
-        .update({ is_active: false })
-        .eq('id', user.id);
-      
-      if (userError) console.error('Error updating user status:', userError);
-      
       setUsers(prev => prev.filter(u => u.id !== user.id));
-      setFormSuccess(`تم حذف المستخدم ${user.full_name} بنجاح`);
+      setFormSuccess(`تم حذف المستخدم ${user.full_name} من المدرسة بنجاح`);
       setTimeout(() => setFormSuccess(''), 3000);
       onUpdate();
     } catch (error) {
@@ -646,7 +618,7 @@ const handleAddUser = async (e: React.FormEvent) => {
                 <ul className="text-sm text-purple-700 space-y-1">
                   <li>• <span className="font-semibold">مدير:</span> صلاحيات كاملة (إدارة جميع البيانات والمستخدمين)</li>
                   <li>• <span className="font-semibold">محاسب:</span> إدارة الرسوم الدراسية والمصروفات والتقارير المالية</li>
-                  <li>• <span className="font-semibold">مشرف:</span> إدارة الطلاب والمعلمين (إضافة/تعديل/حذف)</li>
+                  <li>• <span className="font-semibold">مشرف:</span> إدارة المستخدمين والطلاب (إضافة/تعديل/حذف)</li>
                   <li>• <span className="font-semibold">معلم:</span> عرض بيانات الطلاب فقط</li>
                   <li>• <span className="font-semibold">ولي أمر:</span> متابعة بيانات الطالب فقط</li>
                 </ul>
