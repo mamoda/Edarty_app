@@ -138,28 +138,40 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
     }
   };
 
-  const handleAddUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError('');
-    setFormSuccess('');
+const handleAddUser = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setFormError('');
+  setFormSuccess('');
+  
+  if (!currentSchool) {
+    setFormError('لم يتم تحديد المدرسة');
+    return;
+  }
+  
+  if (!formData.email || !formData.password || !formData.full_name) {
+    setFormError('يرجى إكمال جميع البيانات المطلوبة');
+    return;
+  }
+  
+  if (formData.password.length < 6) {
+    setFormError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+    return;
+  }
+  
+  try {
+    let userId = null;
     
-    if (!currentSchool) {
-      setFormError('لم يتم تحديد المدرسة');
-      return;
-    }
+    // ✅ أولاً: التحقق مما إذا كان المستخدم موجود بالفعل
+    const { data: existingUser, error: signInError } = await supabase.auth.signInWithPassword({
+      email: formData.email,
+      password: formData.password,
+    });
     
-    if (!formData.email || !formData.password || !formData.full_name) {
-      setFormError('يرجى إكمال جميع البيانات المطلوبة');
-      return;
-    }
-    
-    if (formData.password.length < 6) {
-      setFormError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
-      return;
-    }
-    
-    try {
-      // 1. محاولة إنشاء حساب جديد
+    if (existingUser?.user) {
+      // المستخدم موجود وكلمة المرور صحيحة
+      userId = existingUser.user.id;
+    } else {
+      // المستخدم غير موجود، حاول إنشاء حساب جديد
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -170,81 +182,84 @@ export default function UserManagement({ onUpdate }: UserManagementProps) {
         }
       });
       
-      let userId = authData?.user?.id;
-      
       if (authError) {
+        // ✅ تحسين رسائل الخطأ للمستخدم
         if (authError.message.includes('already registered')) {
-          // المستخدم موجود، نحتاج لتسجيل الدخول للحصول على user_id
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email: formData.email,
-            password: formData.password,
-          });
-          
-          if (signInError || !signInData.user) {
-            setFormError('المستخدم موجود ولكن كلمة المرور غير صحيحة');
-            return;
-          }
-          
-          userId = signInData.user.id;
+          setFormError('البريد الإلكتروني موجود مسبقاً. يرجى استخدام بريد آخر أو التحقق من كلمة المرور');
+        } else if (authError.message.includes('password')) {
+          setFormError('كلمة المرور يجب أن تحتوي على 6 أحرف على الأقل');
         } else {
           setFormError(authError.message);
-          return;
         }
-      }
-      
-      if (!userId) {
-        setFormError('فشل في الحصول على معرف المستخدم');
         return;
       }
       
-      // 2. إضافة/تحديث المستخدم في جدول users
-      const { error: userError } = await supabase
-        .from('users')
-        .upsert({
-          id: userId,
-          email: formData.email,
-          full_name: formData.full_name,
-          is_active: true,
-          updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'id'
-        });
-      
-      if (userError) {
-        console.error('User upsert error:', userError);
-      }
-      
-      // 3. إضافة دور المستخدم
-      const { error: roleError } = await supabase
-        .from('user_school_roles')
-        .upsert({
-          user_id: userId,
-          school_id: currentSchool.id,
-          role: formData.role,
-          is_primary: false, // ليس بالضرورة أساسي
-          created_at: new Date().toISOString(),
-        }, {
-          onConflict: 'user_id,school_id'
-        });
-      
-      if (roleError) {
-        console.error('Role upsert error:', roleError);
-        setFormError('تم إنشاء المستخدم ولكن حدث خطأ في تعيين الدور');
-        return;
-      }
-      
-      setFormSuccess(`تم إضافة المستخدم ${formData.full_name} بنجاح`);
-      resetForm();
-      loadUsers();
-      onUpdate();
-      
-      setTimeout(() => setFormSuccess(''), 3000);
-    } catch (error: any) {
-      console.error('Error adding user:', error);
-      setFormError(error.message || 'حدث خطأ أثناء إضافة المستخدم');
+      userId = authData.user?.id;
     }
-  };
-
+    
+    if (!userId) {
+      setFormError('فشل في الحصول على معرف المستخدم');
+      return;
+    }
+    
+    // ✅ إضافة/تحديث المستخدم في جدول users
+    const { error: userError } = await supabase
+      .from('users')
+      .upsert({
+        id: userId,
+        email: formData.email,
+        full_name: formData.full_name,
+        is_active: true,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'id'
+      });
+    
+    if (userError) {
+      console.error('User upsert error:', userError);
+    }
+    
+    // ✅ إضافة دور المستخدم (بدون upsert مع onConflict)
+    const { error: roleError } = await supabase
+      .from('user_school_roles')
+      .insert({
+        user_id: userId,
+        school_id: currentSchool.id,
+        role: formData.role,
+        is_primary: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    
+    if (roleError) {
+      // إذا كان الدور موجود مسبقاً، قم بتحديثه
+      if (roleError.code === '23505') { // Unique violation
+        const { error: updateError } = await supabase
+          .from('user_school_roles')
+          .update({ 
+            role: formData.role,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', userId)
+          .eq('school_id', currentSchool.id);
+        
+        if (updateError) throw updateError;
+      } else {
+        throw roleError;
+      }
+    }
+    
+    setFormSuccess(`تم إضافة المستخدم ${formData.full_name} بنجاح`);
+    resetForm();
+    loadUsers();
+    onUpdate();
+    
+    setTimeout(() => setFormSuccess(''), 3000);
+  } catch (error: any) {
+    console.error('Error adding user:', error);
+    setFormError(error.message || 'حدث خطأ أثناء إضافة المستخدم');
+  }
+};
   const handleUpdateRole = async (userId: string, newRole: string) => {
     if (!currentSchool) return;
     
