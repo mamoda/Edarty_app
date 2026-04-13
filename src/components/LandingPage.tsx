@@ -380,7 +380,7 @@ export default function LandingPage() {
                 onClick={handleFreeTrial}
                 className="w-full sm:w-auto px-10 py-4 bg-emerald-600 text-white rounded-full font-bold text-lg hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-600/20 transform hover:scale-105 flex items-center justify-center gap-2"
               >
-                ابدأ الآن مجاناً
+                ابدأ الآن 
                 <ArrowRight className="w-5 h-5 rotate-180" />
               </button>
               <button
