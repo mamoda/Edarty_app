@@ -292,14 +292,19 @@ const hasPermission = (permission: string): boolean => {
     schoolFeatures,
     isAuthenticated,
 
-    signIn: async (email: string, password: string) => {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      return { error };
-    },
-
+signIn: async (email: string, password: string) => {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  
+  // ✅ إذا نجح تسجيل الدخول، قم بتحميل بيانات المستخدم فوراً
+  if (data?.user && !error) {
+    await loadUserData(data.user);
+  }
+  
+  return { error };
+},
     signUp: async (email: string, password: string, fullName?: string) => {
       setLoading(true);
 
