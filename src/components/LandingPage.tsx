@@ -395,7 +395,7 @@ export default function LandingPage() {
             <div className="flex justify-center mt-6">
               <button
                 onClick={() =>
-                  window.open("https://free-edarty-test-skec.vercel.app", "_blank")
+                  window.open("https://arabic-sciences-website.vercel.app", "_blank")
                 }
                 className="group relative px-8 py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 text-white rounded-full font-bold text-lg hover:shadow-2xl hover:shadow-indigo-600/30 transition-all duration-300 transform hover:scale-105 overflow-hidden"
               >
