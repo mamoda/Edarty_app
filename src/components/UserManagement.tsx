@@ -220,7 +220,7 @@ const handleAddUser = async (e: React.FormEvent) => {
       });
     
     if (roleError) {
-      if (roleError.code === '23505') { // Unique violation
+      if (roleError.code === '23505') { 
         const { error: updateError } = await supabase
           .from('user_school_roles')
           .update({ 

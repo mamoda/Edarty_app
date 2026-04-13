@@ -1,4 +1,3 @@
-// src/lib/notifications.ts
 import { supabase } from "./supabase";
 
 interface NotificationData {
@@ -6,13 +5,12 @@ interface NotificationData {
   message: string;
   type: 'info' | 'success' | 'warning' | 'error';
   schoolId: string;
-  userId?: string; // اختياري: لمستخدم معين
+  userId?: string;
   link?: string;
 }
 
 export const createNotification = async (data: NotificationData) => {
   try {
-    // إذا كان userId محدد، أرسل له فقط
     if (data.userId) {
       await supabase.from("notifications").insert({
         user_id: data.userId,
@@ -26,7 +24,6 @@ export const createNotification = async (data: NotificationData) => {
       return;
     }
 
-    // وإلا، أرسل لجميع الأدمن في المدرسة
     const { data: admins, error: adminsError } = await supabase
       .from("user_school_roles")
       .select("user_id")
@@ -40,7 +37,6 @@ export const createNotification = async (data: NotificationData) => {
 
     if (!admins || admins.length === 0) return;
 
-    // إضافة إشعار لكل أدمن
     const notifications = admins.map(admin => ({
       user_id: admin.user_id,
       school_id: data.schoolId,
@@ -57,7 +53,6 @@ export const createNotification = async (data: NotificationData) => {
   }
 };
 
-// دوال مساعدة للإشعارات السريعة
 export const notifyStudentAdded = (schoolId: string, studentName: string, userId?: string) => {
   return createNotification({
     title: "📚 تم إضافة طالب جديد",
