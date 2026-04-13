@@ -23,7 +23,7 @@ import bg from "../assets/background-wave.png";
 
 export default function Login() {
   const navigate = useNavigate();
-  const { signIn, signUp, isAuthenticated } = useAuth();
+  const { signIn, signUp, isAuthenticated, authUser } = useAuth(); // ✅ أضفنا authUser
   const hasRedirected = useRef(false);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
@@ -48,20 +48,25 @@ export default function Login() {
 
   const ADMIN_SECRET_CODE = "Mahmoud17237ESD@";
 
+  // ✅ تحسين useEffect للتوجيه بعد التحقق من المصادقة
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
+    let mounted = true;
 
-    if (isAuthenticated && !hasRedirected.current) {
+    if (isAuthenticated && authUser && !hasRedirected.current) {
       hasRedirected.current = true;
       timeoutId = setTimeout(() => {
-        navigate("/dashboard", { replace: true });
-      }, 100);
+        if (mounted) {
+          navigate("/dashboard", { replace: true });
+        }
+      }, 500); // ✅ زيادة الوقت قليلاً للتأكد من اكتمال الحالة
     }
 
     return () => {
+      mounted = false;
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, authUser, navigate]);
 
   const handleAdminAccess = () => {
     if (adminCode === ADMIN_SECRET_CODE) {
@@ -79,6 +84,7 @@ export default function Login() {
     }
   };
 
+  // ✅ تحسين دالة تسجيل الدخول
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -87,16 +93,42 @@ export default function Login() {
 
     try {
       if (isLogin) {
-        const { error } = await signIn(email, password);
+        // ✅ تسجيل الدخول
+        const { error: signInError } = await signIn(email, password);
 
-        if (error) {
+        if (signInError) {
           setError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
           setLoading(false);
-        } else {
-          setSuccess("جاري تسجيل الدخول...");
-          setLoading(true);
+          return;
         }
+
+        // ✅ انتظار جلسة المستخدم
+        setSuccess("تم تسجيل الدخول بنجاح... جاري التوجيه");
+        
+        // ✅ الحصول على الجلسة للتأكد من اكتمال المصادقة
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          // ✅ إعادة تحميل الصفحة إذا لزم الأمر
+          setTimeout(() => {
+            navigate("/dashboard", { replace: true });
+          }, 1000);
+        } else {
+          // ✅ إذا لم تكن هناك جلسة، انتظر قليلاً ثم حاول مرة أخرى
+          setTimeout(async () => {
+            const { data: { session: retrySession } } = await supabase.auth.getSession();
+            if (retrySession?.user) {
+              navigate("/dashboard", { replace: true });
+            } else {
+              setError("حدث خطأ في التحقق من الجلسة، يرجى المحاولة مرة أخرى");
+              setLoading(false);
+            }
+          }, 1500);
+        }
+        
+        setLoading(false);
       } else {
+        // ✅ إنشاء حساب جديد (نفس الكود ولكن بدون تغيير)
         if (!isAdminAuthenticated) {
           setError("⚠️ لا يمكن إنشاء حساب جديد. يرجى إدخال كود المسؤول أولاً");
           setLoading(false);
@@ -158,6 +190,7 @@ export default function Login() {
             taxNumber: "",
           });
           setSuccess("");
+          navigate("/dashboard", { replace: true });
         }, 2000);
 
         setLoading(false);
