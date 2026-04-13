@@ -402,7 +402,7 @@ export default function LandingPage() {
                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
                 <span className="relative z-10 flex items-center gap-3">
                   <Zap className="w-5 h-5 animate-pulse" />
-                  Demo ERP Student test
+                  الاخـتـبـارات المجانية مَــولانَـا
                   <ExternalLink className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </span>
                 <div className="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-500/20 to-purple-500/20 blur-xl group-hover:blur-2xl transition-all duration-300"></div>
