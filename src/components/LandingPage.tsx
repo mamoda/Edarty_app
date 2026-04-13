@@ -804,7 +804,7 @@ export default function LandingPage() {
                   onClick={handleFreeTrial}
                   className="w-full py-4 bg-gradient-to-l from-emerald-600 to-emerald-500 text-white rounded-2xl font-bold hover:from-emerald-700 hover:to-emerald-600 transition-all shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-600/30 transform hover:-translate-y-0.5"
                 >
-                  ابدأ تجربتك المجانية
+                  ابدأ الآن 
                 </button>
               </div>
             </div>
