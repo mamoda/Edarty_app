@@ -228,13 +228,11 @@ export default function LandingPage() {
       className="min-h-screen bg-slate-50 font-sans selection:bg-emerald-100 selection:text-emerald-900"
       dir="rtl"
     >
-      {/* Header - يبقى كما هو */}
       <header
         className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? "bg-white/90 backdrop-blur-lg shadow-sm py-3" : "bg-transparent py-5"}`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
-            {/* Logo */}
             <div
               className="flex items-center cursor-pointer group relative"
               onClick={() => scrollToSection("hero")}
@@ -250,7 +248,6 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-8">
               {[
                 "features",
@@ -277,7 +274,6 @@ export default function LandingPage() {
               ))}
             </nav>
 
-            {/* CTA Buttons */}
             <div className="hidden md:flex items-center gap-4">
               <button
                 onClick={handleLogin}
@@ -289,11 +285,10 @@ export default function LandingPage() {
                 onClick={handleFreeTrial}
                 className="px-6 py-2.5 bg-slate-900 text-white rounded-full font-bold text-sm hover:bg-emerald-600 transition-all shadow-lg shadow-slate-900/10 hover:shadow-emerald-600/20 transform hover:-translate-y-0.5"
               >
-                ابدأ الآن مجاناً
+                ابدأ الآن 
               </button>
             </div>
 
-            {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="md:hidden p-2 rounded-full bg-slate-100 text-slate-900"
@@ -307,7 +302,6 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Mobile Menu */}
         {isMenuOpen && (
           <div className="md:hidden absolute top-full left-0 w-full bg-white border-t border-slate-100 shadow-xl py-6 px-6 animate-in fade-in slide-in-from-top-5">
             <nav className="flex flex-col gap-4">
@@ -340,14 +334,13 @@ export default function LandingPage() {
                 onClick={handleFreeTrial}
                 className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold"
               >
-                ابدأ تجربة مجانية
+                ابدأ الآن 
               </button>
             </nav>
           </div>
         )}
       </header>
 
-      {/* Hero Section - يبقى كما هو */}
       <section
         id="hero"
         className="relative pt-40 pb-24 lg:pt-52 lg:pb-40 overflow-hidden bg-cover bg-center"
