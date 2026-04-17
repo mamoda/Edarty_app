@@ -48,9 +48,6 @@ export interface UserProfile {
   email: string | null;
   full_name: string | null;
   school_id: string | null;
-  school_name: string | null;
-  school_address: string | null;
-  school_phone: string | null;
   tax_number: string | null;
   role: string;
   permissions: Record<string, any>;
