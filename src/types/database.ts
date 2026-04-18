@@ -42,24 +42,6 @@ export interface SchoolData {
   features?: string[];
 }
 
-
-export interface UserProfile {
-  id: string;
-  email: string | null;
-  full_name: string | null;
-  school_id: string | null;
-  tax_number: string | null;
-  role: string;
-  permissions: Record<string, any>;
-  last_login: string | null;
-  is_active: boolean;
-  avatar_url: string | null;
-  department: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-
 export interface UserSchoolRole {
   id: string;
   user_id: string;
