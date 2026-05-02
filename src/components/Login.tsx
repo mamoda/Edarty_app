@@ -19,7 +19,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import logo from "../assets/logo.png";
-import bg from "../assets/background-wave.png";
+import bg from "../assets/edarty_abstract_tech_bg.png";
 
 export default function Login() {
   const navigate = useNavigate();
