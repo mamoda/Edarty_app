@@ -69,36 +69,6 @@ type View =
   | "financial"
   | "users";
 
-// Database row types
-interface StudentRow {
-  id: string;
-  status: string;
-}
-
-interface FeeRow {
-  id: string;
-  student_id: string;
-  amount: number;
-  payment_date: string;
-  notes?: string;
-}
-
-interface ExpenseRow {
-  id: string;
-  amount: number;
-}
-
-interface TeacherRow {
-  id: string;
-  status: string;
-  salary: number;
-}
-
-interface UserRow {
-  id: string;
-  email: string | null | undefined;
-}
-
 interface StatCardProps {
   title: string;
   value: number;
@@ -159,7 +129,7 @@ const useToast = () => {
     setTimeout(() => setToast(null), 3000);
   }, []);
   
-  return { showToast, ToastComponent: () => toast ? (
+  return { toast, showToast, ToastComponent: () => toast ? (
     <div className={`fixed bottom-20 right-4 z-50 px-4 py-3 rounded-lg shadow-lg animate-slide-up flex items-center gap-2 ${
       toast.type === "success" ? "bg-green-600" :
       toast.type === "error" ? "bg-red-600" :
@@ -344,8 +314,8 @@ const QuickActionCard: React.FC<{
   </button>
 );
 
-interface ModernHeaderProps {
-  user: UserRow | null;
+const ModernHeader: React.FC<{
+  user: any;
   onSignOut: () => void;
   onViewChange: (view: View) => void;
   language: "ar" | "en";
@@ -362,15 +332,14 @@ interface ModernHeaderProps {
   unreadCount: number;
   onMarkAsRead: (id: string) => void;
   onMarkAllAsRead: () => void;
-}
-
-const ModernHeader: React.FC<ModernHeaderProps> = ({
+}> = ({
   user,
   onSignOut,
   onViewChange,
   language,
   toggleLanguage,
   t,
+  schoolName,
   subscriptionPlan,
   subscriptionExpiresAt,
   onUpgrade,
@@ -385,6 +354,7 @@ const ModernHeader: React.FC<ModernHeaderProps> = ({
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSearchResults, setShowSearchResults] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -502,6 +472,8 @@ const ModernHeader: React.FC<ModernHeaderProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setShowSearchResults(true)}
+                onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
                 placeholder={t("search") + " (⌘K)"}
                 className="w-full px-4 py-2 pr-10 bg-gray-100/50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all duration-300 text-sm placeholder:text-gray-400"
                 aria-label="Search"
@@ -887,7 +859,7 @@ export default function Dashboard() {
   const { authUser: user, signOut, currentSchool, currentRole, subscriptionPlan, subscriptionExpiresAt } = useAuth();
   const { schoolName, schoolEmail, schoolIdentifier } = useSchoolData();
   const { language, toggleLanguage, t } = useLanguage();
-  const { showToast, ToastComponent } = useToast();
+  const { toast, showToast, ToastComponent } = useToast();
 
   const [currentView, setCurrentView] = useState<View>("dashboard");
   const [stats, setStats] = useState<EnhancedStatistics>({
@@ -916,6 +888,10 @@ export default function Dashboard() {
   // صلاحيات المستخدم
   const rolePermissions = getRoleBasedStats(currentRole);
   const canManageUsers = currentRole === "admin" || currentRole === "moderator";
+  const isAdmin = currentRole === "admin";
+  const isAccountant = currentRole === "accountant";
+  const isModerator = currentRole === "moderator";
+  const isTeacher = currentRole === "teacher";
   const isParent = currentRole === "parent";
 
   const backgrounds = [
@@ -927,7 +903,7 @@ export default function Dashboard() {
   useEffect(() => {
     const interval = setInterval(() => setCurrentBackground((prev) => (prev + 1) % backgrounds.length), 30000);
     return () => clearInterval(interval);
-  }, [backgrounds.length]);
+  }, []);
 
   // Load notifications
   const loadNotifications = useCallback(async () => {
@@ -943,7 +919,7 @@ export default function Dashboard() {
 
       if (error) throw error;
       setNotifications(data || []);
-      setUnreadCount(data?.filter((n: NotificationItem) => !n.is_read).length || 0);
+      setUnreadCount(data?.filter(n => !n.is_read).length || 0);
     } catch (error) {
       console.error("Error loading notifications:", error);
     }
@@ -1060,38 +1036,38 @@ export default function Dashboard() {
         supabase.from("teachers").select("*").eq("school_id", currentSchool.id),
       ]);
 
-      const studentsData = (studentsRes.status === "fulfilled" ? studentsRes.value.data : []) as StudentRow[];
-      const feesData = (feesRes.status === "fulfilled" ? feesRes.value.data : []) as FeeRow[];
-      const expensesData = (expensesRes.status === "fulfilled" ? expensesRes.value.data : []) as ExpenseRow[];
-      const teachersData = (teachersRes.status === "fulfilled" ? teachersRes.value.data : []) as TeacherRow[];
+      const studentsData = studentsRes.status === "fulfilled" ? studentsRes.value.data : [];
+      const feesData = feesRes.status === "fulfilled" ? feesRes.value.data : [];
+      const expensesData = expensesRes.status === "fulfilled" ? expensesRes.value.data : [];
+      const teachersData = teachersRes.status === "fulfilled" ? teachersRes.value.data : [];
 
       const totalStudents = studentsData?.length ?? 0;
-      const activeStudents = studentsData?.filter((s: StudentRow) => s.status === "active").length ?? 0;
+      const activeStudents = studentsData?.filter((s: any) => s.status === "active").length ?? 0;
 
-      const totalPayments = feesData?.filter((f: FeeRow) => f.amount > 0).reduce((sum: number, f: FeeRow) => sum + Number(f.amount), 0) ?? 0;
-      const totalRefunds = feesData?.filter((f: FeeRow) => f.amount < 0).reduce((sum: number, f: FeeRow) => sum + Math.abs(Number(f.amount)), 0) ?? 0;
+      const totalPayments = feesData?.filter((f: any) => f.amount > 0).reduce((sum: number, f: any) => sum + Number(f.amount), 0) ?? 0;
+      const totalRefunds = feesData?.filter((f: any) => f.amount < 0).reduce((sum: number, f: any) => sum + Math.abs(Number(f.amount)), 0) ?? 0;
       const netRevenue = totalPayments - totalRefunds;
-      const totalExpenses = expensesData?.reduce((sum: number, e: ExpenseRow) => sum + Number(e.amount), 0) ?? 0;
+      const totalExpenses = expensesData?.reduce((sum: number, e: any) => sum + Number(e.amount), 0) ?? 0;
       const totalTeachers = teachersData?.length ?? 0;
-      const activeTeachers = teachersData?.filter((t: TeacherRow) => t.status === "active").length ?? 0;
-      const totalSalaries = teachersData?.filter((t: TeacherRow) => t.status === "active").reduce((sum: number, t: TeacherRow) => sum + Number(t.salary), 0) ?? 0;
+      const activeTeachers = teachersData?.filter((t: any) => t.status === "active").length ?? 0;
+      const totalSalaries = teachersData?.filter((t: any) => t.status === "active").reduce((sum: number, t: any) => sum + Number(t.salary), 0) ?? 0;
 
       let paidStudents = 0, partialPaidStudents = 0, unpaidStudents = 0;
-      studentsData?.forEach((student: StudentRow) => {
-        const studentFees = feesData?.filter((f: FeeRow) => f.student_id === student.id) ?? [];
-        const netPaid = studentFees.filter((f: FeeRow) => f.amount > 0).reduce((s: number, f: FeeRow) => s + f.amount, 0) -
-                        studentFees.filter((f: FeeRow) => f.amount < 0).reduce((s: number, f: FeeRow) => s + Math.abs(f.amount), 0);
+      studentsData?.forEach((student: any) => {
+        const studentFees = feesData?.filter((f: any) => f.student_id === student.id) ?? [];
+        const netPaid = studentFees.filter((f: any) => f.amount > 0).reduce((s: number, f: any) => s + f.amount, 0) -
+                        studentFees.filter((f: any) => f.amount < 0).reduce((s: number, f: any) => s + Math.abs(f.amount), 0);
         if (netPaid >= 5000) paidStudents++;
         else if (netPaid > 0) partialPaidStudents++;
         else unpaidStudents++;
       });
 
       let cashPayments = 0, cardPayments = 0, bankPayments = 0, checkPayments = 0;
-      feesData?.forEach((fee: FeeRow) => {
+      feesData?.forEach((fee: any) => {
         const amount = Math.abs(fee.amount);
         if (fee.notes) {
           try {
-            const notes = JSON.parse(fee.notes) as { payment_method?: string };
+            const notes = JSON.parse(fee.notes);
             const method = notes.payment_method;
             if (method === "cash") cashPayments += amount;
             else if (method === "card") cardPayments += amount;
@@ -1103,18 +1079,18 @@ export default function Dashboard() {
       });
 
       const today = new Date().toISOString().split("T")[0];
-      const todayPayments = feesData?.filter((f: FeeRow) => f.payment_date === today && f.amount > 0).reduce((s: number, f: FeeRow) => s + f.amount, 0) ?? 0;
-      const todayRefunds = feesData?.filter((f: FeeRow) => f.payment_date === today && f.amount < 0).reduce((s: number, f: FeeRow) => s + Math.abs(f.amount), 0) ?? 0;
+      const todayPayments = feesData?.filter((f: any) => f.payment_date === today && f.amount > 0).reduce((s: number, f: any) => s + f.amount, 0) ?? 0;
+      const todayRefunds = feesData?.filter((f: any) => f.payment_date === today && f.amount < 0).reduce((s: number, f: any) => s + Math.abs(f.amount), 0) ?? 0;
       const todayCollections = todayPayments - todayRefunds;
 
       const oneWeekAgo = new Date(); oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-      const weekPayments = feesData?.filter((f: FeeRow) => new Date(f.payment_date) >= oneWeekAgo && f.amount > 0).reduce((s: number, f: FeeRow) => s + f.amount, 0) ?? 0;
-      const weekRefunds = feesData?.filter((f: FeeRow) => new Date(f.payment_date) >= oneWeekAgo && f.amount < 0).reduce((s: number, f: FeeRow) => s + Math.abs(f.amount), 0) ?? 0;
+      const weekPayments = feesData?.filter((f: any) => new Date(f.payment_date) >= oneWeekAgo && f.amount > 0).reduce((s: number, f: any) => s + f.amount, 0) ?? 0;
+      const weekRefunds = feesData?.filter((f: any) => new Date(f.payment_date) >= oneWeekAgo && f.amount < 0).reduce((s: number, f: any) => s + Math.abs(f.amount), 0) ?? 0;
       const thisWeekCollections = weekPayments - weekRefunds;
 
       const oneMonthAgo = new Date(); oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-      const monthPayments = feesData?.filter((f: FeeRow) => new Date(f.payment_date) >= oneMonthAgo && f.amount > 0).reduce((s: number, f: FeeRow) => s + f.amount, 0) ?? 0;
-      const monthRefunds = feesData?.filter((f: FeeRow) => new Date(f.payment_date) >= oneMonthAgo && f.amount < 0).reduce((s: number, f: FeeRow) => s + Math.abs(f.amount), 0) ?? 0;
+      const monthPayments = feesData?.filter((f: any) => new Date(f.payment_date) >= oneMonthAgo && f.amount > 0).reduce((s: number, f: any) => s + f.amount, 0) ?? 0;
+      const monthRefunds = feesData?.filter((f: any) => new Date(f.payment_date) >= oneMonthAgo && f.amount < 0).reduce((s: number, f: any) => s + Math.abs(f.amount), 0) ?? 0;
       const thisMonthCollections = monthPayments - monthRefunds;
 
       const expectedRevenue = activeStudents * 5000;
@@ -1129,11 +1105,10 @@ export default function Dashboard() {
 
       hasLoadedStatsRef.current = true;
       showToast("تم تحديث البيانات بنجاح", "success");
-    } catch (error) {
+    } catch (error: any) {
       console.error(`❌ Error loading statistics:`, error);
-      const errorMessage = error instanceof Error ? error.message : "حدث خطأ في تحميل البيانات";
-      setDataError(errorMessage);
-      showToast(errorMessage, "error");
+      setDataError(error?.message || "حدث خطأ في تحميل البيانات");
+      showToast(error?.message || "حدث خطأ في تحميل البيانات", "error");
     } finally {
       setLoading(false);
       setIsRefreshing(false);
@@ -1194,7 +1169,7 @@ export default function Dashboard() {
 
       <div className="relative z-10">
         <ModernHeader
-          user={user ? { id: user.id, email: user.email } : null}
+          user={user}
           onSignOut={signOut}
           onViewChange={handleViewChange}
           language={language}
