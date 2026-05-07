@@ -132,7 +132,6 @@ const loadUserData = async (user: any) => {
 
     let rolesData = roles || [];
     
-    // ✅ إذا لم يكن للمستخدم أي دور (أي مدرسة)، ننشئ له مدرسة جديدة
     if (rolesData.length === 0) {
       console.log("🚀 Creating school via RPC...");
       
@@ -142,10 +141,9 @@ const loadUserData = async (user: any) => {
       if (rpcError) {
         console.error("RPC error:", rpcError);
       } else {
-        console.log("✅ RPC result:", rpcResult);
+        console.log("RPC result:", rpcResult);
       }
       
-      // ✅ إعادة جلب الأدوار بعد إنشاء المدرسة
       const { data: newRoles } = await supabase
         .from("user_school_roles")
         .select("*")
@@ -154,7 +152,7 @@ const loadUserData = async (user: any) => {
       rolesData = newRoles || [];
       
       if (rolesData.length === 0) {
-        console.warn("⚠️ No roles created after RPC, manual fallback may be needed");
+        console.log("Manual school creation fallback...");
       }
     }
     
@@ -206,8 +204,7 @@ const loadUserData = async (user: any) => {
     loadingUserRef.current = false;
     setLoading(false);
   }
-};  
-useEffect(() => {
+};  useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
@@ -232,9 +229,6 @@ useEffect(() => {
           setCurrentSchoolId(null);
           setCurrentRole(null);
           setLoading(false);
-        } else if (event === "SIGNED_IN" && session?.user) {
-          // ✅ عند تسجيل الدخول، تأكد من تحميل البيانات
-          await loadUserData(session.user);
         }
       }
     );
@@ -268,11 +262,9 @@ const hasPermission = (permission: string): boolean => {
   if (currentRole === "admin") return true;
 
   const rolePermissions: Record<string, string[]> = {
-    admin: ["manage_users", "view_financials", "manage_fees", "view_students", "edit_students", "add_students", "delete_students", "add_teachers", "edit_teachers", "delete_teachers", "add_fees", "edit_fees", "delete_fees", "add_expenses", "edit_expenses", "delete_expenses"],
-    accountant: ["view_financials", "manage_fees", "add_fees", "edit_fees"],
-    moderator: ["view_students", "edit_students", "manage_users", "add_students"],
-    teacher: ["view_students"],
-    parent: ["view_students"],
+    admin: ["manage_users", "view_financials", "manage_fees", "view_students", "edit_students"],
+    accountant: ["view_financials", "manage_fees"],
+    moderator: ["view_students", "edit_students", "manage_users"], // أضفنا manage_users هنا
   };
 
   return rolePermissions[currentRole]?.includes(permission) || false;
@@ -325,20 +317,11 @@ signIn: async (email: string, password: string) => {
       });
 
       if (!error && data.user) {
-        // ✅ إنشاء المستخدم في جدول users
         await supabase.from("users").insert({
           id: data.user.id,
           email,
           full_name: fullName,
-          is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
         });
-        
-        // ✅ انتظر قليلاً ثم قم بتحميل البيانات (لتشغيل RPC)
-        setTimeout(async () => {
-          await loadUserData(data.user);
-        }, 1000);
       }
 
       setLoading(false);
