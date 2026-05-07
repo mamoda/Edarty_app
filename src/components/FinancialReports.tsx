@@ -885,7 +885,7 @@ const { authUser, currentSchool } = useAuth();
   // ==================== تحميل التقرير الرئيسي ====================
 
 const loadReport = async () => {
-  // ✅ إضافة هذا الشرط أولاً
+  // ✅ التغيير الأول: التحقق من currentSchool بدلاً من authUser فقط
   if (!currentSchool) {
     setError("لم يتم تحديد المدرسة الحالية");
     setLoading(false);
@@ -896,34 +896,34 @@ const loadReport = async () => {
   setError(null);
 
   try {
-    // ✅ تعديل الاستعلامات: تغيير user_id إلى school_id
+    // ✅ التغيير الجوهري: استخدام school_id بدلاً من user_id
     const results = await Promise.allSettled([
       supabase
         .from("fees")
         .select("*, student:students(*)")
-        .eq("school_id", currentSchool.id)  // ← التغيير هنا
+        .eq("school_id", currentSchool.id)  // ← تغيير: user_id → school_id
         .gte("payment_date", startDate)
         .lte("payment_date", endDate),
       
       supabase
         .from("expenses")
         .select("*")
-        .eq("school_id", currentSchool.id)  // ← التغيير هنا
+        .eq("school_id", currentSchool.id)  // ← تغيير: user_id → school_id
         .gte("expense_date", startDate)
         .lte("expense_date", endDate),
       
       supabase
         .from("students")
         .select("*")
-        .eq("school_id", currentSchool.id),  // ← التغيير هنا
+        .eq("school_id", currentSchool.id),  // ← تغيير: user_id → school_id
       
       supabase
         .from("teachers")
         .select("*")
-        .eq("school_id", currentSchool.id),  // ← التغيير هنا
+        .eq("school_id", currentSchool.id),  // ← تغيير: user_id → school_id
     ]);
 
-    // باقي الكود كما هو دون تغيير...
+    // معالجة النتائج
     const feesResult = results[0];
     const expensesResult = results[1];
     const studentsResult = results[2];
@@ -938,9 +938,116 @@ const loadReport = async () => {
     const students = studentsResult.status === 'fulfilled' ? studentsResult.value.data || [] : [];
     const teachers = teachersResult.status === 'fulfilled' ? teachersResult.value.data || [] : [];
 
-    // ... باقي الكود يبقى كما هو تماماً من هنا ...
-    // (من السطر 450 إلى 650 في ملفك الأصلي لا يحتاج أي تغيير)
+    // التحقق من صحة البيانات
+    if (!validateData(fees, ['amount', 'payment_type', 'student_id'])) {
+      console.warn("بعض بيانات الرسوم غير مكتملة");
+    }
+
+    // حساب الذمم المالية
+    const receivables = calculateAccountsReceivable(fees, students);
+    const payables = calculateAccountsPayable(expenses, teachers, []);
+
+    // حساب الإيرادات والمصروفات
+    const totalPayments = fees
+      .filter(f => f.amount > 0)
+      .reduce((sum, f) => sum + f.amount, 0);
     
+    const totalRefunds = fees
+      .filter(f => f.amount < 0)
+      .reduce((sum, f) => sum + Math.abs(f.amount), 0);
+    
+    const totalRevenue = totalPayments - totalRefunds;
+    
+    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const netProfit = totalRevenue - totalExpenses;
+
+    // حساب الإيرادات حسب الفئة
+    const revenueByCategory = calculateRevenueByCategory(fees);
+    
+    // حساب المصروفات حسب الفئة
+    const expensesByCategory = calculateExpensesByCategory(expenses);
+
+    // حساب المعاملات اليومية
+    const dailyTransactions = calculateDailyTransactions(fees, expenses);
+
+    // أفضل الطلاب
+    const topStudents = calculateTopStudents(fees, students);
+
+    // طرق الدفع
+    const paymentMethods = calculatePaymentMethods(fees);
+
+    // التوقعات المحسنة
+    const projections = calculateProjections(fees, expenses, students, 6);
+
+    // النسب المالية المحسنة
+    const ratios = calculateFinancialRatios(fees, expenses, teachers, students, receivables, payables);
+
+    // توليد التنبيهات
+    const alerts = generateAlerts(ratios, receivables, payables, projections, fees);
+
+    // حساب التدفقات النقدية
+    const cashInBank = 100000;
+    const operatingCashFlow = totalRevenue - totalExpenses;
+    const investingCashFlow = -50000;
+    const financingCashFlow = 0;
+
+    // حساب الإيرادات المتوقعة
+    const activeStudents = students.filter(s => s.status === "active").length;
+    const expectedRevenue = activeStudents * TOTAL_REQUIRED_FEES_PER_STUDENT;
+
+    // تحليل تفصيلي للمصاريف
+    const collectedByType: { [key: string]: number } = {};
+    fees.forEach(fee => {
+      if (fee.amount > 0) {
+        collectedByType[fee.payment_type] = (collectedByType[fee.payment_type] || 0) + fee.amount;
+      }
+    });
+
+    const pendingByType: { [key: string]: number } = {};
+    Object.keys(REQUIRED_FEES_MAP).forEach(type => {
+      const collected = collectedByType[type] || 0;
+      const required = REQUIRED_FEES_MAP[type as keyof typeof REQUIRED_FEES_MAP] * activeStudents;
+      pendingByType[type] = Math.max(0, required - collected);
+    });
+
+    setReport({
+      period: reportType,
+      startDate,
+      endDate,
+      summary: {
+        totalRevenue,
+        totalExpenses,
+        netProfit,
+        profitMargin: totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0,
+        cashFlow: totalRevenue - totalExpenses,
+        accountsReceivable: receivables.total,
+        accountsPayable: payables.total,
+        workingCapital: (cashInBank + receivables.total) - payables.shortTerm,
+        cashInBank,
+        operatingCashFlow,
+        investingCashFlow,
+        financingCashFlow,
+        collectionRate: expectedRevenue > 0 ? (totalRevenue / expectedRevenue) * 100 : 0,
+        expectedRevenue,
+      },
+      revenueByCategory,
+      expensesByCategory,
+      dailyTransactions,
+      topStudents,
+      paymentMethods,
+      projections,
+      ratios,
+      alerts,
+      receivables,
+      payables,
+      feesBreakdown: {
+        requiredFees: REQUIRED_FEES_MAP,
+        totalRequiredPerStudent: TOTAL_REQUIRED_FEES_PER_STUDENT,
+        collectedByType,
+        pendingByType,
+      }
+    });
+
   } catch (error: any) {
     console.error("Error loading report:", error);
     setError(error.message || "حدث خطأ أثناء تحميل التقرير");
