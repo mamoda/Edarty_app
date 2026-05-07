@@ -34,8 +34,6 @@ import { useAuth } from "../context/AuthContext";
 import { Student } from "../types/database";
 import { notifyStudentAdded, notifyStudentDeleted } from "../lib/notifications";
 
-
-
 interface StudentsManagerProps {
   onUpdate: () => void;
 }
@@ -746,38 +744,85 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
     }
   };
 
+  // ✅ دالة الحذف المعدلة - المشكلة كانت هنا
   const handleDelete = async (id: string) => {
+    // 1. التحقق من الصلاحية
     if (!canDelete) {
-      showToast("ليس لديك صلاحية لحذف الطلاب", "error");
+      showToast("⚠️ ليس لديك صلاحية لحذف الطلاب", "error");
       return;
     }
 
-    if (!confirm("هل أنت متأكد من حذف هذا الطالب؟")) return;
+    // 2. التحقق من وجود المدرسة الحالية
+    if (!currentSchool) {
+      showToast("⚠️ لم يتم تحديد المدرسة الحالية", "error");
+      return;
+    }
 
+    // 3. البحث عن الطالب قبل الحذف
+    const studentToDelete = students.find(s => s.id === id);
+    if (!studentToDelete) {
+      showToast("❌ الطالب غير موجود", "error");
+      return;
+    }
+
+    // 4. تأكيد الحذف
+    const confirmed = window.confirm(
+      `⚠️ هل أنت متأكد من حذف الطالب "${studentToDelete.full_name}"؟\n\nهذا الإجراء لا يمكن التراجع عنه!`
+    );
+    
+    if (!confirmed) return;
+
+    // 5. محاولة الحذف
     try {
-      // ✅ جلب اسم الطالب قبل الحذف للإشعار
-      const studentToDelete = students.find(s => s.id === id);
-      const studentName = studentToDelete?.full_name || "طالب";
+      console.log(`🗑️ محاولة حذف الطالب: ${studentToDelete.full_name} (ID: ${id}) من المدرسة: ${currentSchool.id}`);
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("students")
         .delete()
         .eq("id", id)
-        .eq("school_id", currentSchool?.id);
+        .eq("school_id", currentSchool.id) // مهم جداً: تأكد أن الطالب ينتمي للمدرسة الحالية
+        .select(); // نعيد البيانات للتأكد من الحذف
 
-      if (error) throw error;
+      if (error) {
+        console.error("❌ خطأ من Supabase:", error);
+        
+        // معالجة أخطاء محددة
+        if (error.code === "42501") {
+          showToast("🔒 خطأ في الصلاحيات: غير مصرح لك بحذف الطلاب", "error");
+        } else if (error.code === "23503") {
+          showToast("⚠️ لا يمكن حذف الطالب لأنه مرتبط ببيانات أخرى (مصروفات، غياب، إلخ)", "error");
+        } else {
+          showToast(`❌ فشل الحذف: ${error.message}`, "error");
+        }
+        return;
+      }
+
+      // التحقق من أن الحذف تم بنجاح (data应该有值)
+      if (!data || data.length === 0) {
+        console.warn("⚠️ لم يتم حذف أي سجل - قد يكون الطالب لا ينتمي للمدرسة الحالية");
+        showToast("⚠️ لم يتم العثور على الطالب أو لا ينتمي لهذه المدرسة", "error");
+        return;
+      }
+
+      // ✅ نجاح الحذف
+      console.log(`✅ تم حذف الطالب بنجاح: ${studentToDelete.full_name}`);
       
+      // تحديث الواجهة
       loadStudents(true);
       onUpdate();
-      showToast("تم حذف الطالب بنجاح", "success");
+      showToast(`✅ تم حذف الطالب "${studentToDelete.full_name}" بنجاح`, "success");
       
-      // ✅ إرسال إشعار للأدمن
-      if (currentSchool) {
-        await notifyStudentDeleted(currentSchool.id, studentName);
+      // إرسال إشعار للأدمن
+      try {
+        await notifyStudentDeleted(currentSchool.id, studentToDelete.full_name);
+      } catch (notifyError) {
+        console.warn("⚠️ فشل إرسال الإشعار:", notifyError);
+        // لا نعرض خطأ للمستخدم لأن الحذف تم بنجاح
       }
-    } catch (error) {
-      console.error("Error deleting student:", error);
-      showToast("حدث خطأ أثناء حذف الطالب", "error");
+      
+    } catch (err: any) {
+      console.error("💥 خطأ غير متوقع أثناء الحذف:", err);
+      showToast("❌ حدث خطأ غير متوقع أثناء حذف الطالب", "error");
     }
   };
 
@@ -922,7 +967,7 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
         </div>
       </div>
 
-      {/* Statistics Cards - Fixed Icons */}
+      {/* Statistics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard
           title="إجمالي الطلاب"
@@ -958,6 +1003,7 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
           isLoading={isLoading}
         />
       </div>
+
       {/* Search and Filters */}
       <div className="bg-white rounded-xl shadow-md p-4 space-y-4">
         <div className="relative">
@@ -1048,7 +1094,6 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
           </div>
         )}
 
-        {/* Expand/Collapse Controls */}
         {!selectedGrade && Object.keys(filteredStudentsByGrade).length > 0 && (
           <div className="flex justify-end gap-2">
             <button
@@ -1092,7 +1137,6 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
           )}
         </div>
       ) : selectedGrade ? (
-        // Single Grade View
         <div className="space-y-4">
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
             <div className="flex items-center justify-between">
@@ -1131,7 +1175,6 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
           </div>
         </div>
       ) : (
-        // Grouped by Grade View
         <div className="space-y-4">
           {Object.entries(filteredStudentsByGrade).map(
             ([grade, gradeStudents]) => (
