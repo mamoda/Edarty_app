@@ -23,7 +23,7 @@ import bg from "../assets/edarty_abstract_tech_bg.png";
 
 export default function Login() {
   const navigate = useNavigate();
-  const { signIn, signUp, isAuthenticated, authUser } = useAuth(); // ✅ أضفنا authUser
+  const { signIn, signUp, isAuthenticated, authUser } = useAuth(); // 
   const hasRedirected = useRef(false);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
