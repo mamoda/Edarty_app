@@ -2,7 +2,8 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination, Autoplay } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/navigation';
-import 'swiper/css/pagination';import { useState, useEffect, useRef } from "react";
+import 'swiper/css/pagination';
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Menu,
@@ -42,9 +43,12 @@ import company1 from "../assets/partners/company1.png";
 import company2 from "../assets/partners/company2.png";
 import company3 from "../assets/partners/company3.png";
 import company4 from "../assets/partners/company4.png";
-import demoVideo from "../assets/videos/kling_20260303_Image_to_Video_Futuristic_4964_0.mp4";
-import demoVideoWebm from "../assets/videos/edarty_hero_dashboard.png";
-import demoPoster from "../assets/videos/edarty_hero_dashboard.png";
+import demoVideo1 from "../assets/videos/kling_20260303_Image_to_Video_Futuristic_4964_0.mp4";
+import demoVideo2 from "../assets/videos/demo_video2.mp4";
+import demoVideo3 from "../assets/videos/demo_video3.mp4";
+import demoPoster1 from "../assets/videos/edarty_hero_dashboard.png";
+import demoPoster2 from "../assets/videos/edarty_hero_dashboard2.png";
+import demoPoster3 from "../assets/videos/edarty_hero_dashboard3.png";
 
 const medicalProject =
   "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=1200&h=800&fit=crop";
@@ -52,6 +56,31 @@ const posProject =
   "https://images.pexels.com/photos/12935048/pexels-photo-12935048.jpeg";
 const educationalProject =
   "https://images.pexels.com/photos/9052475/pexels-photo-9052475.jpeg";
+
+// بيانات فيديوهات السلايدر
+const sliderVideos = [
+  {
+    src: demoVideo1,
+    webm: demoVideo1,
+    poster: demoPoster1,
+    title: "نظام إدارة العيادات",
+    description: "حل متكامل لإدارة العيادات الطبية"
+  },
+  {
+    src: demoVideo2,
+    webm: demoVideo2,
+    poster: demoPoster2,
+    title: "نظام نقاط البيع",
+    description: "إدارة المبيعات والمخزون بذكاء"
+  },
+  {
+    src: demoVideo3,
+    webm: demoVideo3,
+    poster: demoPoster3,
+    title: "النظام التعليمي",
+    description: "إدارة المؤسسات التعليمية بكفاءة"
+  }
+];
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -63,7 +92,7 @@ export default function LandingPage() {
   const [currentSlide, setCurrentSlide] = useState(0);
 
   // Video refs and state
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const [activeVideoIndex, setActiveVideoIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
 
@@ -77,7 +106,7 @@ export default function LandingPage() {
         "نظام محاسبي متخصص للقطاع الطبي يدير حسابات المرضى، الفواتير الطبية، التأمينات، والمخزون الدوائي بدقة واحترافية.",
       icon: <Stethoscope className="w-8 h-8" />,
       image: medicalProject,
-      link: "https://edarty-clinic.vercel.app", // ✅ رابط خارجي حقيقي
+      link: "https://edarty-clinic.vercel.app",
       features: [
         "إدارة ملفات المرضى",
         "فواتير طبية إلكترونية",
@@ -96,7 +125,7 @@ export default function LandingPage() {
         "نظام متكامل لإدارة نقاط البيع، المبيعات، المخزون، والعملاء. يدعم الفروع المتعددة ويقدم تقارير لحظية لأداء المبيعات.",
       icon: <ShoppingBag className="w-8 h-8" />,
       image: posProject,
-      link: "https://edarty-pos.vercel.app", 
+      link: "https://edarty-pos.vercel.app",
       features: [
         "نقاط بيع متعددة",
         "إدارة المخزون آلياً",
@@ -115,7 +144,7 @@ export default function LandingPage() {
         "نظام إداري متكامل للمدارس والجامعات والمعاهد. يدير شؤون الطلاب، الرسوم الدراسية، الحضور والغياب، والتقارير الأكاديمية.",
       icon: <School className="w-8 h-8" />,
       image: educationalProject,
-      link: "https://edarty-app-buad.vercel.app", 
+      link: "https://edarty-app-buad.vercel.app",
       features: [
         "إدارة الطلاب والموظفين",
         "الرسوم الدراسية والمصروفات",
@@ -132,7 +161,7 @@ export default function LandingPage() {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % projects.length);
-    }, 5000); // يتغير كل 5 ثواني
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [projects.length]);
@@ -167,25 +196,6 @@ export default function LandingPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Video controls
-  const togglePlay = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play();
-      }
-      setIsPlaying(!isPlaying);
-    }
-  };
-
-  const toggleMute = () => {
-    if (videoRef.current) {
-      videoRef.current.muted = !isMuted;
-      setIsMuted(!isMuted);
-    }
-  };
-
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
@@ -210,8 +220,6 @@ export default function LandingPage() {
       "mailto:sales@edarty.com?subject=استفسار عن المبيعات";
   };
 
-  // دوال التحكم في السلايدر
-  // دوال التحكم في السلايدر
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % projects.length);
   };
@@ -223,6 +231,7 @@ export default function LandingPage() {
   const goToSlide = (index: number) => {
     setCurrentSlide(index);
   };
+
   return (
     <div
       className="min-h-screen bg-slate-50 font-sans selection:bg-emerald-100 selection:text-emerald-900"
@@ -285,7 +294,7 @@ export default function LandingPage() {
                 onClick={handleFreeTrial}
                 className="px-6 py-2.5 bg-slate-900 text-white rounded-full font-bold text-sm hover:bg-emerald-600 transition-all shadow-lg shadow-slate-900/10 hover:shadow-emerald-600/20 transform hover:-translate-y-0.5"
               >
-                ابدأ الآن 
+                ابدأ الآن
               </button>
             </div>
 
@@ -334,7 +343,7 @@ export default function LandingPage() {
                 onClick={handleFreeTrial}
                 className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold"
               >
-                ابدأ الآن 
+                ابدأ الآن
               </button>
             </nav>
           </div>
@@ -373,7 +382,7 @@ export default function LandingPage() {
                 onClick={handleFreeTrial}
                 className="w-full sm:w-auto px-10 py-4 bg-emerald-600 text-white rounded-full font-bold text-lg hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-600/20 transform hover:scale-105 flex items-center justify-center gap-2"
               >
-                ابدأ الآن 
+                ابدأ الآن
                 <ArrowRight className="w-5 h-5 rotate-180" />
               </button>
               <button
@@ -395,7 +404,7 @@ export default function LandingPage() {
                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
                 <span className="relative z-10 flex items-center gap-3">
                   <Zap className="w-5 h-5 animate-pulse" />
-                  الخـدمــة المجانية مَــولانَـا
+                  الخـدمــة المجانية مَــولَانَـا
                   <ExternalLink className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </span>
                 <div className="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-500/20 to-purple-500/20 blur-xl group-hover:blur-2xl transition-all duration-300"></div>
@@ -411,31 +420,72 @@ export default function LandingPage() {
               </p>
             </div>
 
-            {/* Hero Video - Dashboard */}
+            {/* Video Slider Section - Modified */}
             <div className="relative w-full mt-20">
               <div className="relative w-full px-4 sm:px-6 lg:px-8">
                 <div className="relative rounded-2xl lg:rounded-3xl overflow-hidden shadow-2xl border border-slate-700/50 bg-slate-900">
                   <div className="relative aspect-video w-full overflow-hidden">
-                    <video
-                      ref={videoRef}
-                      className="absolute inset-0 w-full h-full object-cover scale-105 hover:scale-100 transition-transform duration-10000 ease-in-out"
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
-                      poster={demoPoster}
+                    <Swiper
+                      modules={[Navigation, Pagination, Autoplay]}
+                      navigation={{
+                        nextEl: '.swiper-button-next',
+                        prevEl: '.swiper-button-prev',
+                      }}
+                      pagination={{ 
+                        clickable: true,
+                        dynamicBullets: true
+                      }}
+                      autoplay={{
+                        delay: 5000,
+                        disableOnInteraction: false,
+                        pauseOnMouseEnter: true,
+                      }}
+                      loop={true}
+                      className="w-full h-full"
+                      onSlideChange={(swiper) => setActiveVideoIndex(swiper.realIndex)}
                     >
-                      <source src={demoVideo} type="video/mp4" />
-                      <source src={demoVideoWebm} type="video/webm" />
-                      متصفحك لا يدعم تشغيل الفيديو.
-                    </video>
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/20 via-transparent to-slate-900/20 pointer-events-none"></div>
+                      {sliderVideos.map((video, index) => (
+                        <SwiperSlide key={index}>
+                          <div className="relative w-full h-full">
+                            <video
+                              className="absolute inset-0 w-full h-full object-cover"
+                              autoPlay
+                              muted
+                              loop
+                              playsInline
+                              poster={video.poster}
+                            >
+                              <source src={video.src} type="video/mp4" />
+                              <source src={video.webm} type="video/webm" />
+                              متصفحك لا يدعم تشغيل الفيديو.
+                            </video>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none">
+                              <div className="absolute bottom-0 left-0 right-0 p-6 text-right">
+                                <h3 className="text-white text-xl md:text-2xl font-bold mb-2">
+                                  {video.title}
+                                </h3>
+                                <p className="text-white/80 text-sm md:text-base">
+                                  {video.description}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </SwiperSlide>
+                      ))}
+                    </Swiper>
+                    
+                    {/* Custom Navigation Buttons */}
+                    <button className="swiper-button-prev absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition-all backdrop-blur-sm">
+                      <ChevronLeft className="w-6 h-6" />
+                    </button>
+                    <button className="swiper-button-next absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition-all backdrop-blur-sm">
+                      <ChevronRight className="w-6 h-6" />
+                    </button>
                   </div>
                 </div>
               </div>
               <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-3/4 max-w-4xl h-20 bg-emerald-500/20 blur-3xl -z-10"></div>
             </div>
-
             {/* Trust Badges */}
             <div className="mt-16 pt-16 border-t border-slate-700/60">
               <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-8">
@@ -455,6 +505,12 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* باقي أقسام الصفحة (Features, Projects, etc.) - نفس الكود الأصلي */}
+      {/* ... */}
+    </div>
+  );
+}
 
       {/* Features Grid - يبقى كما هو */}
       <section id="features" className="py-24 bg-white">
